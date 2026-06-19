@@ -127,6 +127,9 @@ importers:
 
   apps/website:
     dependencies:
+      '@solva/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
       next:
         specifier: ^15.5.0
         version: 15.5.19(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -164,6 +167,25 @@ importers:
       tailwindcss:
         specifier: ^3.4.0
         version: 3.4.19(tsx@4.22.4)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/brand:
+    dependencies:
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.19(tsx@4.22.4)
+    devDependencies:
+      '@solva/config':
+        specifier: workspace:*
+        version: link:../config
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.4(jiti@2.7.0)
+      next:
+        specifier: ^15.5.0
+        version: 15.5.19(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

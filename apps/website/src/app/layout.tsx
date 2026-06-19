@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { fontVariables } from "@/lib/fonts";
+import { fontVariables } from "@solva/brand/fonts";
 import { themeScript } from "@/lib/theme-script";
 import { ThemeProvider } from "@/components/theme-provider";
+import "@solva/brand/tokens.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
