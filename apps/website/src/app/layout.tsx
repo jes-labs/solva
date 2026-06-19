@@ -4,6 +4,7 @@ import { themeScript } from "@/lib/theme-script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SmoothScroll } from "@/components/motion";
 import { SiteNav } from "@/components/nav/site-nav";
+import { SiteFooter } from "@/components/footer/site-footer";
 import "@solva/brand/tokens.css";
 import "lenis/dist/lenis.css";
 import "./globals.css";
@@ -30,7 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <SiteNav />
           <SmoothScroll>
-            <div id="site-root">{children}</div>
+            <div id="site-root">
+              {children}
+              <SiteFooter />
+            </div>
           </SmoothScroll>
         </ThemeProvider>
       </body>
