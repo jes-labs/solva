@@ -1,0 +1,3 @@
+/* The web app pulls design tokens and base styles from @solva/ui, then layers
+   Tailwind utilities. The token CSS variables live in the imported stylesheet. */
+@import "@solva/ui/styles.css";
