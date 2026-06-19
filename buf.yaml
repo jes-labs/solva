@@ -7,8 +7,13 @@ lint:
   # The proto lives flat at proto/prover.proto, referenced by the prover
   # build.rs and the Go stubs. We keep that layout instead of nesting it under
   # solva/prover/v1, so this directory rule does not apply.
+  #
+  # The service is named Prover, not ProverService, to match the design in the
+  # technical PRD and the generated trait the prover already implements. We keep
+  # that name and skip the suffix style rule.
   except:
     - PACKAGE_DIRECTORY_MATCH
+    - SERVICE_SUFFIX
 breaking:
   use:
     - FILE
