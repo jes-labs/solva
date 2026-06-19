@@ -14,4 +14,9 @@ export {
   ArrowRightIcon,
   ShieldIcon,
   LockIcon,
+  ActivityIcon,
+  ClockIcon,
+  ShieldCheckIcon,
+  MonitorIcon,
+  NodesIcon,
 } from "./icons";
