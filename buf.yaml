@@ -1,0 +1,14 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  # The proto lives flat at proto/prover.proto, referenced by the prover
+  # build.rs and the Go stubs. We keep that layout instead of nesting it under
+  # solva/prover/v1, so this directory rule does not apply.
+  except:
+    - PACKAGE_DIRECTORY_MATCH
+breaking:
+  use:
+    - FILE

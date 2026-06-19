@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package solva.prover.v1;
+
+option go_package = "github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/grpc/proverpb;proverpb";
+
+// Prover builds the Poseidon2 Merkle Sum Tree and generates the
+// Noir/UltraHonk solvency proof. It owns the full ZK-critical path so the
+// witnessed root always matches the circuit and the on-chain check.
+service Prover {
+  rpc Prove(ProveRequest) returns (ProveResponse);
+}
+
+// A single customer liability. The balance is a decimal string to avoid
+// floating point. The prover converts it to a field element.
+message Liability {
+  string customer_id_hash = 1; // Poseidon2 hash of the external reference, hex.
+  string balance = 2;          // Integer minor units, decimal string.
+}
+
+// A single reserve figure attested by a bank or on-chain source.
+message Reserve {
+  string source_id = 1;
+  string balance = 2; // Integer minor units, decimal string.
+}
+
+message ProveRequest {
+  repeated Reserve reserves = 1;
+  repeated Liability liabilities = 2;
+  string prev_reserves = 3; // Previous cycle total R, for the fraud bound.
+  uint32 tree_depth = 4;    // Fixed depth of the Merkle Sum Tree.
+}
+
+message ProveResponse {
+  bytes proof = 1;            // Serialized UltraHonk proof.
+  PublicInputs public_inputs = 2;
+  bytes serialized_tree = 3;  // JSON tree for the audit log and inclusion paths.
+}
+
+// Values exposed on-chain. Everything else stays private.
+message PublicInputs {
+  string reserves_total = 1;    // R
+  string liabilities_total = 2; // L
+  string root_hash = 3;         // root_h, Poseidon2 sum-tree root, hex.
+  string prev_reserves = 4;     // R_prev
+}
