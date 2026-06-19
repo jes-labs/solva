@@ -11,6 +11,9 @@ export const routes = {
   pricing: "/pricing",
   blog: "/blog",
   about: "/about",
+  // The public verify tool lives in the product app. This becomes that app's
+  // absolute URL once it is deployed.
+  verify: "/verify",
   demo: "/request-a-demo",
   legal: "/legal",
   status: "/status",
