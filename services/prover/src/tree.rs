@@ -23,7 +23,9 @@ pub struct Node {
 
 // A single sibling step on an inclusion path: the sibling node plus whether it
 // sits on the left of the current node.
+// Consumed once the tree feeds witness assembly and inclusion in issue #8.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub struct PathStep {
     pub sibling: Node,
     pub sibling_is_left: bool,
@@ -31,11 +33,15 @@ pub struct PathStep {
 
 // A built tree. Levels are stored bottom up: levels[0] is the leaf row, the last
 // level holds the single root.
+// The field and the read methods below are exercised once the tree is wired
+// into the service in issue #8.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct MerkleSumTree {
     levels: Vec<Vec<Node>>,
 }
 
+#[allow(dead_code)]
 impl MerkleSumTree {
     // Builds a full tree from leaf nodes. Leaf count is expected to be a power of
     // two for a fixed-depth tree; callers pad to the circuit's fixed depth before

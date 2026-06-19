@@ -62,7 +62,9 @@ pub fn prove(_witness: &Witness) -> Result<ProofBundle, ProvingError> {
 
 // Errors surfaced by witness assembly and proving. Kept explicit so the service
 // returns a typed gRPC status instead of a generic failure.
+// The variants are constructed once the bb backend is wired in issue #9.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum ProvingError {
     WitnessAssembly(String),
     ProofGeneration(String),
