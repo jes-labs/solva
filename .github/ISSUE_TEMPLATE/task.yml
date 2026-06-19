@@ -1,0 +1,39 @@
+name: Task
+description: A unit of build work, scoped to one pull request.
+title: "[task]: "
+labels: ["type: task"]
+body:
+  - type: markdown
+    attributes:
+      value: Keep the task atomic. If it needs more than one pull request, split it.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs to be built and why.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Files, packages, or services this touches. State what is out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist that defines done. Each item must be verifiable.
+      placeholder: |
+        - [ ] ...
+        - [ ] Tests pass for ...
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: References, PRD sections, or dependencies on other issues.
+    validations:
+      required: false

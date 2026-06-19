@@ -1,0 +1,167 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel an in-progress run when a new commit lands on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Detect which tiers a pull request touches. Each tier job runs only when its
+  # paths changed. The final gate job always runs, so the required check never
+  # deadlocks on a tier that did not change.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ts: ${{ steps.filter.outputs.ts }}
+      go: ${{ steps.filter.outputs.go }}
+      rust: ${{ steps.filter.outputs.rust }}
+      circuits: ${{ steps.filter.outputs.circuits }}
+      proto: ${{ steps.filter.outputs.proto }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ts:
+              - 'apps/**'
+              - 'packages/**'
+              - 'services/oracle/**'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+            go:
+              - 'services/orchestrator/**'
+              - 'services/sandbox/**'
+              - 'go.work'
+            rust:
+              - 'services/prover/**'
+              - 'contracts/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+            circuits:
+              - 'circuits/**'
+            proto:
+              - 'proto/**'
+              - 'buf.yaml'
+              - 'buf.gen.yaml'
+
+  ts:
+    needs: changes
+    if: needs.changes.outputs.ts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm run test
+      - run: pnpm run build
+
+  go:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [services/orchestrator, services/sandbox]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: build
+        working-directory: ${{ matrix.module }}
+        run: go build ./...
+      - name: vet
+        working-directory: ${{ matrix.module }}
+        run: go vet ./...
+      - name: test
+        working-directory: ${{ matrix.module }}
+        run: go test ./...
+
+  rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.91.1"
+          targets: wasm32v1-none
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace -- -D warnings
+      - run: cargo test --workspace
+      - name: build contract wasm
+        run: cargo build -p proof-registry --release --target wasm32v1-none
+
+  circuits:
+    needs: changes
+    if: needs.changes.outputs.circuits == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install noirup
+        run: |
+          curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
+          echo "$HOME/.nargo/bin" >> "$GITHUB_PATH"
+      - name: install nargo
+        run: noirup --version 1.0.0-beta.9
+      - name: check
+        working-directory: circuits/solvency
+        run: nargo check
+      - name: test
+        working-directory: circuits/solvency
+        run: nargo test
+
+  proto:
+    needs: changes
+    if: needs.changes.outputs.proto == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - run: buf lint
+
+  # Single required status check. It always runs and fails if any tier that ran
+  # did not succeed. Tiers that were skipped do not count as failures.
+  ci:
+    needs: [ts, go, rust, circuits, proto]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: verify tier results
+        run: |
+          results="${{ join(needs.*.result, ',') }}"
+          echo "tier results: $results"
+          if echo "$results" | tr ',' '\n' | grep -qE 'failure|cancelled'; then
+            echo "a required CI tier failed"
+            exit 1
+          fi
+          echo "all CI tiers passed or were skipped"

@@ -1,0 +1,34 @@
+name: Bug
+description: Something does not work as expected.
+title: "[bug]: "
+labels: ["type: bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The behavior you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: tier
+    attributes:
+      label: Tier
+      description: Which tier is affected (circuits, prover, contract, orchestrator, sandbox, web, oracle).
+    validations:
+      required: false

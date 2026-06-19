@@ -1,0 +1,29 @@
+name: Feature
+description: A larger capability that may span several tasks.
+title: "[feature]: "
+labels: ["type: feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: The need this feature addresses.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How it should work at a high level.
+    validations:
+      required: true
+  - type: textarea
+    id: breakdown
+    attributes:
+      label: Task breakdown
+      description: The atomic tasks this feature splits into.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: false
