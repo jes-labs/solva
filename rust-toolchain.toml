@@ -1,0 +1,5 @@
+# Pinned so the prover and the Soroban contract build identically everywhere.
+[toolchain]
+channel = "1.91.1"
+targets = ["wasm32v1-none"]
+components = ["clippy", "rustfmt"]

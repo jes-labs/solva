@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+.next/
+.turbo/
+target/
+*.wasm
+*.tsbuildinfo
+next-env.d.ts
+
+# Internal planning docs. These hold business strategy (pricing, GTM, moat).
+# The repo is public, so they are kept local by default. Remove these lines if
+# the team decides to publish them.
+Solva-PRD-1.md
+Solva-PRD-2.md
+
+# Noir / Barretenberg artifacts
+**/target/*.json
+**/proofs/
+**/*.gz
+
+# Go
+bin/
+*.test
+*.out
+vendor/
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Generated code (regenerated via Just targets, not committed unless noted)
+packages/contract-bindings/src/generated/
+
+# Stellar
+.stellar/
