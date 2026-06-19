@@ -1,4 +1,5 @@
-# Solva
+<img width="1280" height="640" alt="github-banner-1280x640" src="https://github.com/user-attachments/assets/febfb492-0587-422f-afb0-69ad50c84c8c" />
+
 
 [![CI](https://github.com/jes-labs/solva/actions/workflows/ci.yml/badge.svg)](https://github.com/jes-labs/solva/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
