@@ -1,0 +1,33 @@
+{
+  "name": "@solva/oracle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Solva MCP solvency oracle and anomaly-detection agent",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "solva-oracle": "./dist/server.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/anomaly.test.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@solva/sdk-ts": "workspace:*",
+    "@solva/shared-types": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@solva/config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.39.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.7.0"
+  }
+}
