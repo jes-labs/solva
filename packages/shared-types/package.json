@@ -1,0 +1,30 @@
+{
+  "name": "@solva/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure TypeScript types mirroring the Solva proof wire contract",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@solva/config": "workspace:*",
+    "eslint": "^9.39.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.7.0"
+  }
+}

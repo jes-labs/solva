@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens. These match src/styles/tokens.ts. Light is the default;
+   the .dark class flips them. The Tailwind preset wraps each as hsl(var(--x)). */
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --primary: 171 75% 41%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 171 75% 41%;
+
+    --solvent: 152 69% 38%;
+    --warning: 38 92% 50%;
+    --breach: 0 72% 51%;
+  }
+
+  .dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 8% 8%;
+    --card-foreground: 0 0% 98%;
+    --primary: 171 70% 48%;
+    --primary-foreground: 240 10% 4%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --border: 240 4% 18%;
+    --input: 240 4% 18%;
+    --ring: 171 70% 48%;
+
+    --solvent: 152 60% 48%;
+    --warning: 38 92% 55%;
+    --breach: 0 72% 58%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
