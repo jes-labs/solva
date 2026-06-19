@@ -1,0 +1,143 @@
+package http
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
+
+	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
+	"github.com/jes-labs/solva/services/orchestrator/internal/usecase"
+)
+
+// cycleRunner is the slice of the cycle use case the HTTP layer needs.
+type cycleRunner interface {
+	Run(ctx context.Context, tenantID string) error
+}
+
+// queryService is the slice of the read use case the HTTP layer needs.
+type queryService interface {
+	GetLatestProof(ctx context.Context, tenantID string) (entity.Proof, error)
+	GetProof(ctx context.Context, id string) (entity.Proof, error)
+	GetInclusion(ctx context.Context, ref string) (entity.InclusionRef, error)
+}
+
+// Handler holds the use cases the routes call.
+type Handler struct {
+	cycle cycleRunner
+	query queryService
+	log   zerolog.Logger
+}
+
+// NewHandler wires the handler to its use cases.
+func NewHandler(cycle cycleRunner, query queryService, log zerolog.Logger) *Handler {
+	return &Handler{cycle: cycle, query: query, log: log}
+}
+
+// triggerCycleRequest is the body for POST /v1/cycles.
+type triggerCycleRequest struct {
+	TenantID string `json:"tenant_id"`
+}
+
+// TriggerCycle starts a proof cycle for a tenant. An in-progress cycle is
+// reported as 409, not an error.
+func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
+	var req triggerCycleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.TenantID == "" {
+		writeError(w, http.StatusBadRequest, "tenant_id is required")
+		return
+	}
+
+	err := h.cycle.Run(r.Context(), req.TenantID)
+	switch {
+	case errors.Is(err, usecase.ErrCycleInProgress):
+		writeError(w, http.StatusConflict, "cycle already in progress")
+		return
+	case err != nil:
+		h.log.Error().Err(err).Str("tenant", req.TenantID).Msg("trigger cycle")
+		writeError(w, http.StatusNotImplemented, "cycle pipeline not fully implemented")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+
+// GetLatestProof returns the latest proof for a tenant. The tenant comes from
+// the tenant_id query parameter until auth supplies it.
+func (h *Handler) GetLatestProof(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.URL.Query().Get("tenant_id")
+	if tenantID == "" {
+		writeError(w, http.StatusBadRequest, "tenant_id query param is required")
+		return
+	}
+	proof, err := h.query.GetLatestProof(r.Context(), tenantID)
+	if err != nil {
+		writeError(w, http.StatusNotImplemented, "latest proof lookup not implemented")
+		return
+	}
+	writeJSON(w, http.StatusOK, toProofDTO(proof))
+}
+
+// GetProof returns one proof by id.
+func (h *Handler) GetProof(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	proof, err := h.query.GetProof(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusNotImplemented, "proof lookup not implemented")
+		return
+	}
+	writeJSON(w, http.StatusOK, toProofDTO(proof))
+}
+
+// GetInclusion returns a customer inclusion proof for a reference.
+func (h *Handler) GetInclusion(w http.ResponseWriter, r *http.Request) {
+	ref := chi.URLParam(r, "ref")
+	inc, err := h.query.GetInclusion(r.Context(), ref)
+	if err != nil {
+		writeError(w, http.StatusNotImplemented, "inclusion lookup not implemented")
+		return
+	}
+	writeJSON(w, http.StatusOK, inc)
+}
+
+// Health reports liveness.
+func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// proofDTO is the JSON shape returned for a proof. Money stays a string.
+type proofDTO struct {
+	ID               string `json:"id"`
+	TenantID         string `json:"tenant_id"`
+	ChainProofID     uint64 `json:"chain_proof_id"`
+	RootHash         string `json:"root_hash"`
+	ReservesTotal    string `json:"reserves_total"`
+	LiabilitiesTotal string `json:"liabilities_total"`
+}
+
+func toProofDTO(p entity.Proof) proofDTO {
+	return proofDTO{
+		ID:               p.ID,
+		TenantID:         p.TenantID,
+		ChainProofID:     p.ChainProofID,
+		RootHash:         p.RootHash,
+		ReservesTotal:    p.ReservesTotal,
+		LiabilitiesTotal: p.LiabilitiesTotal,
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, map[string]string{"error": msg})
+}
