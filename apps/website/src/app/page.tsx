@@ -1,16 +1,10 @@
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Reveal, Counter } from "@/components/motion";
 
-// Foundation preview. This proves the tokens, fonts, and theme switch work end
-// to end. The real Home page is built in a later issue and replaces this.
+// Foundation preview. This proves the tokens, fonts, theme, motion, and nav work
+// end to end. The real Home page is built in a later issue and replaces this.
 export default function FoundationPreview() {
   return (
-    <main className="mx-auto max-w-site px-7 py-20">
-      <header className="mb-16 flex items-center justify-between">
-        <span className="font-display text-xl font-bold tracking-tight">Solva</span>
-        <ThemeToggle />
-      </header>
-
+    <main className="mx-auto max-w-site px-7 pb-20 pt-32">
       <p className="eyebrow mb-4">Design system</p>
       <h1 className="h1 max-w-3xl">
         Prove <span className="accent-word">solvency</span>, not just reserves.

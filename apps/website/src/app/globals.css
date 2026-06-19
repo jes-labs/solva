@@ -20,3 +20,12 @@
     text-rendering: optimizeLegibility;
   }
 }
+
+@layer components {
+  /* The condensed nav and the mobile menu sheet: a translucent canvas that
+     blurs the content scrolling underneath. */
+  .nav-condensed {
+    background: color-mix(in oklab, var(--bg) 80%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
