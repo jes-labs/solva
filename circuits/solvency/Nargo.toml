@@ -1,0 +1,9 @@
+[package]
+name = "solva_solvency"
+type = "bin"
+authors = ["Solva"]
+compiler_version = ">=1.0.0-beta.9"
+
+[dependencies]
+solva_lib = { path = "../lib" }
+solva_merkle = { path = "../merkle" }
