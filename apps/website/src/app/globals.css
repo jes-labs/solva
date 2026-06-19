@@ -28,4 +28,25 @@
     background: color-mix(in oklab, var(--bg) 80%, transparent);
     backdrop-filter: blur(12px);
   }
+
+  /* Footer link: an accent underline that animates from zero to the width of
+     the text only, never the whole column. */
+  .footer-link {
+    position: relative;
+    display: inline-block;
+    width: fit-content;
+  }
+  .footer-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+    height: 1.5px;
+    width: 0;
+    background: var(--acc-text);
+    transition: width 0.3s ease;
+  }
+  .footer-link:hover::after {
+    width: 100%;
+  }
 }
