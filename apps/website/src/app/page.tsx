@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Reveal, Counter } from "@/components/motion";
 
 // Foundation preview. This proves the tokens, fonts, and theme switch work end
 // to end. The real Home page is built in a later issue and replaces this.
@@ -19,7 +20,7 @@ export default function FoundationPreview() {
         the dark and light themes. Toggle the theme to see the canvas invert and the accent adapt.
       </p>
 
-      <section className="mt-16">
+      <Reveal className="mt-16">
         <p className="eyebrow mb-4">Surfaces</p>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-card border border-hair bg-surface p-6">
@@ -35,7 +36,7 @@ export default function FoundationPreview() {
             <p className="mt-2 text-fg">The chartreuse signal, used sparingly.</p>
           </div>
         </div>
-      </section>
+      </Reveal>
 
       <section className="mt-12 flex flex-wrap items-center gap-3">
         <button className="rounded-btn bg-acc px-5 py-2.5 font-semibold text-on-acc shadow-cta">
@@ -49,6 +50,29 @@ export default function FoundationPreview() {
           Solvent, verified on Stellar
         </span>
       </section>
+
+      {/* Stats band. Demonstrates the reveal and counter primitives. The figures
+          are protocol facts, not invented metrics. */}
+      <Reveal className="mt-40 grid gap-8 border-t border-hair pt-12 sm:grid-cols-3">
+        <div>
+          <p className="font-mono text-3xl text-acc-text">
+            <Counter value={0.014} decimals={3} suffix=" XLM" />
+          </p>
+          <p className="mt-2 text-sm text-sec">Cost of one on-chain verification.</p>
+        </div>
+        <div>
+          <p className="font-mono text-3xl text-fg">
+            <Counter value={100} suffix="%" />
+          </p>
+          <p className="mt-2 text-sm text-sec">Of liabilities committed, not sampled.</p>
+        </div>
+        <div>
+          <p className="font-mono text-3xl text-fg">
+            <Counter value={2} suffix="s" />
+          </p>
+          <p className="mt-2 text-sm text-sec">To verify a customer inclusion proof.</p>
+        </div>
+      </Reveal>
     </main>
   );
 }
