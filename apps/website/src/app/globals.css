@@ -2,44 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Brand tokens. Dark is the default. The light set swaps the same keys and
-   shifts the accent text to deep olive, since chartreuse is illegible on white.
-   The accent fill stays chartreuse in both themes. */
-:root,
-[data-theme="dark"] {
-  --bg: #0a0c06;
-  --surface: #14180e;
-  --panel: #232a17;
-  --hair: #2e3420;
-  --hair-strong: #3c4429;
-  --text: #f5f6ee;
-  --sec: #a7ac9b;
-  --acc: #cfe524;
-  --acc-text: #cfe524;
-  --acc-deep: #565b16;
-  --on-acc: #0a0c06;
-  --amber: #e0902e;
-  --red: #d8483b;
-  color-scheme: dark;
-}
-
-[data-theme="light"] {
-  --bg: #f4f5ee;
-  --surface: #ffffff;
-  --panel: #edeee6;
-  --hair: #e3e4db;
-  --hair-strong: #cdcfc2;
-  --text: #0b0d07;
-  --sec: #51564b;
-  --acc: #cfe524;
-  --acc-text: #6e7a12;
-  --acc-deep: #6e7a12;
-  --on-acc: #0a0c06;
-  --amber: #e0902e;
-  --red: #d8483b;
-  color-scheme: light;
-}
-
+/* Brand tokens, dot grid, and headings live in @solva/brand/tokens.css, imported
+   in the layout. Only the body base belongs to the app, and it reads the shared
+   variables so the canvas matches the rest of the product. */
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -53,78 +18,5 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-  }
-
-  /* Fixed dot grid behind all content, very low contrast. */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image: radial-gradient(var(--hair) 1px, transparent 1px);
-    background-size: 32px 32px;
-    opacity: 0.35;
-  }
-
-  /* Page content sits above the grid. */
-  #site-root {
-    position: relative;
-    z-index: 1;
-  }
-
-  ::selection {
-    background: var(--acc);
-    color: var(--on-acc);
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--acc);
-    outline-offset: 2px;
-    border-radius: 2px;
-  }
-}
-
-@layer components {
-  /* Display headings. The accent word inside a headline uses .accent-word. */
-  .h1 {
-    font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 700;
-    font-size: clamp(2.125rem, 5vw, 4rem);
-    line-height: 1.03;
-    letter-spacing: -0.035em;
-  }
-
-  .h2 {
-    font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 600;
-    font-size: clamp(1.5rem, 3vw, 2.625rem);
-    line-height: 1.08;
-    letter-spacing: -0.03em;
-  }
-
-  .h3 {
-    font-family: var(--font-display), system-ui, sans-serif;
-    font-weight: 600;
-    font-size: clamp(1.125rem, 1.6vw, 1.5rem);
-    letter-spacing: -0.02em;
-  }
-
-  /* One emphasised word per headline: serif italic in the accent text color. */
-  .accent-word {
-    font-family: var(--font-serif), ui-serif, serif;
-    font-style: italic;
-    font-weight: 400;
-    color: var(--acc-text);
-  }
-
-  /* Mono eyebrow label above section headings. */
-  .eyebrow {
-    font-family: var(--font-mono), ui-monospace, monospace;
-    font-weight: 500;
-    font-size: 0.75rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--sec);
   }
 }

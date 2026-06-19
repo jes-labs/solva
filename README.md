@@ -100,11 +100,11 @@ Postgres stores proofs, liabilities, and the audit log. Redis caches the latest 
 ## Repository layout
 
 ```
-apps/        web (Next.js), docs (Fumadocs)
+apps/        web (product app), website (marketing site), docs (Fumadocs)
 services/    orchestrator (Go), prover (Rust), sandbox (Go), oracle (TypeScript)
 circuits/    Noir circuits: solvency, merkle, shared lib
 contracts/   Soroban proof-registry
-packages/    sdk-ts, contract-bindings, shared-types, ui, config
+packages/    sdk-ts, contract-bindings, shared-types, ui, brand, config
 proto/       gRPC definitions for orchestrator and prover
 infra/       docker-compose for Postgres and Redis
 ```

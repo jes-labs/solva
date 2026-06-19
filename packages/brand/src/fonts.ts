@@ -5,6 +5,9 @@ import {
   IBM_Plex_Serif,
 } from "next/font/google";
 
+// Shared font setup for every SOLVA app. The CSS variables match the names the
+// Tailwind preset and tokens.css expect, so a font swap here applies everywhere.
+
 // Display and wordmark.
 export const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
