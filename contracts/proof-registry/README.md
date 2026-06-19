@@ -7,7 +7,8 @@ calls.
 
 ## Single-contract design
 
-The design forks `NethermindEth/rs-soroban-ultrahonk`. The verifying key is
+The design forks `yugocabrio/rs-soroban-ultrahonk`, with
+`indextree/ultrahonk_soroban_contract` as a second reference. The verifying key is
 stored once at deploy through `__constructor` and is immutable after that.
 `publish_proof` verifies a proof against the stored key, re-asserts `R >= L`
 using CAP-0082 checked 256-bit integers, records `ProofMeta`, and emits

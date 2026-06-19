@@ -6,7 +6,7 @@
 // verifying key, the BN254 proof verification, and the Poseidon2 inclusion
 // check. No cross-contract calls.
 //
-// The design forks NethermindEth/rs-soroban-ultrahonk: the verifying key is
+// The design forks yugocabrio/rs-soroban-ultrahonk: the verifying key is
 // stored once at deploy via __constructor (immutable), and publish_proof checks
 // each proof against it before recording the result.
 
@@ -214,8 +214,9 @@ impl ProofRegistry {
 //
 // The real implementation uses the native BN254 host functions (CAP-0074, made
 // cheap by the CAP-0080 Yardstick host functions) to verify the UltraHonk proof
-// over the public inputs. Port this from NethermindEth/rs-soroban-ultrahonk's
+// over the public inputs. Port this from yugocabrio/rs-soroban-ultrahonk's
 // verify_proof; that fork already follows the VK-at-deploy pattern we use.
+// indextree/ultrahonk_soroban_contract is a second reference to cross-check.
 //
 // Returns true on a valid proof. The stub returns true so the registry storage
 // path and owner gating can be exercised in tests; it MUST be replaced before
