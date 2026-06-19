@@ -9,7 +9,7 @@ use soroban_sdk::{
     Address, Bytes, BytesN, Env,
 };
 
-use crate::{Error, PubInputs, ProofRegistry, ProofRegistryClient};
+use crate::{Error, ProofRegistry, ProofRegistryClient, PubInputs};
 
 // Deploys the contract with a dummy vk and returns the env, client, and owner.
 fn setup() -> (Env, ProofRegistryClient<'static>, Address) {

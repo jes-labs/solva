@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(%addr, "starting solva prover gRPC server");
 
     tonic::transport::Server::builder()
-        .add_service(ProverServer::new(ProverService::default()))
+        .add_service(ProverServer::new(ProverService))
         .serve(addr)
         .await?;
 

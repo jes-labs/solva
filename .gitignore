@@ -23,6 +23,8 @@ Solva-PRD-2.md
 **/target/*.json
 **/proofs/
 **/*.gz
+# Auto-generated witness input template. Real inputs come from the prover.
+circuits/**/Prover.toml
 
 # Go
 bin/

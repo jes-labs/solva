@@ -30,7 +30,8 @@ impl Prover for ProverService {
         &self,
         request: Request<ProveRequest>,
     ) -> Result<Response<ProveResponse>, Status> {
-        let req = request.into_inner();
+        // The request fields are read once witness assembly lands (issue #9).
+        let _req = request.into_inner();
 
         // TODO(proving): parse decimal-string balances into u128 minor units and
         // build the leaf nodes with the circuit's Poseidon2 leaf hashing. The

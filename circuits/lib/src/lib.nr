@@ -2,7 +2,7 @@
 // Hashing is Poseidon2 so the in-circuit root matches the prover tree and the
 // native on-chain Poseidon2 inclusion check. Do not swap the hash here.
 
-use std::hash::poseidon2::Poseidon2;
+use poseidon::poseidon2::Poseidon2;
 
 // hash2 hashes exactly two field elements with Poseidon2.
 // Used to combine two child node hashes into a parent hash.

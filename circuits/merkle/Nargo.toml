@@ -2,7 +2,6 @@
 name = "solva_merkle"
 type = "lib"
 authors = ["Solva"]
-compiler_version = ">=1.0.0-beta.9"
 
 [dependencies]
 solva_lib = { path = "../lib" }

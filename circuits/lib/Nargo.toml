@@ -2,6 +2,8 @@
 name = "solva_lib"
 type = "lib"
 authors = ["Solva"]
-compiler_version = ">=1.0.0-beta.9"
 
 [dependencies]
+# Poseidon was moved out of the Noir stdlib into this library. v0.2.6 is the
+# version that builds against Noir 1.0.0-beta.9.
+poseidon = { tag = "v0.2.6", git = "https://github.com/noir-lang/poseidon" }
