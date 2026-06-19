@@ -1,0 +1,41 @@
+---
+title: Quickstart
+description: Install the SDK and run your first proof cycle.
+---
+
+This guide assumes you have an institution tenant and an orchestrator endpoint.
+
+## Install
+
+```bash
+pnpm add @solva/sdk-ts
+```
+
+## Run a cycle
+
+```ts
+import { Solva } from "@solva/sdk-ts";
+
+const solva = new Solva({ network: "testnet", tenant: "my-institution" });
+
+await solva.connectSource({
+  type: "openbanking",
+  label: "Main bank",
+  settings: { accountId: "acct_123" },
+});
+
+const proofId = await solva.runProofCycle();
+const latest = await solva.getLatestProof();
+
+console.log(latest.publicInputs.reservesTotal, latest.publicInputs.liabilitiesTotal);
+```
+
+## Check inclusion
+
+A customer verifies that their balance is in the committed tree by passing the
+reference their institution gave them.
+
+```ts
+const result = await solva.verifyInclusion("customer-reference");
+console.log(result.included);
+```

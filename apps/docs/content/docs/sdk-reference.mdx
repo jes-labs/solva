@@ -1,0 +1,37 @@
+---
+title: SDK reference
+description: The Solva TypeScript SDK surface.
+---
+
+The SDK wraps the orchestrator REST API and the on-chain proof-registry reads
+behind one class.
+
+## new Solva(config)
+
+```ts
+new Solva({
+  network: "testnet" | "mainnet" | "local",
+  tenant: string,
+  endpoints?: Partial<NetworkConfig>,
+  apiKey?: string,
+});
+```
+
+`network` selects the default endpoints. `endpoints` overrides any of them, for
+example to point at a local stack.
+
+## Methods
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `connectSource(config)` | `Promise<string>` | Register a reserve source, returns the source id. |
+| `runProofCycle()` | `Promise<string>` | Trigger a cycle, returns the published proof id. |
+| `getLatestProof()` | `Promise<Proof>` | Fetch the latest published proof. |
+| `getProof(id)` | `Promise<Proof>` | Fetch a proof by id. |
+| `verifyInclusion(ref)` | `Promise<InclusionResult>` | Verify a customer's inclusion on-chain. |
+
+## Errors
+
+Every failure is a typed error: `OrchestratorError` for REST failures (carries
+the HTTP `status`), `ChainError` for on-chain read failures, and `ConfigError`
+for invalid configuration. All extend `SolvaError`.

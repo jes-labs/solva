@@ -1,0 +1,27 @@
+---
+title: Contract address
+description: Where the proof-registry contract is deployed.
+---
+
+The proof-registry contract holds the registry, the embedded verifying key, the
+UltraHonk verification, and the Poseidon2 inclusion check. The address below is
+filled in after each deploy.
+
+## Testnet
+
+| Field | Value |
+| --- | --- |
+| Network | Test SDF Network ; September 2015 |
+| Contract | _to be filled after deploy_ |
+| RPC | https://soroban-testnet.stellar.org |
+
+## Mainnet
+
+| Field | Value |
+| --- | --- |
+| Network | Public Global Stellar Network ; September 2015 |
+| Contract | _not yet deployed_ |
+| RPC | https://soroban.stellar.org |
+
+The SDK reads these from its network defaults. Override them with the
+`endpoints` option when you point at a different deployment.

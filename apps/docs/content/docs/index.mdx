@@ -1,0 +1,33 @@
+---
+title: Protocol overview
+description: What Solva proves, and how a proof cycle works.
+---
+
+Solva is a zero-knowledge Proof of Solvency protocol on Stellar. A custodial
+institution proves that its reserves are greater than or equal to its
+liabilities, without revealing any individual customer balance.
+
+## Why both sides of the balance sheet
+
+Proving that you hold assets is not the same as proving you are solvent. Most
+published proof of reserves systems attest only the asset side. Solva binds both
+sides in one proof, so a healthy reserve figure cannot hide a larger liability.
+
+```
+Proof of Solvency = Proof of Reserves + Proof of Liabilities
+```
+
+## How a proof cycle works
+
+1. The orchestrator fetches signed reserve balances from each source and
+   verifies the ECDSA signatures.
+2. It loads the customer liabilities for the tenant.
+3. It sends reserves, liabilities, and the previous reserve total to the prover.
+4. The prover builds the Poseidon2 Merkle Sum Tree, generates the
+   Noir/UltraHonk proof, and returns the proof, the public inputs, and the tree.
+5. The orchestrator publishes the proof to the Soroban proof-registry contract,
+   which verifies it on-chain and stores the root and totals.
+6. The proof and tree are persisted to an append-only audit log.
+
+The public sees only the totals and the commitment root. Customers can check
+that their own balance is included in the committed tree.

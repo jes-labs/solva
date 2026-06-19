@@ -1,0 +1,31 @@
+---
+title: Sandbox guide
+description: Run Solva against the mock Open Banking sandbox.
+---
+
+The sandbox is a mock Open Banking service. It lets you run full proof cycles
+without a real bank connection, with deterministic scenarios for demos.
+
+## What it provides
+
+- An OAuth 2.0 consent flow, authorize then token.
+- A balance endpoint that returns ECDSA-signed payloads, the cryptographic
+  substitute for a real bank's attestation.
+- Two or three mock banks with configurable balances.
+- An admin endpoint to seed scenarios: solvent, near-breach, and insolvent.
+
+## Seeding a scenario
+
+Point a reserve source at a sandbox bank, seed the scenario you want, then run a
+cycle. The near-breach scenario is useful for exercising the anomaly agent,
+which flags drift before the circuit ever proves a breach.
+
+```ts
+const solva = new Solva({ network: "local", tenant: "demo-institution" });
+await solva.connectSource({
+  type: "openbanking",
+  label: "Sandbox Bank A",
+  settings: { bank: "a", scenario: "near-breach" },
+});
+await solva.runProofCycle();
+```

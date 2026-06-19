@@ -1,0 +1,4 @@
+# Fumadocs MDX generates this from content/ via the postinstall step.
+.source/
+# Next generated ambient types.
+next-env.d.ts

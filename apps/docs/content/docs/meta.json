@@ -1,0 +1,10 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "quickstart",
+    "sdk-reference",
+    "sandbox",
+    "contract-address"
+  ]
+}
