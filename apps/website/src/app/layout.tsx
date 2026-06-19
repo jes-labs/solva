@@ -3,6 +3,7 @@ import { fontVariables } from "@solva/brand/fonts";
 import { themeScript } from "@/lib/theme-script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SmoothScroll } from "@/components/motion";
+import { SiteNav } from "@/components/nav/site-nav";
 import "@solva/brand/tokens.css";
 import "lenis/dist/lenis.css";
 import "./globals.css";
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Sets the theme before paint so there is no flash. */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <ThemeProvider>
+          <SiteNav />
           <SmoothScroll>
             <div id="site-root">{children}</div>
           </SmoothScroll>
