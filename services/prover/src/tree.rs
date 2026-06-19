@@ -91,7 +91,12 @@ impl MerkleSumTree {
 // The hash binds both child hashes and the child sums.
 fn hash_pair(left: &Node, right: &Node) -> Node {
     let sum = left.sum.saturating_add(right.sum);
-    let hash = poseidon2(&[left.hash, right.hash, field_from_u128(left.sum), field_from_u128(right.sum)]);
+    let hash = poseidon2(&[
+        left.hash,
+        right.hash,
+        field_from_u128(left.sum),
+        field_from_u128(right.sum),
+    ]);
     Node { hash, sum }
 }
 
