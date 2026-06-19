@@ -61,3 +61,37 @@ export const LockIcon = (p: IconProps) => (
     <path d="M8 11V8a4 4 0 0 1 8 0v3" />
   </Icon>
 );
+
+export const ActivityIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 13h4l2-8 3 14 2-6h4" />
+  </Icon>
+);
+
+export const ClockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M12 8v4l3 2" />
+  </Icon>
+);
+
+export const ShieldCheckIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z" />
+    <path d="M9 12l2.2 2.2L15.5 9.5" />
+  </Icon>
+);
+
+export const MonitorIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="4" width="18" height="13" rx="2" />
+    <path d="M8 21h8M12 17v4" />
+  </Icon>
+);
+
+export const NodesIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="2.4" />
+    <path d="M4 12h5.6M12 4v5.6M20 12h-5.6M12 20v-5.6" />
+  </Icon>
+);

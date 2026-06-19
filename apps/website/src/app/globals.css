@@ -49,4 +49,10 @@
   .footer-link:hover::after {
     width: 100%;
   }
+
+  /* Fades both edges of the institutions marquee into the canvas. */
+  .marquee-mask {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  }
 }
