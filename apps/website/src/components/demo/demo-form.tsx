@@ -16,7 +16,7 @@ const labelClass =
 // otherwise it sits on the hairline and brightens to the accent on focus.
 function inputClass(invalid: boolean) {
   return cn(
-    "w-full rounded-[10px] border bg-bg px-3.5 py-[13px] text-[15px] text-fg outline-none transition-colors placeholder:text-sec",
+    "w-full rounded-[10px] border bg-bg px-3.5 py-[13px] text-[15px] text-fg transition-colors placeholder:text-sec",
     invalid ? "border-amber" : "border-hair focus:border-acc-text",
   );
 }

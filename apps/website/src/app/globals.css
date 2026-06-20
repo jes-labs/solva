@@ -106,4 +106,44 @@
       animation: none;
     }
   }
+
+  /* Skip-to-content link: off-screen until focused, then slides into the top
+     left so keyboard users can jump past the nav. */
+  .skip-link {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    margin: 10px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: var(--acc);
+    color: var(--on-acc);
+    font-weight: 600;
+    transform: translateY(-160%);
+    transition: transform 0.2s ease;
+  }
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+
+  /* The skip target is a non-interactive wrapper, so it does not draw a ring
+     when focus lands on it; the next Tab reaches a real control with its own. */
+  #main-content:focus {
+    outline: none;
+  }
+}
+
+/* Honor reduced-motion globally: neutralize CSS animations, transitions, and
+   smooth scrolling for anyone who asks for it. JS-driven motion is gated
+   separately in the motion components. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
