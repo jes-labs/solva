@@ -14,6 +14,7 @@ const staticPaths = [
   "/solvency-oracle",
   "/pricing",
   "/blog",
+  "/about",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
