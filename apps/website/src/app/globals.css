@@ -55,4 +55,20 @@
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
     mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   }
+
+  /* The particle hero. The eyebrow is the category label, the headline is the
+     promise. Solid two-tone: an off-white eyebrow over a chartreuse headline on
+     the dark stage, a muted eyebrow over an ink headline on light. */
+  .hero-eyebrow {
+    color: #f5f6ee;
+  }
+  [data-theme="light"] .hero-eyebrow {
+    color: #51564b;
+  }
+  .hero-headline {
+    color: #cfe524;
+  }
+  [data-theme="light"] .hero-headline {
+    color: #0a0c06;
+  }
 }
