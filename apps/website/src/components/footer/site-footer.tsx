@@ -7,8 +7,8 @@ import { footerColumns, footerLegalLinks } from "./footer-config";
 export function SiteFooter() {
   return (
     <footer className="relative z-[1] border-t border-hair">
-      <div className="mx-auto grid max-w-site gap-8 px-7 pb-10 pt-14 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]">
-        <div>
+      <div className="mx-auto grid max-w-site grid-cols-2 gap-x-6 gap-y-10 px-7 pb-10 pt-14 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr] lg:gap-8">
+        <div className="col-span-2 lg:col-span-1">
           <div className="mb-4">
             <Logo />
           </div>
