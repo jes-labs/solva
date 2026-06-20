@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@solva/ui";
-import { authProvider, type SmartWalletSession } from "@/lib/auth";
+import { authProvider, type PasskeyPhase, type SmartWalletSession } from "@/lib/auth";
+// Import from the leaf module, not the barrel, so the heavy stellar-sdk path
+// (provision) stays out of the dashboard's initial bundle.
+import { detectPasskeySupport } from "@/lib/passkey/capabilities";
 import {
   connectSourceMock,
   initialDashboard,
@@ -11,14 +14,15 @@ import {
   type SourceType,
 } from "@/lib/mock/dashboard";
 import { buildReport, downloadReport } from "@/lib/report";
+import { Spinner } from "@/components/spinner";
 import { StatusHero, type Schedule } from "@/components/dashboard/status-hero";
 import { SourcesPanel } from "@/components/dashboard/sources-panel";
 import { AuditLog } from "@/components/dashboard/audit-log";
 
 // Institution dashboard. The orchestrating client: it owns the dashboard state
 // and wires the panels. Actions go through mock orchestrator functions whose
-// signatures mirror @solva/sdk-ts, so the SDK swap is mechanical. Passkey auth
-// is its own issue; this keeps the stub sign-in gate.
+// signatures mirror @solva/sdk-ts, so the SDK swap is mechanical. Publishing is
+// gated behind a passkey smart-wallet sign-in (lib/auth).
 export function DashboardClient() {
   const [session, setSession] = useState<SmartWalletSession | null>(null);
 
@@ -29,13 +33,48 @@ export function DashboardClient() {
   return <Dashboard session={session} onSignOut={() => setSession(null)} />;
 }
 
+const PHASE_LABEL: Record<PasskeyPhase, string> = {
+  checking: "Checking your device…",
+  registering: "Waiting for your passkey…",
+  authenticating: "Waiting for your passkey…",
+  provisioning: "Provisioning your wallet…",
+};
+
 function SignIn({ onSignedIn }: { onSignedIn: (session: SmartWalletSession) => void }) {
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<PasskeyPhase | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [unsupported, setUnsupported] = useState<string | null>(null);
+
+  // Detect support up front so an unusable device gets a clear message, not a
+  // failed prompt.
+  useEffect(() => {
+    let active = true;
+    void detectPasskeySupport().then((support) => {
+      if (active && !support.supported) setUnsupported(support.reason ?? "Passkeys are unavailable.");
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function signIn() {
     setBusy(true);
-    const next = await authProvider.signIn();
-    onSignedIn(next);
+    setError(null);
+    try {
+      const next = await authProvider.signIn({ onPhase: setPhase });
+      onSignedIn(next);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Sign-in failed.";
+      // The browser throws NotAllowedError when the prompt is dismissed.
+      setError(
+        message.includes("NotAllowed") || message.toLowerCase().includes("cancel")
+          ? "The passkey prompt was dismissed. Try again."
+          : message,
+      );
+      setBusy(false);
+      setPhase(null);
+    }
   }
 
   return (
@@ -52,9 +91,29 @@ function SignIn({ onSignedIn }: { onSignedIn: (session: SmartWalletSession) => v
           Use your passkey. No seed phrase. We provision a smart wallet for your institution on
           first sign-in.
         </p>
-        <Button onClick={signIn} disabled={busy} className="mt-6 w-full">
-          {busy ? "Signing in…" : "Sign in with passkey"}
-        </Button>
+
+        {unsupported ? (
+          <p className="mt-6 rounded-btn border border-hair bg-bg px-4 py-3 text-[13.5px] text-amber" role="alert">
+            {unsupported}
+          </p>
+        ) : (
+          <>
+            <Button onClick={signIn} disabled={busy} className="mt-6 w-full">
+              {busy ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner /> {phase ? PHASE_LABEL[phase] : "Signing in…"}
+                </span>
+              ) : (
+                "Sign in with passkey"
+              )}
+            </Button>
+            {error && (
+              <p className="mt-3 text-[13px] text-amber" role="alert">
+                {error}
+              </p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
