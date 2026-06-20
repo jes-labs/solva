@@ -95,3 +95,16 @@ export const NodesIcon = (p: IconProps) => (
     <path d="M4 12h5.6M12 4v5.6M20 12h-5.6M12 20v-5.6" />
   </Icon>
 );
+
+export const FileTextIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 4h9l5 5v11H5z" />
+    <path d="M14 4v5h5M8 13h8M8 16h8" />
+  </Icon>
+);
+
+export const BracketsIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M8 7l-4 5 4 5M16 7l4 5-4 5" />
+  </Icon>
+);
