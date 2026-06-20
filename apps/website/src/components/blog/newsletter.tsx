@@ -10,22 +10,27 @@ export function Newsletter() {
   const [done, setDone] = useState(false);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-8 rounded-panel border border-hair bg-surface p-11">
+    <div className="flex flex-wrap items-center justify-between gap-8 rounded-panel border border-hair bg-surface md:p-11 p-8">
       <div className="max-w-[480px]">
         <h2 className="font-display text-[clamp(22px,2.6vw,30px)] font-semibold tracking-tight">
           Solvency, in your inbox.
         </h2>
         <p className="mt-2 text-[15.5px] leading-snug text-sec">
-          Occasional, technical, no fluff. New writing on ZK proofs and reserves.
+          Occasional, technical, no fluff. New writing on ZK proofs and
+          reserves.
         </p>
       </div>
       {done ? (
-        <p className="min-w-[300px] flex-1 text-[15px] text-acc-text" role="status">
-          Thanks. We&rsquo;ll be in touch when there&rsquo;s something worth reading.
+        <p
+          className="w-full text-[15px] text-acc-text md:min-w-[300px] md:flex-1"
+          role="status"
+        >
+          Thanks. We&rsquo;ll be in touch when there&rsquo;s something worth
+          reading.
         </p>
       ) : (
         <form
-          className="flex min-w-[300px] max-w-[420px] flex-1 flex-wrap gap-2.5"
+          className="flex w-full flex-col gap-2.5 md:w-auto md:min-w-[300px] md:max-w-[420px] md:flex-1 md:flex-row"
           onSubmit={(e) => {
             e.preventDefault();
             if (email.trim()) setDone(true);
@@ -38,7 +43,7 @@ export function Newsletter() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@institution.com"
             aria-label="Email address"
-            className="min-w-[180px] flex-1 rounded-[10px] border border-hair bg-bg px-[15px] py-[13px] text-[15px] text-fg outline-none focus:border-hair-strong"
+            className="min-w-[180px] w-full flex-1 rounded-[10px] border border-hair bg-bg px-[15px] py-[13px] text-[15px] text-fg focus:border-hair-strong"
           />
           <button
             type="submit"

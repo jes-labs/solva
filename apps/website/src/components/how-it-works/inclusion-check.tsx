@@ -44,7 +44,7 @@ export function InclusionCheck() {
             }}
             placeholder="acct_8842"
             aria-label="Account reference"
-            className="min-w-[180px] flex-1 rounded-[10px] border border-hair bg-bg px-[15px] py-[13px] font-mono text-sm text-fg outline-none"
+            className="min-w-[180px] flex-1 rounded-[10px] border border-hair bg-bg px-[15px] py-[13px] font-mono text-sm text-fg"
           />
           <Button size="sm" onClick={() => setChecked(true)}>
             Check inclusion

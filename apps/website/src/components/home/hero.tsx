@@ -34,11 +34,13 @@ export function Hero() {
     <header className="mx-auto grid max-w-site grid-cols-1 items-center gap-12 px-7 pb-24 pt-40 lg:grid-cols-[1.05fr_.95fr]">
       <div>
         <h2 className="h1">
-          Prove true <span className="accent-word">solvency</span>, without revealing a thing.
+          Prove true <span className="accent-word">solvency</span>, without
+          revealing a thing.
         </h2>
         <p className="mt-6 max-w-[520px] text-lg leading-relaxed text-sec">
-          Solva continuously proves your reserves meet or exceed your liabilities. Every result is
-          verified on-chain on Stellar, and customer data never leaves your perimeter.
+          Solva continuously proves your reserves meet or exceed your
+          liabilities. Every result is verified on-chain on Stellar, and
+          customer data never leaves your perimeter.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3.5">
           <Button href="/request-a-demo">Request a demo</Button>
@@ -55,7 +57,8 @@ export function Hero() {
           />
           <span>
             <span className="font-medium text-fg">Solvent</span>{" "}
-            <span className="text-acc-text">✓</span> verified on Stellar <span>{ago}</span>
+            <span className="text-acc-text">✓</span> verified on Stellar{" "}
+            <span>{ago}</span>
           </span>
         </div>
       </div>
@@ -76,9 +79,14 @@ export function Hero() {
         </div>
         <div
           className="absolute bottom-[6%] left-1/2 flex -translate-x-1/2 items-center gap-2.5 whitespace-nowrap rounded-pill border border-hair px-[15px] py-2 font-mono text-[11.5px] backdrop-blur-sm"
-          style={{ background: "color-mix(in oklab, var(--surface) 86%, transparent)" }}
+          style={{
+            background: "color-mix(in oklab, var(--surface) 86%, transparent)",
+          }}
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-acc" aria-hidden="true" />
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-acc"
+            aria-hidden="true"
+          />
           <span className="text-sec">proof</span>
           <span className="text-fg">{hash}</span>
           <span className="text-acc-text">✓ R ≥ L</span>

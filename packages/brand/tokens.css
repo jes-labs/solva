@@ -65,9 +65,10 @@ body::before {
 }
 
 :focus-visible {
-  outline: 2px solid var(--acc);
+  /* Accent-text, not raw accent: the deep-olive light-mode value keeps the ring
+     visible on light backgrounds where bright chartreuse would wash out. */
+  outline: 2px solid var(--acc-text);
   outline-offset: 2px;
-  border-radius: 2px;
 }
 
 /* Display headings. The accent word inside a headline uses .accent-word. */

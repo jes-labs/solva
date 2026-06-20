@@ -65,10 +65,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Sets the theme before paint so there is no flash. */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <ThemeProvider>
+          <a href="#main-content" className="skip-link">
+            Skip to content
+          </a>
           <SiteNav />
           <SmoothScroll>
             <div id="site-root">
-              {children}
+              {/* Focus target for the skip link; tabIndex lets it receive focus. */}
+              <div id="main-content" tabIndex={-1}>
+                {children}
+              </div>
               <SiteFooter />
             </div>
           </SmoothScroll>
