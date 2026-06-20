@@ -1,0 +1,61 @@
+---
+title: "Proof of reserves is the easy half"
+excerpt: "Showing the assets you hold is the part anyone can do. The number that decides whether customers get paid back is the one nobody publishes."
+category: "Concepts"
+author: "Emmanuel"
+authorRole: "Co-founder"
+date: "2026-06-16"
+readingTime: "6 min"
+cover: "/blog/reserves-easy-half.png"
+coverAlt: "A balance scale with one pan loaded and the other empty"
+featured: true
+---
+
+Every few months an exchange posts a "proof of reserves." Usually it is a wallet address, a signed message, and a round number with a lot of zeros. The internet nods, a few people verify the signature, and everyone moves on feeling a little safer.
+
+I understand the appeal. It is a real cryptographic claim, and it is easy to check. But I want to be blunt about what it does and does not tell you, because the gap between those two things is where people lose their money.
+
+## Two numbers, one shown
+
+Solvency is a relationship between two numbers. What you hold, and what you owe. An institution is solvent when the first is at least as large as the second. That is the whole definition.
+
+A reserves attestation shows you the first number. It proves that on a given block, some keys controlled some assets. It says nothing about the second number. And the second number is the one customers actually care about, because it is the sum of every promise the institution has made to pay someone back.
+
+Showing your assets without your liabilities is like proving you have cash in your wallet while staying quiet about your debts. The cash is real. It is also beside the point if you owe more than you hold.
+
+## Why the missing number is the dangerous one
+
+There is a reason reserves get published and liabilities do not.
+
+Reserves are flattering. They are visible, they sit on chains anyone can read, and a big number looks like strength. Liabilities are the opposite. They are private, they are spread across internal ledgers, and a big number looks like risk. So the easy half gets a press release and the hard half stays in a spreadsheet.
+
+That asymmetry is exactly what makes the missing number dangerous. Reserves can be borrowed for the morning of a snapshot and returned that afternoon. Liabilities can quietly drift above assets for months between attestations and no outsider would see it. Every large failure I can think of lived in that gap, and most of them passed their audits on the way down.
+
+A snapshot of one number, taken on a schedule the institution controls, is not assurance. It is a photograph of the half that was never going to look bad.
+
+## What a real solvency claim looks like
+
+If you want a claim worth trusting, it has to do three things the attestation does not.
+
+It has to include both numbers. Not assets alone, but assets measured against the full set of liabilities, with every liability in the sum. Leaving one out has to be impossible, not just discouraged.
+
+It has to be verified somewhere the institution does not control. A number an institution can edit is a number it will eventually be tempted to edit. The check belongs on a public chain, where the verification is the network's job and not a line on a status page.
+
+And it has to reveal nothing it does not need to. Customers should not have to choose between a useful proof and their own privacy. The right output is one bit, reserves meet or exceed liabilities, plus a commitment and a timestamp. Nothing about any individual account.
+
+In shorthand, the claim you actually want looks like this:
+
+```text
+prove( reserves >= sum(all_liabilities) )
+  .publish("stellar")   // anyone can re-check, no one can edit
+```
+
+That is a zero-knowledge proof of solvency. The institution runs it against its own books, the chain verifies it, and the public sees a result without seeing a single balance.
+
+## Where this leaves us
+
+I am not arguing that reserves proofs are dishonest. Most of them are perfectly accurate. I am arguing that they answer the easy question and let people believe it was the hard one.
+
+The hard question is whether an institution can pay what it owes, continuously, not on one convenient morning a quarter. Answering it means proving an inequality over two numbers instead of publishing one. It is more work, and it is the work that matters.
+
+That is the thing Solva is built to do, and in the next few posts my colleagues will get into how. For now I would settle for one change in how we all read these announcements: when you see a proof of reserves, ask where the other number went.

@@ -1,0 +1,87 @@
+---
+title: "Committing to every liability: a Merkle sum tree in Noir"
+excerpt: "A plain Merkle tree proves a value is in a set. It does nothing to stop you leaving values out. Here is the structure that does, and how we build it in Noir."
+category: "Engineering"
+author: "Josh"
+authorRole: "Co-founder"
+date: "2026-06-10"
+readingTime: "8 min"
+cover: "/blog/merkle-sum-tree.png"
+coverAlt: "A binary tree of nodes summing upward into a single glowing root"
+---
+
+In a recent post, Emmanuel made the case that the hard part of a solvency proof is the liabilities, and that leaving one out has to be impossible rather than discouraged. This post is about the data structure that gets us there, and why an ordinary Merkle tree is not enough.
+
+## The omission problem
+
+Say you want to prove that your reserves cover your liabilities. You commit to the set of liabilities, prove the reserves are larger, and publish the result. The obvious tool for committing to a set is a Merkle tree: hash the leaves, hash the pairs, keep going until you reach a single root.
+
+The trouble is what a Merkle tree actually commits to. It proves that a given leaf is part of the set. It says nothing about the sum of the leaves, and nothing about whether every liability made it into the tree in the first place. I could build a perfectly valid tree out of half my obligations, prove reserves beat that smaller total, and the proof would verify. The structure has no opinion about the number I most need to pin down.
+
+So a plain hash tree solves the wrong half. It authenticates membership when what I need to authenticate is a total.
+
+## A sum tree, not just a hash tree
+
+The fix is to carry the running total up the tree alongside the hash. Each leaf holds a commitment and a value. Each internal node holds a hash of its children and the sum of its children's values. The root then carries two things at once: a commitment to the whole structure, and the total of every value beneath it.
+
+That second field is what closes the gap. Now the root is not just "these leaves, in this shape." It is "these leaves, in this shape, adding up to exactly this number." If I drop a liability, the sum at the root changes, and the root I committed to no longer matches. There is no way to quietly shrink the total without producing a different, visibly different, root.
+
+The constraint we actually want to prove becomes simple to state:
+
+```text
+reserves  >=  root.sum
+root.hash ==  recompute(all_leaves)
+```
+
+The first line is the solvency claim. The second line is what stops me from cheating on the first, because it forces the sum in `root.sum` to be the sum of the real, committed leaves.
+
+## Doing it in Noir
+
+Noir makes this pleasant to write, because the circuit is just the recomputation expressed as ordinary code, and the proving system turns it into constraints for you. A node is a pair, and combining two nodes hashes the four fields and adds the two sums.
+
+```rust
+struct Node {
+    hash: Field,
+    sum:  Field,
+}
+
+// Combine two child nodes into their parent. The parent commits to both
+// children and carries their combined total.
+fn combine(left: Node, right: Node) -> Node {
+    Node {
+        hash: poseidon2([left.hash, left.sum, right.hash, right.sum]),
+        sum:  left.sum + right.sum,
+    }
+}
+```
+
+Folding a layer of nodes into the next layer up is the same operation repeated across each pair, until one node is left. That final node is the root.
+
+```rust
+fn main(reserves: Field, leaves: [Node; N], root: pub Node) {
+    let computed = fold_to_root(leaves);
+
+    // The committed root must be the one the witnessed leaves produce.
+    assert(computed.hash == root.hash);
+    assert(computed.sum  == root.sum);
+
+    // And reserves must cover the total those leaves add up to.
+    assert(reserves as u64 >= root.sum as u64);
+}
+```
+
+The leaves are private witnesses. They go in, they get consumed by the constraints, and they never appear in the output. The only public values are the root and the reserves claim. A verifier learns that some set of liabilities, summing to `root.sum`, was covered by `reserves`, and learns nothing about any single liability in it.
+
+## A few details that bite
+
+Two things deserve care before you ship something like this.
+
+The first is the sum itself. Real balances are large, and `Field` arithmetic wraps around the field modulus rather than overflowing the way a machine integer does. If you are not careful, a set of liabilities could be crafted to wrap the sum back down to a small number that reserves "cover." The defence is to range constrain every leaf value and the running totals so the sum cannot get near the modulus. In practice that means treating values as bounded integers and proving those bounds inside the circuit, not assuming them.
+
+The second is the hash. We use Poseidon2 because it is cheap inside the proof system and because the on-chain verifier can recompute it through a host function rather than emulating a hash that was designed for CPUs. The choice of hash is not cosmetic; it is the difference between verification that fits in a contract call and verification that does not. My own post on why we settle on Stellar gets into that side of it.
+
+## What the proof actually convinces you of
+
+When this verifies, here is the exact statement you can rely on. At the moment of proving, the prover knew a set of values whose commitment equals the published root, whose total equals the published sum, and reserves were at least that total. Omit a liability and the root moves. Inflate reserves and you are claiming something the contract will check against the chain. Reorder or pad the leaves and the hash changes.
+
+It is a narrow statement, and that is the point. It says nothing extra, leaks nothing private, and it makes the one number that everyone wanted to keep in a spreadsheet impossible to fudge without getting caught.

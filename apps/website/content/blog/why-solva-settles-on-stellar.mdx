@@ -1,0 +1,53 @@
+---
+title: "Why Solva settles its proofs on Stellar"
+excerpt: "A proof nobody can re-check is just a claim. Picking where verification lives came down to three boring, decisive requirements."
+category: "Engineering"
+author: "Josh"
+authorRole: "Protocol engineer"
+date: "2026-06-03"
+readingTime: "6 min"
+cover: "/blog/settle-on-stellar.png"
+coverAlt: "A settlement record locking into place over a sparse field of stars"
+---
+
+People assume the interesting part of a system like ours is the cryptography. The proof gets the attention. But a proof that only the prover can check is not worth much. The moment that decides whether any of this is trustworthy is the verification, and verification happens on a chain. Choosing that chain was one of the more consequential calls we made, and it came down to three requirements that are not glamorous at all.
+
+## What "verify" needs to be
+
+Strip away the branding and a verifier has one job: take a proof and a few public inputs, run the verification equation, and return true or false. For us that equation runs over the BN254 curve and recomputes a Poseidon2 hash to bind the public inputs. Two things follow from that.
+
+The chain has to be able to do those operations at a price that makes sense, and it has to let anyone, not just us, run the check. If verification is expensive, nobody proves often. If verification is private, you are back to trusting a status page. Both of those failures defeat the entire point of moving the check on-chain.
+
+So the question was never "which chain is popular." It was "which chain lets a public contract verify one of our proofs cheaply, finally, and openly."
+
+## The cost of re-checking
+
+Continuous proving only works if re-checking is close to free. We want institutions publishing fresh proofs on a tight schedule, not rationing them because each verification costs real money. A chain where a single verification burns a meaningful fee quietly pushes everyone toward proving less, which is the opposite of what a solvency system should encourage.
+
+Stellar's fees are low and, just as importantly, predictable. That predictability matters more than the headline number. An institution planning to publish a proof every few minutes needs to know what that costs over a month without modelling a fee market. The pairing and hashing our verifier needs are exposed as host functions, so the heavy cryptography runs as native operations inside the contract instead of being emulated instruction by instruction. That is the difference between a verification that fits comfortably in a contract call and one that is too expensive to run on a schedule.
+
+## Finality you can quote
+
+A solvency status is only useful if it is settled. "Probably verified, pending confirmation" is not a state you want a counterparty reading before they move funds.
+
+Stellar gives fast, deterministic finality. A proof we publish is settled in a handful of seconds, and once it is settled it stays settled; there is no reorg to wait out before a green check means anything. That lets us treat a published proof as a fact with a timestamp rather than a transaction we are still nervous about. When an agent or a dashboard reads the latest proof, it is reading something the network has already agreed on, not something in flight.
+
+## A verifier anyone can call
+
+The part I care about most is the last one. The verifier is a public Soroban contract. Its logic is open, its verification key is on-chain, and calling it is permissionless. We do not sit in the middle of the check, and we could not fake a result if we wanted to, because the result is whatever the contract computes.
+
+That is what lets us say, with a straight face, that you do not have to trust Solva. You trust the proof, and the proof is checked by a contract you can read and call yourself.
+
+```text
+// anyone can re-run the check, no Solva involved
+let ok = verifier.verify(proof, public_inputs);
+assert(ok);   // true means reserves >= liabilities at that commitment
+```
+
+There is nothing privileged about that call. A regulator can make it. A counterparty can make it. A curious person with a script can make it. They all get the same answer, computed the same way, from a contract none of them have to take our word about.
+
+## The unglamorous conclusion
+
+None of these three things is exciting on its own. Cheap, final, public. But together they are the whole reason an on-chain solvency proof beats a signed PDF, and getting any one of them wrong would have undermined the cryptography sitting on top.
+
+We picked Stellar because it lets the boring requirements be true at the same time. The proof is the clever part. The chain is the part that makes the proof mean something to someone who was not in the room when it was generated.

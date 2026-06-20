@@ -1,0 +1,45 @@
+---
+title: "Telling a regulator one number, and nothing else"
+excerpt: "Supervision usually trades privacy for assurance: hand over the ledger so someone can check one figure. Selective disclosure breaks that trade."
+category: "Regulation"
+author: "Sogo"
+authorRole: "Compliance lead"
+date: "2026-05-27"
+readingTime: "5 min"
+cover: "/blog/selective-disclosure.png"
+coverAlt: "A redacted document with a single value left revealed"
+---
+
+I have spent enough time on both sides of supervisory conversations to recognise the pattern. A regulator needs to confirm one thing. To confirm it, the institution hands over far more than the one thing, because that is the only way anyone knows how to prove it. Everyone ends up holding data nobody wanted them to hold.
+
+Selective disclosure is the part of our work I find genuinely overdue, because it lets that exchange be precise. One question, one answer, and none of the surrounding material.
+
+## The usual deal: assurance for privacy
+
+Think about what it takes today to satisfy a single supervisory question. Suppose the rule is that customer liabilities must stay under some cap. To check it, an institution typically produces ledgers, account-level detail, and internal reports. The supervisor reads what they need and inherits everything else.
+
+That is a bad trade for both sides. The institution exposes customer data that has nothing to do with the question. The supervisor becomes the custodian of records they did not ask for and now have to secure. The assurance was real, but it was paid for in privacy, and the bill landed on people who were never part of the conversation.
+
+We have all accepted this because the alternative seemed to be taking the institution's word for it. Those were the only two options on the table: see everything, or trust blindly.
+
+## One figure, provably from the same books
+
+There is a third option, and it is the one zero-knowledge proofs were made for. You can prove a single fact about a private dataset without revealing the dataset.
+
+Concretely, the same liabilities that go into our public solvency proof are committed once. From that commitment, an institution can produce a second, narrow proof that answers exactly one supervisory question. Total liabilities are below the cap. A specific ratio sits within its bound. A named figure equals a stated value. The proof reveals that fact and only that fact, and because it is tied to the same commitment as the public solvency proof, the supervisor knows it was computed from the real books rather than a convenient subset prepared for them.
+
+That last point is what makes it supervision and not theatre. The figure is not asserted, it is proven, and it is proven against the same committed data the institution is already standing behind in public. There is no second set of numbers to reconcile.
+
+## Scoped, logged, revocable
+
+A proof that reveals one figure is a good start. Treating disclosure as a managed act is what makes it usable in a real regulatory relationship.
+
+Every disclosure is scoped to a recipient, so a figure shared with one supervisor is not a figure shared with the world. Every disclosure is logged, so there is an auditable record of what was shown, to whom, and when. And disclosure is revocable, so access granted for a review does not quietly become permanent. None of that is exotic. It is the ordinary hygiene any institution would want around sensitive information, applied to cryptographic disclosures instead of emailed spreadsheets.
+
+## Why supervisors should prefer this
+
+It would be easy to read all of this as a privacy feature for institutions, a way to show less. I would push back on that framing. Selective disclosure is better for the supervisor too.
+
+A supervisor who receives one proven figure has less to store, less to protect, and less to be liable for. They get a cryptographic guarantee that the figure came from the same books as the public proof, which is a stronger basis than a PDF and a cover letter. And they spend their attention on the answer instead of on sifting a data dump for it.
+
+The old deal asked everyone to choose between assurance and privacy. The honest thing to say is that it was never a necessary choice, only a technical limitation we had learned to live with. We can give a regulator exactly one number, prove it is the right one, and keep everything else sealed. That is a better arrangement for the institution, for the supervisor, and most of all for the customers whose data no longer has to travel just to answer a question that was never about them.
