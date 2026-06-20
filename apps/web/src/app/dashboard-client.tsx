@@ -1,129 +1,137 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@solva/ui";
+import { authProvider, type SmartWalletSession } from "@/lib/auth";
 import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  StatusPill,
-  type StatusTone,
-} from "@solva/ui";
-import { authProvider } from "@/lib/auth";
+  connectSourceMock,
+  initialDashboard,
+  runCycleMock,
+  type DashboardData,
+  type SourceType,
+} from "@/lib/mock/dashboard";
+import { buildReport, downloadReport } from "@/lib/report";
+import { StatusHero, type Schedule } from "@/components/dashboard/status-hero";
+import { SourcesPanel } from "@/components/dashboard/sources-panel";
+import { AuditLog } from "@/components/dashboard/audit-log";
 
-// Institution dashboard. This is the client shell: passkey sign-in, connect a
-// source, trigger a cycle, and show live status. Data calls go through the SDK
-// on the server in a fuller build; here the actions are wired to the auth stub
-// and local state so the surface is real and navigable.
-
-type CycleState = "idle" | "running" | "done";
-
+// Institution dashboard. The orchestrating client: it owns the dashboard state
+// and wires the panels. Actions go through mock orchestrator functions whose
+// signatures mirror @solva/sdk-ts, so the SDK swap is mechanical. Passkey auth
+// is its own issue; this keeps the stub sign-in gate.
 export function DashboardClient() {
-  const [operator, setOperator] = useState<string | null>(null);
-  const [cycle, setCycle] = useState<CycleState>("idle");
-  const [sources, setSources] = useState<string[]>([]);
+  const [session, setSession] = useState<SmartWalletSession | null>(null);
+
+  if (!session) {
+    return <SignIn onSignedIn={setSession} />;
+  }
+
+  return <Dashboard session={session} onSignOut={() => setSession(null)} />;
+}
+
+function SignIn({ onSignedIn }: { onSignedIn: (session: SmartWalletSession) => void }) {
+  const [busy, setBusy] = useState(false);
 
   async function signIn() {
-    const session = await authProvider.signIn();
-    setOperator(session.label);
+    setBusy(true);
+    const next = await authProvider.signIn();
+    onSignedIn(next);
   }
 
-  function connectSource() {
-    // A real connect opens the source config drawer and calls
-    // solva.connectSource. Here we append a placeholder source.
-    setSources((prev) => [...prev, `Bank ${prev.length + 1}`]);
+  return (
+    <div className="mx-auto max-w-[440px] py-10">
+      <div className="rounded-card border border-hair bg-surface p-8 text-center">
+        <span className="mx-auto grid size-12 place-items-center rounded-full border border-hair text-acc-text">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="9" rx="2" />
+            <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+          </svg>
+        </span>
+        <h1 className="mt-4 font-display text-[22px] font-bold tracking-tight">Sign in</h1>
+        <p className="mx-auto mt-2 max-w-[320px] text-sm leading-relaxed text-sec">
+          Use your passkey. No seed phrase. We provision a smart wallet for your institution on
+          first sign-in.
+        </p>
+        <Button onClick={signIn} disabled={busy} className="mt-6 w-full">
+          {busy ? "Signing in…" : "Sign in with passkey"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({
+  session,
+  onSignOut,
+}: {
+  session: SmartWalletSession;
+  onSignOut: () => void;
+}) {
+  const [data, setData] = useState<DashboardData>(() => initialDashboard());
+  const [running, setRunning] = useState(false);
+  const [schedule, setSchedule] = useState<Schedule>("manual");
+
+  async function handleConnect(config: { type: SourceType; label: string; settings: string }) {
+    const source = await connectSourceMock(config);
+    setData((prev) => ({ ...prev, sources: [...prev.sources, source] }));
   }
 
-  async function runCycle() {
-    setCycle("running");
-    // Real: const id = await solva.runProofCycle();
-    await new Promise((r) => setTimeout(r, 600));
-    setCycle("done");
+  async function handleRunCycle() {
+    setRunning(true);
+    const record = await runCycleMock(data.cycles[0]);
+    setData((prev) => ({ ...prev, cycles: [record, ...prev.cycles] }));
+    setRunning(false);
   }
 
-  if (!operator) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>
-            Use your passkey. No seed phrase. We provision a smart wallet for your institution.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={signIn}>Sign in with passkey</Button>
-        </CardContent>
-      </Card>
-    );
+  function handleExport() {
+    const report = buildReport(prettyTenant(session.tenant), data);
+    downloadReport(`solva-report-${session.tenant}.txt`, report);
   }
-
-  const status: { tone: StatusTone; label: string } =
-    cycle === "done"
-      ? { tone: "solvent", label: "Solvent, verified on Stellar" }
-      : { tone: "unknown", label: "No proof yet" };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Signed in as {operator}</p>
+          <p className="eyebrow text-acc-text">Institution dashboard</p>
+          <h1 className="mt-1.5 font-display text-[clamp(24px,4vw,34px)] font-bold tracking-tight">
+            {prettyTenant(session.tenant)}
+          </h1>
         </div>
-        <StatusPill tone={status.tone} label={status.label} />
+        <div className="flex items-center gap-3 text-[13px] text-sec">
+          <span>{session.label}</span>
+          <button
+            type="button"
+            onClick={() => {
+              void authProvider.signOut();
+              onSignOut();
+            }}
+            className="rounded-btn border border-hair px-3 py-1.5 text-fg transition-colors hover:border-hair-strong"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <StatusHero
+        latest={data.cycles[0]}
+        running={running}
+        schedule={schedule}
+        onRunCycle={handleRunCycle}
+        onScheduleChange={setSchedule}
+      />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <SourcesPanel sources={data.sources} onConnect={handleConnect} />
+        <AuditLog cycles={data.cycles} onExport={handleExport} />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Reserve sources</CardTitle>
-          <CardDescription>Connect the banks and wallets that back your reserves.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <ul className="text-sm">
-            {sources.length === 0 ? (
-              <li className="text-muted-foreground">No sources connected yet.</li>
-            ) : (
-              sources.map((s) => <li key={s}>{s}</li>)
-            )}
-          </ul>
-          <Button variant="outline" onClick={connectSource}>
-            Connect a source
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Proof cycle</CardTitle>
-          <CardDescription>
-            Run a cycle to attest reserves, commit liabilities, and publish a proof on-chain.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center gap-3">
-          <Button onClick={runCycle} disabled={cycle === "running"}>
-            {cycle === "running" ? "Running..." : "Run proof cycle"}
-          </Button>
-          {cycle === "done" && (
-            <span className="text-sm text-muted-foreground">Latest proof published.</span>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Audit log</CardTitle>
-          <CardDescription>Every cycle is appended here. Export for your records.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {cycle === "done" ? "1 proof in the log." : "The log is empty."}
-          </p>
-          <Button variant="ghost" disabled={cycle !== "done"}>
-            Export report
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
+}
+
+// "demo-institution" -> "Demo Institution".
+function prettyTenant(tenant: string): string {
+  return tenant
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
