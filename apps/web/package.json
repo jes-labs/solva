@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@solva/brand": "workspace:*",
     "@solva/sdk-ts": "workspace:*",
     "@solva/shared-types": "workspace:*",
     "@solva/ui": "workspace:*",
