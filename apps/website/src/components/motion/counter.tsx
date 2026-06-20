@@ -12,6 +12,8 @@ interface CounterProps {
   durationSec?: number;
   // Fixed decimal places in the rendered number.
   decimals?: number;
+  // Thousands grouping. Turn off for figures like years (2024, not 2,024).
+  useGrouping?: boolean;
   prefix?: string;
   suffix?: string;
   className?: string;
@@ -25,6 +27,7 @@ export function Counter({
   value,
   durationSec = 1.4,
   decimals = 0,
+  useGrouping = true,
   prefix = "",
   suffix = "",
   className,
@@ -35,6 +38,7 @@ export function Counter({
     `${prefix}${n.toLocaleString(undefined, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
+      useGrouping,
     })}${suffix}`;
 
   useGSAP(
