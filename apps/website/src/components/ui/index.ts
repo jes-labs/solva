@@ -19,4 +19,6 @@ export {
   ShieldCheckIcon,
   MonitorIcon,
   NodesIcon,
+  FileTextIcon,
+  BracketsIcon,
 } from "./icons";
