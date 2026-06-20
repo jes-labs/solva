@@ -16,6 +16,7 @@ const staticPaths = [
   "/blog",
   "/about",
   "/request-a-demo",
+  "/legal",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
