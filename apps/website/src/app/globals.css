@@ -56,6 +56,20 @@
     mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   }
 
+  /* The "stays private" panel on How It Works: blurred until hovered, to show
+     what an old attestation would have had to expose. */
+  .priv-blur {
+    filter: blur(5px);
+    opacity: 0.7;
+    transition:
+      filter 0.4s ease,
+      opacity 0.4s ease;
+  }
+  .priv-card:hover .priv-blur {
+    filter: blur(0);
+    opacity: 1;
+  }
+
   /* The particle hero. The eyebrow is the category label, the headline is the
      promise. Solid two-tone: an off-white eyebrow over a chartreuse headline on
      the dark stage, a muted eyebrow over an ink headline on light. */
