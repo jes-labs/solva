@@ -125,7 +125,7 @@ function Result({ result, reference }: { result: InclusionResult; reference: str
           </p>
         </div>
         <div className="border-t border-hair px-6 py-3.5 text-[13px]">
-          <Link href="/verify" className="font-medium text-acc-text hover:underline">
+          <Link href={`/verify?id=${result.proofId}`} className="font-medium text-acc-text hover:underline">
             See the proof on the verify page →
           </Link>
         </div>

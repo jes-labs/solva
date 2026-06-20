@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { VerifyClient } from "./verify-client";
 
 export const metadata: Metadata = {
@@ -6,5 +7,10 @@ export const metadata: Metadata = {
 };
 
 export default function VerifyPage() {
-  return <VerifyClient />;
+  // Suspense boundary because VerifyClient reads ?id= via useSearchParams.
+  return (
+    <Suspense>
+      <VerifyClient />
+    </Suspense>
+  );
 }
