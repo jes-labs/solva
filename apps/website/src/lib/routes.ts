@@ -17,7 +17,10 @@ export const routes = {
   demo: "/request-a-demo",
   legal: "/legal",
   status: "/status",
-  whitepaper: "/whitepaper",
+  // The whitepaper is hosted externally rather than on a page; links to it open
+  // in a new tab. Swap this URL if the document moves.
+  whitepaper:
+    "https://drive.google.com/file/d/1Dw3cdqTik4GZSMxB1Wckv230VRGUq538/view?usp=sharing",
   // Docs point at the Developers landing for now. They retarget to the docs
   // site once it is deployed.
   docs: "/developers",

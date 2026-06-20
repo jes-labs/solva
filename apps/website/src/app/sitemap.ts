@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 import { siteUrl } from "@/lib/site";
 import { getPostSlugs } from "@/lib/blog/posts";
 
-// The marketing routes that currently have a page. Pages still to be built (about,
-// pricing add-ons, legal, status, whitepaper, demo) are added here as they land,
-// so the sitemap never lists a route that 404s.
+// The marketing routes that currently have a page. New pages are added here as
+// they land, so the sitemap never lists a route that 404s. The whitepaper is an
+// external link, not a page, so it is intentionally absent.
 const staticPaths = [
   "/",
   "/how-it-works",
