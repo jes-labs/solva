@@ -34,20 +34,27 @@ export function SiteNav() {
   return (
     <header className="fixed inset-x-0 top-0 z-50">
       <nav
-        className={`flex items-center justify-center border-b px-7 transition-all duration-300 ${
-          condensed ? "nav-condensed border-hair py-[11px]" : "border-transparent py-[18px]"
+        className={`nav-condensed flex items-center justify-center  border-hair px-7 transition-all duration-300 ${
+          condensed ? "py-[11px] border-b" : "py-[18px]"
         }`}
       >
         <div className="flex w-full max-w-site items-center justify-between gap-6">
           <Logo />
 
           <div className="hidden items-center gap-7 text-[14.5px] font-medium lg:flex">
-            <NavLink href={leadNavItem.href} active={isActive(leadNavItem.href)}>
+            <NavLink
+              href={leadNavItem.href}
+              active={isActive(leadNavItem.href)}
+            >
               {leadNavItem.label}
             </NavLink>
             <SolutionsMenu />
             {navItems.map((item) => (
-              <NavLink key={item.label} href={item.href} active={isActive(item.href)}>
+              <NavLink
+                key={item.label}
+                href={item.href}
+                active={isActive(item.href)}
+              >
                 {item.label}
               </NavLink>
             ))}
@@ -68,7 +75,15 @@ export function SiteNav() {
               aria-expanded={mobileOpen}
               className="grid h-9 w-9 place-items-center rounded-btn border border-hair text-fg lg:hidden"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
                 {mobileOpen ? (
                   <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
                 ) : (
@@ -123,9 +138,18 @@ function NavLink({
   );
 }
 
-function MobileLink({ href, children }: { href: string; children: React.ReactNode }) {
+function MobileLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
   return (
-    <Link href={href} className="py-2 text-[15px] font-medium text-sec transition-colors hover:text-fg">
+    <Link
+      href={href}
+      className="py-2 text-[15px] font-medium text-sec transition-colors hover:text-fg"
+    >
       {children}
     </Link>
   );

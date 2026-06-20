@@ -54,7 +54,7 @@ export function Problem() {
           </Reveal>
         </div>
         <Reveal className="text-[17px] leading-relaxed text-sec">
-          <p className="mb-4.5">
+          <p className="mb-[18px]">
             A quarterly PDF signed by an auditor tells you what a balance sheet looked like on one
             day, months ago. It shows that reserves <span className="text-fg">exist</span>, not that
             they cover what is owed. Funds can be borrowed for the snapshot and gone by the next
@@ -78,11 +78,11 @@ export function Differentiators() {
           Not proof of reserves. Proof of <span className="accent-word">solvency</span>.
         </h2>
       </Reveal>
-      <div className="grid grid-cols-1 gap-4.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
         {differentiators.map((item) => (
           <Reveal key={item.title}>
             <Card interactive className="h-full p-7">
-              <item.icon size={26} className="mb-4.5 text-acc-text" />
+              <item.icon size={26} className="mb-[18px] text-acc-text" />
               <h3 className="font-display text-[19px] font-semibold tracking-tight">{item.title}</h3>
               <p className="mt-2 text-[14.5px] leading-snug text-sec">{item.body}</p>
             </Card>
@@ -205,7 +205,7 @@ export function Developers() {
 export function SecurityOracle() {
   return (
     <section id="security" className={`${sectionX} relative z-[1] py-16`}>
-      <div className="grid grid-cols-1 gap-4.5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-2">
         <Reveal>
           <Card className="h-full p-9">
             <ShieldIcon size={28} className="mb-5 text-acc-text" />

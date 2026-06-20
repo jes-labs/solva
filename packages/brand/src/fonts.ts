@@ -8,10 +8,10 @@ import {
 // Shared font setup for every SOLVA app. The CSS variables match the names the
 // Tailwind preset and tokens.css expect, so a font swap here applies everywhere.
 
-// Display and wordmark.
+// Display and wordmark. Lighter weights are here for large display headlines.
 export const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-display",
   display: "swap",
 });

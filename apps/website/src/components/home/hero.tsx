@@ -33,9 +33,9 @@ export function Hero() {
   return (
     <header className="mx-auto grid max-w-site grid-cols-1 items-center gap-12 px-7 pb-24 pt-40 lg:grid-cols-[1.05fr_.95fr]">
       <div>
-        <h1 className="h1">
+        <h2 className="h1">
           Prove true <span className="accent-word">solvency</span>, without revealing a thing.
-        </h1>
+        </h2>
         <p className="mt-6 max-w-[520px] text-lg leading-relaxed text-sec">
           Solva continuously proves your reserves meet or exceed your liabilities. Every result is
           verified on-chain on Stellar, and customer data never leaves your perimeter.
