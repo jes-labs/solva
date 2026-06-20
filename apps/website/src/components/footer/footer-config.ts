@@ -54,9 +54,10 @@ export const footerColumns: FooterColumn[] = [
   },
 ];
 
-// The legal links in the bottom bar.
+// The legal links in the bottom bar. Each deep-links to its policy on the Legal
+// page, which preselects the matching doc from the ?doc= param.
 export const footerLegalLinks: FooterLinkItem[] = [
-  { label: "Privacy", href: routes.legal },
-  { label: "Terms", href: routes.legal },
-  { label: "Security", href: routes.security },
+  { label: "Privacy", href: `${routes.legal}?doc=privacy` },
+  { label: "Terms", href: `${routes.legal}?doc=terms` },
+  { label: "Security", href: `${routes.legal}?doc=security` },
 ];
