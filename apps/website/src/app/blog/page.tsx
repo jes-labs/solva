@@ -9,10 +9,14 @@ import { Newsletter } from "@/components/blog/newsletter";
 import { formatPostDate } from "@/lib/blog/format";
 import { getAllPosts, getCategories, getFeaturedPost } from "@/lib/blog/posts";
 
+const description =
+  "Notes on proving solvency: zero-knowledge proofs, reserves, and the gap between an attestation and the truth.";
+
 export const metadata: Metadata = {
   title: "Blog",
-  description:
-    "Notes on proving solvency: zero-knowledge proofs, reserves, and the gap between an attestation and the truth.",
+  description,
+  alternates: { canonical: "/blog" },
+  openGraph: { title: "Blog", description, url: "/blog" },
 };
 
 const sectionX = "mx-auto max-w-site px-7";
