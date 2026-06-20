@@ -7,6 +7,7 @@ import { Logo } from "./logo";
 import { SolutionsMenu } from "./solutions-menu";
 import { leadNavItem, navItems } from "./nav-config";
 import { routes } from "@/lib/routes";
+import { isExternalHref } from "@/lib/is-external";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 // The sticky site navigation. It condenses on scroll, exposes the Solutions
@@ -127,12 +128,16 @@ function NavLink({
   active: boolean;
   children: React.ReactNode;
 }) {
+  const className = `transition-colors hover:text-fg ${active ? "text-fg" : "text-sec"}`;
+  if (isExternalHref(href)) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={`transition-colors hover:text-fg ${active ? "text-fg" : "text-sec"}`}
-    >
+    <Link href={href} aria-current={active ? "page" : undefined} className={className}>
       {children}
     </Link>
   );
@@ -145,11 +150,16 @@ function MobileLink({
   href: string;
   children: React.ReactNode;
 }) {
+  const className = "py-2 text-[15px] font-medium text-sec transition-colors hover:text-fg";
+  if (isExternalHref(href)) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link
-      href={href}
-      className="py-2 text-[15px] font-medium text-sec transition-colors hover:text-fg"
-    >
+    <Link href={href} className={className}>
       {children}
     </Link>
   );
