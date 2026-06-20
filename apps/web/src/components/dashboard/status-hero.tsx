@@ -61,7 +61,7 @@ export function StatusHero({
             {latest ? (
               <>
                 Proof #{latest.proofId} · verified on Stellar {formatRelativeTime(latest.at)} ·{" "}
-                <Link href="/verify" className="text-acc-text hover:underline">
+                <Link href={`/verify?id=${latest.proofId}`} className="text-acc-text hover:underline">
                   view
                 </Link>
               </>

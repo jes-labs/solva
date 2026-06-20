@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button, StatusPill } from "@solva/ui";
 import type { Proof } from "@solva/shared-types";
 import { CopyButton } from "@/components/copy-button";
@@ -22,13 +23,14 @@ type ClientCheck = { state: "idle" | "running" | "done"; verified?: boolean; mes
 // totals and the on-chain verified state, and can optionally re-check the proof
 // in their own browser. No wallet, no account.
 export function VerifyClient() {
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [state, setState] = useState<LookupState>("idle");
   const [proof, setProof] = useState<Proof | null>(null);
   const [missedId, setMissedId] = useState("");
   const [check, setCheck] = useState<ClientCheck>({ state: "idle" });
 
-  async function lookUp(rawId: string) {
+  const lookUp = useCallback(async (rawId: string) => {
     const id = rawId.trim();
     if (!id) return;
     setState("loading");
@@ -43,7 +45,17 @@ export function VerifyClient() {
       setMissedId(id);
       setState("notfound");
     }
-  }
+  }, []);
+
+  // Deep link: /verify?id=1042 fills the field and looks it up on load, so the
+  // dashboard and inclusion pages can link straight to a verified proof.
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id) {
+      setQuery(id);
+      void lookUp(id);
+    }
+  }, [searchParams, lookUp]);
 
   async function runClientCheck() {
     if (!proof) return;
