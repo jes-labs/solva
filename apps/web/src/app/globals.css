@@ -1,3 +1,39 @@
-/* The web app pulls design tokens and base styles from @solva/ui, then layers
-   Tailwind utilities. The token CSS variables live in the imported stylesheet. */
-@import "@solva/ui/styles.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* The SOLVA brand tokens (--bg, --acc, ...) are imported in the layout from
+   @solva/brand. Here we add the few shadcn-style channels the @solva/ui
+   components tint with opacity, the corner radius, and the body base that reads
+   the brand palette. */
+@layer base {
+  :root {
+    --radius: 10px;
+  }
+
+  /* SOLVA status colors as HSL channels so bg-solvent/10 and the text tints
+     resolve. The solvent and verified state is the chartreuse accent. Vivid on
+     dark; the light set darkens them so the pill text holds AA on a white card. */
+  :root,
+  [data-theme="dark"] {
+    --solvent: 67 79% 52%;
+    --warning: 33 74% 53%;
+    --breach: 5 67% 54%;
+  }
+
+  [data-theme="light"] {
+    --solvent: 67 74% 27%;
+    --warning: 33 84% 27%;
+    --breach: 5 68% 42%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body), system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}

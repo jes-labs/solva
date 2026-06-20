@@ -1,11 +1,10 @@
-import { SiteNav } from "@/components/site-nav";
+import type { Metadata } from "next";
 import { InclusionClient } from "./inclusion-client";
 
+export const metadata: Metadata = {
+  title: "Check my balance",
+};
+
 export default function InclusionPage() {
-  return (
-    <main>
-      <SiteNav />
-      <InclusionClient />
-    </main>
-  );
+  return <InclusionClient />;
 }
