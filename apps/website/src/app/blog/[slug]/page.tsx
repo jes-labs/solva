@@ -25,10 +25,29 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = getPost(slug);
   if (!post) return { title: "Post not found" };
+  const { meta } = post;
+  const url = `/blog/${slug}`;
+  const cover = { url: meta.cover, width: 1264, height: 848, alt: meta.coverAlt };
   return {
-    title: post.meta.title,
-    description: post.meta.excerpt,
-    openGraph: { images: [post.meta.cover] },
+    title: meta.title,
+    description: meta.excerpt,
+    authors: [{ name: meta.author }],
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      title: meta.title,
+      description: meta.excerpt,
+      url,
+      publishedTime: meta.date,
+      authors: [meta.author],
+      images: [cover],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: meta.title,
+      description: meta.excerpt,
+      images: [meta.cover],
+    },
   };
 }
 
