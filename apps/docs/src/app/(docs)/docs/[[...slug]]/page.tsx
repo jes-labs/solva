@@ -8,7 +8,8 @@ import {
 import { notFound } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
-import { getMDXComponents } from "@/components/mdx";
+import { getMDXComponents } from "@/../mdx-components";
+import { PageActions } from "@/components/docs/page-actions";
 
 interface PageParams {
   params: Promise<{ slug?: string[] }>;
@@ -25,6 +26,9 @@ export default async function Page(props: PageParams) {
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
+      <div className="mb-6 flex justify-end">
+        <PageActions markdownUrl={`${page.url}.md`} />
+      </div>
       <DocsBody>
         <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>

@@ -1,0 +1,27 @@
+{
+  "name": "Solva",
+  "short_name": "Solva",
+  "description": "Zero-knowledge proof-of-reserves infrastructure. Reserves >= liabilities, verified on Stellar.",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#0A0C06",
+  "background_color": "#0A0C06",
+  "display": "standalone",
+  "start_url": "/"
+}
