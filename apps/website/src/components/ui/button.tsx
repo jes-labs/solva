@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { isExternalHref } from "@/lib/is-external";
 
 type Variant = "primary" | "secondary" | "tertiary";
 type Size = "sm" | "md" | "lg";
@@ -40,6 +41,14 @@ export function Button({
   const classes = cn(base, variants[variant], sizes[size], className);
 
   if (href) {
+    // Cross-origin targets (the app, the docs site) open in a new tab.
+    if (isExternalHref(href)) {
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
+          {children}
+        </a>
+      );
+    }
     return (
       <Link href={href} className={classes}>
         {children}
