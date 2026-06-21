@@ -2,6 +2,71 @@
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 
+/* SOLVA brand mapped onto Fumadocs tokens. Theme switches on the .dark class
+   (Fumadocs / next-themes), so both the fd-* tokens and the few brand vars our
+   own components use are defined under :root (light) and .dark (dark). The
+   accent text follows the brand rule: deep olive on light, chartreuse on dark. */
+:root {
+  --acc: #cfe524;
+
+  --color-fd-background: #f4f5ee;
+  --color-fd-foreground: #0b0d07;
+  --color-fd-muted: #edeee6;
+  --color-fd-muted-foreground: #51564b;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #0b0d07;
+  --color-fd-card: #ffffff;
+  --color-fd-card-foreground: #0b0d07;
+  --color-fd-border: #e3e4db;
+  --color-fd-primary: #6e7a12;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: #edeee6;
+  --color-fd-secondary-foreground: #0b0d07;
+  --color-fd-accent: #edeee6;
+  --color-fd-accent-foreground: #0b0d07;
+  --color-fd-ring: #6e7a12;
+  --color-fd-error: #d8483b;
+}
+
+.dark {
+  --acc: #cfe524;
+
+  --color-fd-background: #0a0c06;
+  --color-fd-foreground: #f5f6ee;
+  --color-fd-muted: #14180e;
+  --color-fd-muted-foreground: #a7ac9b;
+  --color-fd-popover: #14180e;
+  --color-fd-popover-foreground: #f5f6ee;
+  --color-fd-card: #14180e;
+  --color-fd-card-foreground: #f5f6ee;
+  --color-fd-border: #2e3420;
+  --color-fd-primary: #cfe524;
+  --color-fd-primary-foreground: #0a0c06;
+  --color-fd-secondary: #232a17;
+  --color-fd-secondary-foreground: #f5f6ee;
+  --color-fd-accent: #232a17;
+  --color-fd-accent-foreground: #f5f6ee;
+  --color-fd-ring: #cfe524;
+  --color-fd-error: #d8483b;
+}
+
 html {
   scrollbar-gutter: stable;
+}
+
+/* Brand typography: Hanken body, Bricolage display headings, Plex mono code. */
+body {
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono), ui-monospace, monospace;
 }

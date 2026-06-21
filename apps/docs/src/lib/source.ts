@@ -1,15 +1,9 @@
-import { docs, blog } from "collections/server";
+import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
-import { docsRoute, blogRoute } from "./shared";
 
-// Two loaders, one per collection. See
-// https://fumadocs.dev/docs/headless/source-api
+// Single entry point for the page tree (sidebar), search index, slug lookup,
+// and static params, all built from the generated .source collection.
 export const source = loader({
-  baseUrl: docsRoute,
+  baseUrl: "/docs",
   source: docs.toFumadocsSource(),
-});
-
-export const blogSource = loader({
-  baseUrl: blogRoute,
-  source: blog.toFumadocsSource(),
 });
