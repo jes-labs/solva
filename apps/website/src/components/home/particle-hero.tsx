@@ -304,6 +304,27 @@ export function ParticleHero() {
     redrawRef.current?.();
   }, [theme]);
 
+  // The assembly is scrubbed by scroll, so the hero must start at the very top to
+  // play. Returning from another page can restore a scrolled position, which
+  // lands mid-pin with "Solva" already formed. Opt out of scroll restoration and
+  // force the top on mount, repeating after a tick so it wins over any restore
+  // that runs later, then re-measure the trigger.
+  useEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+    const raf = requestAnimationFrame(() => window.scrollTo(0, 0));
+    const timer = window.setTimeout(() => {
+      window.scrollTo(0, 0);
+      ScrollTrigger.refresh();
+    }, 80);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <>
       <section ref={heroRef} className="sticky top-0 z-0 h-screen overflow-hidden bg-bg">

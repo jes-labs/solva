@@ -19,6 +19,8 @@ next-env.d.ts
 Solva-PRD-1.md
 Solva-PRD-2.md
 
+VERCEL.md
+
 # Noir / Barretenberg artifacts
 **/target/*.json
 **/proofs/

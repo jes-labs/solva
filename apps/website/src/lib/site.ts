@@ -18,9 +18,13 @@ function resolveSiteUrl(): string {
 export const siteUrl = resolveSiteUrl();
 
 // The product app lives at its own origin. "Launch app" and the public verify and
-// inclusion tools point here. Set NEXT_PUBLIC_APP_URL per environment; this
-// placeholder applies until a domain is wired.
-export const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.solva.example";
+// inclusion tools point here. Set NEXT_PUBLIC_APP_URL per environment; the
+// production subdomain is the fallback.
+export const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.joinsolva.xyz";
+
+// The docs site lives at its own origin too. Set NEXT_PUBLIC_DOCS_URL per
+// environment; the production subdomain is the fallback.
+export const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? "https://docs.joinsolva.xyz";
 
 export const SITE_NAME = "Solva";
 

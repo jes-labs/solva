@@ -181,7 +181,7 @@ export default function DevelopersPage() {
       <section className={`${sectionX} pb-12`}>
         <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
           <Reveal>
-            <a href={routes.docs} className="block h-full">
+            <a href={routes.docs} target="_blank" rel="noopener noreferrer" className="block h-full">
               <Card interactive className="h-full p-7">
                 <FileTextIcon size={24} className="mb-4 text-acc-text" />
                 <h3 className="font-display text-[18px] font-semibold">Docs &amp; guides</h3>

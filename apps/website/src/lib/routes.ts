@@ -1,4 +1,4 @@
-import { appUrl } from "./site";
+import { appUrl, docsUrl } from "./site";
 
 // Central route map for the marketing site. The nav and footer both read from
 // here, so a path change happens in one place. Pages are added per issue, so
@@ -24,7 +24,7 @@ export const routes = {
   // in a new tab. Swap this URL if the document moves.
   whitepaper:
     "https://drive.google.com/file/d/1Dw3cdqTik4GZSMxB1Wckv230VRGUq538/view?usp=sharing",
-  // Docs point at the Developers landing for now. They retarget to the docs
-  // site once it is deployed.
-  docs: "/developers",
+  // Docs live on their own origin. The link opens in a new tab like any other
+  // cross-origin destination.
+  docs: docsUrl,
 } as const;

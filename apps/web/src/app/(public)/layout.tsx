@@ -8,7 +8,10 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <PublicNav />
-      <main className="flex-1 px-6 py-10 sm:py-14">{children}</main>
+      <main className="flex-1 py-10 sm:py-14">
+        {/* Same section container as the marketing site: 1200px cap, 28px gutter. */}
+        <div className="mx-auto max-w-site px-7">{children}</div>
+      </main>
       <Footer />
     </div>
   );

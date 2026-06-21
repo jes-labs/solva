@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { ExternalLink } from "./external-link";
+import { docsUrl } from "@/lib/links";
 
 // The chrome for the public, no-auth pages (verify, inclusion). No dashboard
-// links; just the brand, a way to reach the two public tools, and Launch app,
-// which drops into the authenticated console.
+// links; just the brand, a way to reach the two public tools and the docs, and
+// Launch app, which drops into the authenticated console.
 export function PublicNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-hair bg-bg">
-      <nav className="mx-auto flex max-w-site items-center justify-between gap-4 px-6 py-3.5">
+      <nav className="mx-auto flex max-w-site items-center justify-between gap-4 px-7 py-3.5">
         <div className="flex items-center gap-7">
           <Logo />
           <div className="hidden items-center gap-5 text-sm text-sec sm:flex">
@@ -18,6 +20,9 @@ export function PublicNav() {
             <Link href="/inclusion" className="transition-colors hover:text-fg">
               Inclusion
             </Link>
+            <ExternalLink href={docsUrl} className="transition-colors hover:text-fg">
+              Docs
+            </ExternalLink>
           </div>
         </div>
         <div className="flex items-center gap-3">

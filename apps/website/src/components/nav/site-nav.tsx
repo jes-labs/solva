@@ -64,12 +64,14 @@ export function SiteNav() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
 
-            <Link
+            <a
               href={routes.app}
+              target="_blank"
+              rel="noopener noreferrer"
               className="hidden rounded-[9px] bg-acc px-[18px] py-[10px] text-sm font-semibold text-on-acc sm:inline-block"
             >
               Launch app
-            </Link>
+            </a>
             <button
               type="button"
               onClick={() => setMobileOpen((v) => !v)}
@@ -107,12 +109,14 @@ export function SiteNav() {
                 {item.label}
               </MobileLink>
             ))}
-            <Link
+            <a
               href={routes.app}
+              target="_blank"
+              rel="noopener noreferrer"
               className="mt-3 rounded-[9px] bg-acc px-[18px] py-[11px] text-center text-sm font-semibold text-on-acc"
             >
               Launch app
-            </Link>
+            </a>
           </div>
         </div>
       )}

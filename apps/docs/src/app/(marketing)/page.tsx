@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { appUrl } from "@/lib/shared";
 
 const entries = [
   { title: "Quickstart", body: "Prove solvency end to end in a few minutes.", href: "/docs/quickstart" },
@@ -9,7 +10,7 @@ const entries = [
 
 export default function HomePage() {
   return (
-    <main className="mx-auto w-full max-w-[960px] px-6 py-20 sm:py-28">
+    <main className="mx-auto w-full max-w-[1200px] px-7 py-20 sm:py-28">
       <div className="text-center">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-fd-primary">Documentation</p>
         <h1 className="mt-4 text-balance text-[clamp(2.25rem,5vw,3.75rem)] font-bold leading-[1.04] tracking-tight">
@@ -32,6 +33,14 @@ export default function HomePage() {
           >
             Quickstart
           </Link>
+          <a
+            href={appUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-11 items-center rounded-md border border-fd-border px-6 text-sm font-medium text-fd-foreground transition-colors hover:bg-fd-muted"
+          >
+            Launch app ↗
+          </a>
         </div>
       </div>
 
