@@ -6,9 +6,12 @@ import { ConnectSourceDialog } from "./connect-source-dialog";
 export function SourcesPanel({
   sources,
   onConnect,
+  canConnect = true,
 }: {
   sources: Source[];
   onConnect: (config: { type: SourceType; label: string; settings: string }) => Promise<void>;
+  // RBAC: only roles that may connect see the connect flow.
+  canConnect?: boolean;
 }) {
   return (
     <section className="rounded-card border border-hair bg-surface">
@@ -17,7 +20,7 @@ export function SourcesPanel({
           <h2 className="font-display text-[17px] font-semibold tracking-tight">Reserve sources</h2>
           <p className="mt-0.5 text-[13px] text-sec">Banks and wallets that back your reserves.</p>
         </div>
-        <ConnectSourceDialog onConnect={onConnect} />
+        {canConnect && <ConnectSourceDialog onConnect={onConnect} />}
       </div>
 
       {sources.length === 0 ? (

@@ -18,6 +18,7 @@ export const footerColumns: FooterColumn[] = [
     links: [
       { label: "How it works", href: routes.howItWorks },
       { label: "Verify", href: routes.verify },
+      { label: "Inclusion", href: routes.inclusion },
       { label: "Pricing", href: routes.pricing },
       { label: "Security", href: routes.security },
     ],

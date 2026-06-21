@@ -50,3 +50,38 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Brand the driver.js walkthrough popover to the SOLVA palette. */
+.driver-popover.solva-tour {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  box-shadow: var(--tw-shadow, 0 20px 50px -20px rgba(0, 0, 0, 0.6));
+}
+.driver-popover.solva-tour .driver-popover-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  color: var(--text);
+}
+.driver-popover.solva-tour .driver-popover-description {
+  color: var(--sec);
+}
+.driver-popover.solva-tour .driver-popover-progress-text {
+  color: var(--sec);
+}
+.driver-popover.solva-tour .driver-popover-arrow {
+  border-color: var(--surface);
+}
+.driver-popover.solva-tour button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  text-shadow: none;
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+.driver-popover.solva-tour .driver-popover-next-btn {
+  background: var(--acc);
+  color: var(--on-acc);
+  border-color: var(--acc);
+}

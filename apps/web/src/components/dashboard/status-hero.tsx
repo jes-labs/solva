@@ -37,12 +37,15 @@ export function StatusHero({
   latest,
   running,
   schedule,
+  canRun = true,
   onRunCycle,
   onScheduleChange,
 }: {
   latest: CycleRecord | undefined;
   running: boolean;
   schedule: Schedule;
+  // RBAC: hide the run + schedule controls for roles that cannot publish.
+  canRun?: boolean;
   onRunCycle: () => void;
   onScheduleChange: (value: Schedule) => void;
 }) {
@@ -71,6 +74,7 @@ export function StatusHero({
           </p>
         </div>
 
+        {canRun && (
         <div className="flex flex-col items-stretch gap-2.5 sm:items-end">
           <Button onClick={onRunCycle} disabled={running} className="sm:w-auto">
             {running ? (
@@ -96,6 +100,7 @@ export function StatusHero({
             </select>
           </label>
         </div>
+        )}
       </div>
 
       {/* Figures */}
