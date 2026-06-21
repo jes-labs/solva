@@ -1,0 +1,21 @@
+# Keep the Vercel upload to source only. The CLI does NOT read .gitignore,
+# so anything heavy that is not listed here gets uploaded.
+
+# Dependencies and build output (recreated on Vercel during install/build)
+node_modules
+.next
+.turbo
+dist
+out
+coverage
+
+# Rust build artifacts (2.4GB)
+target
+
+# Local-only design reference, never deploy
+design_handoff_solva_website
+
+# Misc
+.vercel
+*.log
+.DS_Store

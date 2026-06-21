@@ -2,3 +2,4 @@
 .source/
 # Next generated ambient types.
 next-env.d.ts
+.vercel
