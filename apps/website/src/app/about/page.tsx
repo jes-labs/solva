@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Reveal, Counter } from "@/components/motion";
 import { Button, Card, Eyebrow } from "@/components/ui";
+import { AuthorAvatar } from "@/components/blog/author-avatar";
 import { routes } from "@/lib/routes";
 
 export const metadata: Metadata = {
@@ -40,26 +41,9 @@ const values = [
 ];
 
 const team = [
-  {
-    name: "Amara Eze",
-    role: "Co-founder · Cryptography",
-    tint: "color-mix(in oklab, var(--acc) 22%, var(--panel))",
-  },
-  {
-    name: "Kwame Boateng",
-    role: "Co-founder · CEO",
-    tint: "color-mix(in oklab, #2A6FDB 22%, var(--panel))",
-  },
-  {
-    name: "Tomas Reyes",
-    role: "Distributed systems",
-    tint: "color-mix(in oklab, #1F8A5B 22%, var(--panel))",
-  },
-  {
-    name: "Lena Fischer",
-    role: "Compliance & policy",
-    tint: "color-mix(in oklab, #E0902E 20%, var(--panel))",
-  },
+  { name: "Josh", role: "Co-founder · ZK & protocol engineer" },
+  { name: "Sogo", role: "Co-founder · ZK & software engineer" },
+  { name: "Emmanuel", role: "Co-founder · Researcher & software engineer" },
 ];
 
 const backers = ["Ledger Ventures", "Aperture", "Northgate", "Stellar Foundation", "Kestrel"];
@@ -152,15 +136,11 @@ export default function AboutPage() {
         <Reveal>
           <h2 className="h2 mb-7">The team</h2>
         </Reveal>
-        <div className="grid grid-cols-2 gap-[18px] md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-3">
           {team.map((member) => (
             <Reveal key={member.name}>
               <Card className="h-full p-6">
-                <div
-                  className="mb-4 size-[54px] rounded-full border border-hair"
-                  style={{ background: `linear-gradient(135deg, ${member.tint}, var(--panel))` }}
-                  aria-hidden="true"
-                />
+                <AuthorAvatar name={member.name} size={54} className="mb-4" />
                 <h3 className="font-display text-[17px] font-semibold">{member.name}</h3>
                 <p className="mt-[3px] text-[13.5px] text-sec">{member.role}</p>
               </Card>
