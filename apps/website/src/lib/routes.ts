@@ -1,3 +1,5 @@
+import { appUrl } from "./site";
+
 // Central route map for the marketing site. The nav and footer both read from
 // here, so a path change happens in one place. Pages are added per issue, so
 // some of these targets do not exist yet and will resolve once their page lands.
@@ -11,9 +13,10 @@ export const routes = {
   pricing: "/pricing",
   blog: "/blog",
   about: "/about",
-  // The public verify tool lives in the product app. This becomes that app's
-  // absolute URL once it is deployed.
-  verify: "/verify",
+  // The product app and its public tools live at their own origin.
+  app: appUrl,
+  verify: `${appUrl}/verify`,
+  inclusion: `${appUrl}/inclusion`,
   demo: "/request-a-demo",
   legal: "/legal",
   status: "/status",

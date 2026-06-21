@@ -17,6 +17,11 @@ function resolveSiteUrl(): string {
 
 export const siteUrl = resolveSiteUrl();
 
+// The product app lives at its own origin. "Launch app" and the public verify and
+// inclusion tools point here. Set NEXT_PUBLIC_APP_URL per environment; this
+// placeholder applies until a domain is wired.
+export const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.solva.example";
+
 export const SITE_NAME = "Solva";
 
 export const SITE_DESCRIPTION =

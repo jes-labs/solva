@@ -14,9 +14,12 @@ const TONE: Record<SolvencyStatus, StatusTone> = {
 export function AuditLog({
   cycles,
   onExport,
+  canExport = true,
 }: {
   cycles: CycleRecord[];
   onExport: () => void;
+  // RBAC: only roles that may export see the action.
+  canExport?: boolean;
 }) {
   return (
     <section className="rounded-card border border-hair bg-surface">
@@ -25,9 +28,11 @@ export function AuditLog({
           <h2 className="font-display text-[17px] font-semibold tracking-tight">Audit log</h2>
           <p className="mt-0.5 text-[13px] text-sec">Every cycle, with a regulator-ready export.</p>
         </div>
-        <Button variant="ghost" onClick={onExport} disabled={cycles.length === 0}>
-          Export report
-        </Button>
+        {canExport && (
+          <Button variant="ghost" onClick={onExport} disabled={cycles.length === 0}>
+            Export report
+          </Button>
+        )}
       </div>
 
       {cycles.length === 0 ? (

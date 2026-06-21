@@ -63,11 +63,12 @@ export function SiteNav() {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
+
             <Link
-              href={routes.demo}
+              href={routes.app}
               className="hidden rounded-[9px] bg-acc px-[18px] py-[10px] text-sm font-semibold text-on-acc sm:inline-block"
             >
-              Request a demo
+              Launch app
             </Link>
             <button
               type="button"
@@ -107,10 +108,10 @@ export function SiteNav() {
               </MobileLink>
             ))}
             <Link
-              href={routes.demo}
+              href={routes.app}
               className="mt-3 rounded-[9px] bg-acc px-[18px] py-[11px] text-center text-sm font-semibold text-on-acc"
             >
-              Request a demo
+              Launch app
             </Link>
           </div>
         </div>
@@ -131,13 +132,22 @@ function NavLink({
   const className = `transition-colors hover:text-fg ${active ? "text-fg" : "text-sec"}`;
   if (isExternalHref(href)) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
         {children}
       </a>
     );
   }
   return (
-    <Link href={href} aria-current={active ? "page" : undefined} className={className}>
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={className}
+    >
       {children}
     </Link>
   );
@@ -150,10 +160,16 @@ function MobileLink({
   href: string;
   children: React.ReactNode;
 }) {
-  const className = "py-2 text-[15px] font-medium text-sec transition-colors hover:text-fg";
+  const className =
+    "py-2 text-[15px] font-medium text-sec transition-colors hover:text-fg";
   if (isExternalHref(href)) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
         {children}
       </a>
     );

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowLeft, ChevronRight, Landmark, ShieldCheck, Wallet } from "lucide-react";
 import {
   Button,
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -16,118 +16,209 @@ import type { SourceType } from "@/lib/mock/dashboard";
 const inputClass =
   "w-full rounded-btn border border-hair bg-bg px-3.5 py-[11px] text-[15px] text-fg placeholder:text-sec focus:border-acc-text";
 
-const TYPES: { value: SourceType; title: string; detail: string }[] = [
-  { value: "openbanking", title: "Open banking", detail: "Signed bank balance" },
-  { value: "onchain", title: "On-chain wallet", detail: "Wallet holding" },
-];
+// Mock open-banking providers. A real integration lists the banks an AISP
+// (Plaid, TrueLayer, Tink, ...) supports for the institution's region.
+const BANKS = ["First National Bank", "Meridian Bank", "Northbridge", "Sterling Trust", "Atlas Federal"];
 
-// The connect-source flow on the Radix dialog from @solva/ui, which handles
-// focus trapping, escape, and labelling. Submitting calls onConnect and closes.
+type Step = "choose" | "banks" | "consent" | "wallet";
+
+// The connect-source flow, shaped like real reserve sourcing: a bank balance is
+// read over open banking with an explicit read-only consent, or an on-chain
+// wallet is added by address. The dialog handles focus, escape, and labelling
+// through the Radix primitive from @solva/ui.
 export function ConnectSourceDialog({
   onConnect,
 }: {
   onConnect: (config: { type: SourceType; label: string; settings: string }) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<SourceType>("openbanking");
-  const [label, setLabel] = useState("");
-  const [settings, setSettings] = useState("");
+  const [step, setStep] = useState<Step>("choose");
+  const [bank, setBank] = useState("");
+  const [walletLabel, setWalletLabel] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
   const [busy, setBusy] = useState(false);
 
   function reset() {
-    setType("openbanking");
-    setLabel("");
-    setSettings("");
+    setStep("choose");
+    setBank("");
+    setWalletLabel("");
+    setWalletAddress("");
+    setBusy(false);
   }
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!label.trim()) return;
-    setBusy(true);
-    await onConnect({ type, label: label.trim(), settings: settings.trim() });
-    setBusy(false);
-    reset();
+  function close() {
     setOpen(false);
+    reset();
+  }
+
+  async function finish(config: { type: SourceType; label: string; settings: string }) {
+    setBusy(true);
+    await onConnect(config);
+    close();
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
       <Button variant="outline" onClick={() => setOpen(true)}>
         Connect a source
       </Button>
+
       <DialogContent className="rounded-card border-hair">
-        <DialogHeader>
-          <DialogTitle>Connect a reserve source</DialogTitle>
-          <DialogDescription className="text-sec">
-            Link a bank balance or an on-chain wallet that backs your reserves.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <span className="eyebrow mb-2 block text-sec">Source type</span>
-            <div className="grid grid-cols-2 gap-2">
-              {TYPES.map((option) => {
-                const selected = type === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setType(option.value)}
-                    aria-pressed={selected}
-                    className={cn(
-                      "rounded-btn border p-3 text-left transition-colors",
-                      selected
-                        ? "border-acc bg-[color-mix(in_oklab,var(--acc)_8%,transparent)]"
-                        : "border-hair hover:border-hair-strong",
-                    )}
-                  >
-                    <div className="text-sm font-medium text-fg">{option.title}</div>
-                    <div className="text-[12px] text-sec">{option.detail}</div>
-                  </button>
-                );
-              })}
+        {step === "choose" && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Connect a reserve source</DialogTitle>
+              <DialogDescription className="text-sec">
+                Add a bank balance over open banking, or an on-chain wallet.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <ChoiceCard
+                icon={Landmark}
+                title="Bank account"
+                detail="Read balances over open banking. Read-only, with your consent."
+                onClick={() => setStep("banks")}
+              />
+              <ChoiceCard
+                icon={Wallet}
+                title="On-chain wallet"
+                detail="Add a wallet holding by its address."
+                onClick={() => setStep("wallet")}
+              />
             </div>
-          </div>
+          </>
+        )}
 
-          <div>
-            <label htmlFor="source-label" className="eyebrow mb-2 block text-sec">
-              Display name
-            </label>
-            <input
-              id="source-label"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="First National Bank"
-              className={inputClass}
-            />
-          </div>
+        {step === "banks" && (
+          <>
+            <BackHeader title="Choose your bank" onBack={() => setStep("choose")} />
+            <div className="max-h-[320px] space-y-1.5 overflow-y-auto">
+              {BANKS.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => {
+                    setBank(name);
+                    setStep("consent");
+                  }}
+                  className="flex w-full items-center justify-between rounded-btn border border-hair px-4 py-3 text-left transition-colors hover:border-hair-strong"
+                >
+                  <span className="text-[14.5px] font-medium text-fg">{name}</span>
+                  <ChevronRight className="size-4 text-sec" />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
-          <div>
-            <label htmlFor="source-settings" className="eyebrow mb-2 block text-sec">
-              {type === "openbanking" ? "Institution or OAuth client" : "Wallet address"}
-            </label>
-            <input
-              id="source-settings"
-              value={settings}
-              onChange={(e) => setSettings(e.target.value)}
-              placeholder={type === "openbanking" ? "client id" : "G…"}
-              className={cn(inputClass, type === "onchain" && "font-mono")}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2.5 pt-1">
-            <DialogClose asChild>
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={busy || !label.trim()}>
-              {busy ? "Connecting…" : "Connect source"}
+        {step === "consent" && (
+          <>
+            <BackHeader title="Authorize access" onBack={() => setStep("banks")} />
+            <div className="rounded-btn border border-hair bg-bg p-5 text-center">
+              <ShieldCheck className="mx-auto size-8 text-acc-text" />
+              <p className="mt-3 text-[14.5px] text-fg">
+                Allow Solva to read balances from <span className="font-medium">{bank}</span>.
+              </p>
+              <p className="mx-auto mt-1.5 max-w-[360px] text-[13px] leading-relaxed text-sec">
+                Read-only access to account balances. Solva never moves funds and never sees
+                transactions. You can revoke access at any time.
+              </p>
+            </div>
+            <Button
+              disabled={busy}
+              onClick={() => finish({ type: "openbanking", label: bank, settings: "read-only balance consent" })}
+              className="w-full"
+            >
+              {busy ? "Connecting…" : "Authorize and connect"}
             </Button>
-          </div>
-        </form>
+          </>
+        )}
+
+        {step === "wallet" && (
+          <>
+            <BackHeader title="Add an on-chain wallet" onBack={() => setStep("choose")} />
+            <div className="space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-[13px] font-medium text-fg">Display name</span>
+                <input
+                  value={walletLabel}
+                  onChange={(e) => setWalletLabel(e.target.value)}
+                  placeholder="Treasury wallet"
+                  className={inputClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[13px] font-medium text-fg">Wallet address</span>
+                <input
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  placeholder="G…"
+                  className={cn(inputClass, "font-mono")}
+                />
+              </label>
+            </div>
+            <Button
+              disabled={busy || !walletLabel.trim() || !walletAddress.trim()}
+              onClick={() =>
+                finish({ type: "onchain", label: walletLabel.trim(), settings: walletAddress.trim() })
+              }
+              className="w-full"
+            >
+              {busy ? "Connecting…" : "Connect wallet"}
+            </Button>
+          </>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ChoiceCard({
+  icon: Icon,
+  title,
+  detail,
+  onClick,
+}: {
+  icon: typeof Landmark;
+  title: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-start gap-3.5 rounded-btn border border-hair p-4 text-left transition-colors hover:border-hair-strong"
+    >
+      <span className="grid size-9 shrink-0 place-items-center rounded-btn bg-panel text-acc-text">
+        <Icon className="size-[18px]" />
+      </span>
+      <span>
+        <span className="block text-[14.5px] font-medium text-fg">{title}</span>
+        <span className="mt-0.5 block text-[12.5px] leading-snug text-sec">{detail}</span>
+      </span>
+    </button>
+  );
+}
+
+function BackHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <DialogHeader>
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-1 inline-flex items-center gap-1 text-[13px] text-sec transition-colors hover:text-fg"
+      >
+        <ArrowLeft className="size-3.5" />
+        Back
+      </button>
+      <DialogTitle>{title}</DialogTitle>
+    </DialogHeader>
   );
 }
