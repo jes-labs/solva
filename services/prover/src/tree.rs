@@ -3,45 +3,9 @@
 // Each node carries a hash and a running sum of the balances beneath it. The
 // root commits to both the set of leaves and the total liability L, so the
 // circuit can prove L without revealing any single balance.
-//
-// Hashing correctness
-// -------------------
-// The Noir poseidon crate v0.2.6 implements a sponge with:
-//   - Width t=4, rate=3, capacity=1, BN254 scalar field, S-box x^5
-//   - R_F=8 full rounds, R_P=56 partial rounds
-//   - Barretenberg round constants (ROUND_CONSTANTS below)
-//   - IV = message_length * 2^64 placed in state[3] (capacity slot)
-//   - Output = state[0] after the final permutation
-//
-// For a two-input hash (hash2 / hash_leaf in the circuit):
-//   state = [input[0], input[1], 0, IV=2*2^64]
-//   apply one permutation
-//   output = state[0]
-//
-// hash_pair passes only the two child *hashes* -- not the sums -- matching
-// the circuit's combine() exactly. Sums are carried in Node::sum but are not
-// fed into the hash function.
-//
-// The permutation is a direct port of:
-//   noir-lang/noir v1.0.0-beta.9
-//   acvm-repo/bn254_blackbox_solver/src/poseidon2.rs
-// Do not change constants or matrix without updating the Noir circuit.
-//
-// Cargo.toml additions needed:
-//   [dependencies]
-//   ark-bn254  = "0.4"
-//   ark-ff     = "0.4"
-//   hex        = "0.4"
-//
-//   [dev-dependencies]
-//   num-bigint = "0.4"
-
 use ark_bn254::Fr;
 use ark_ff::{BigInteger, PrimeField, Zero};
 use std::sync::LazyLock;
-
-// ---------------------------------------------------------------------------
-// Public types
 
 /// 32-byte big-endian BN254 scalar field element.
 pub type FieldElem = [u8; 32];
@@ -106,7 +70,6 @@ impl MerkleSumTree {
     }
 }
 
-// ---------------------------------------------------------------------------
 // hash_pair: combines two child nodes into their parent.
 // Only the two child hashes are fed into Poseidon2 -- sums are not hashed.
 // This matches the Noir circuit's MerkleSumNode::combine exactly.
@@ -117,7 +80,6 @@ fn hash_pair(left: &Node, right: &Node) -> Node {
     }
 }
 
-// ---------------------------------------------------------------------------
 // poseidon2_hash_two: the canonical two-field-element hash.
 // Matches Poseidon2::hash([a, b], 2) in the Noir circuit.
 pub fn poseidon2_hash_two(a: FieldElem, b: FieldElem) -> FieldElem {
@@ -136,7 +98,6 @@ pub fn poseidon2_hash_two(a: FieldElem, b: FieldElem) -> FieldElem {
     fr_to_bytes(state[0])
 }
 
-// ---------------------------------------------------------------------------
 // Poseidon2 permutation (t=4, R_F=8, R_P=56, x^5, BN254)
 // Ported from noir-lang/noir v1.0.0-beta.9
 // acvm-repo/bn254_blackbox_solver/src/poseidon2.rs
