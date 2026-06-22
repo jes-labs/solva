@@ -1,22 +1,23 @@
-# Code ownership for Solva. A listed owner is requested for review on changes
-# to their paths. Replace the placeholder owner with the real per-tier owners
-# once the team is mapped. Keep the most specific rule last.
+# Code ownership for Solva. Listed owners are auto-requested for review on
+# changes to their paths. Review is NOT required to merge: CI is the only gate
+# (see the main-protection ruleset). This just keeps the founding team in the
+# loop. Keep the most specific rule last.
 
-# Default owner for everything not matched below.
-*                       @Signor1
+# Default owners for everything not matched below.
+*                       @Signor1 @JoshdfG @sogobanwo
 
-# Cryptography and on-chain tiers. These need a reviewer fluent in the circuit
-# and contract, since a change here can break the proof.
-/circuits/              @Signor1
-/contracts/             @Signor1
-/services/prover/       @Signor1
-/proto/                 @Signor1
+# Cryptography and on-chain tiers. A change here can break the proof, so the
+# whole team is looped in.
+/circuits/              @Signor1 @JoshdfG @sogobanwo
+/contracts/             @Signor1 @JoshdfG @sogobanwo
+/services/prover/       @Signor1 @JoshdfG @sogobanwo
+/proto/                 @Signor1 @JoshdfG @sogobanwo
 
 # Backend orchestration and the sandbox.
-/services/orchestrator/ @Signor1
-/services/sandbox/      @Signor1
+/services/orchestrator/ @Signor1 @JoshdfG @sogobanwo
+/services/sandbox/      @Signor1 @JoshdfG @sogobanwo
 
 # Web, oracle, SDK, and shared packages.
-/apps/                  @Signor1
-/services/oracle/       @Signor1
-/packages/              @Signor1
+/apps/                  @Signor1 @JoshdfG @sogobanwo
+/services/oracle/       @Signor1 @JoshdfG @sogobanwo
+/packages/              @Signor1 @JoshdfG @sogobanwo
