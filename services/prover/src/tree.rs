@@ -37,7 +37,7 @@
 //   num-bigint = "0.4"
 
 use ark_bn254::Fr;
-use ark_ff::{BigInteger, Field, PrimeField, Zero};
+use ark_ff::{BigInteger, PrimeField, Zero};
 use std::sync::LazyLock;
 
 // ---------------------------------------------------------------------------
