@@ -3,6 +3,7 @@
 // native on-chain Poseidon2 inclusion check. Do not swap the hash here.
 
 use poseidon::poseidon2::Poseidon2;
+mod parity_tests;
 
 // hash2 hashes exactly two field elements with Poseidon2.
 // Used to combine two child node hashes into a parent hash.
