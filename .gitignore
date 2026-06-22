@@ -9,6 +9,7 @@ out/
 .next/
 .turbo/
 target/
+**/test_snapshots/
 *.wasm
 *.tsbuildinfo
 next-env.d.ts

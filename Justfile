@@ -3,6 +3,12 @@
 
 set shell := ["bash", "-uc"]
 
+fmt-check:
+  cargo fmt --all --check
+
+fix:
+  cargo fmt --all
+
 # List available recipes.
 default:
     @just --list
