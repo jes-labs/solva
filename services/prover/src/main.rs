@@ -7,6 +7,7 @@
 mod proving;
 mod service;
 mod tree;
+mod tree_parity_tests;
 
 use std::net::SocketAddr;
 
