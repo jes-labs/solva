@@ -635,4 +635,3 @@ static RC: LazyLock<[[Fr; 4]; 64]> = LazyLock::new(|| {
         ],
     ]
 });
-
