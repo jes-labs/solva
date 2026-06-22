@@ -6,9 +6,11 @@ import { compileMDX } from "next-mdx-remote/rsc";
 import { Reveal } from "@/components/motion";
 import { AuthorAvatar } from "@/components/blog/author-avatar";
 import { PostCard } from "@/components/blog/post-card";
+import { ShareButtons } from "@/components/blog/share-buttons";
 import { mdxComponents } from "@/components/blog/mdx";
 import { formatPostDate } from "@/lib/blog/format";
 import { getPost, getPostSlugs, getRelatedPosts } from "@/lib/blog/posts";
+import { siteUrl } from "@/lib/site";
 import { slugify } from "@/lib/slug";
 
 const sectionX = "mx-auto max-w-site px-7";
@@ -123,18 +125,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <div>{rendered}</div>
 
           {/* Share */}
-          <div className="mt-10 flex items-center gap-3 border-t border-hair pt-7">
-            <span className="font-mono text-xs text-sec">Share</span>
-            {["in", "𝕏", "↗"].map((mark) => (
-              <span
-                key={mark}
-                className="flex size-[34px] items-center justify-center rounded-lg border border-hair font-mono text-[13px] text-sec"
-                aria-hidden="true"
-              >
-                {mark}
-              </span>
-            ))}
-          </div>
+          <ShareButtons url={`${siteUrl}/blog/${slug}`} title={meta.title} />
         </div>
 
         {/* Table of contents */}
