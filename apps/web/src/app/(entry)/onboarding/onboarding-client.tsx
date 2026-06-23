@@ -26,13 +26,45 @@ export function OnboardingClient() {
 
   const kyb = session?.institution.kybStatus ?? "not_started";
 
+  // Submit locally (mock state), then fire the emails. Best-effort: a mail
+  // hiccup never blocks the flow, and there is no database to write to yet.
+  function handleSubmit(values: KybInput) {
+    submitKyb(values);
+    void fetch("/api/kyb", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "submitted",
+        ...values,
+        institution: INSTITUTION_TYPE_LABELS[values.type],
+      }),
+    }).catch(() => {});
+  }
+
+  function handleApprove() {
+    const institution = session?.institution;
+    approveKyb();
+    if (institution) {
+      void fetch("/api/kyb", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "approved",
+          legalName: institution.legalName,
+          contactName: institution.contactName,
+          contactEmail: institution.contactEmail,
+        }),
+      }).catch(() => {});
+    }
+  }
+
   if (!session || status === "active") return null;
 
   if (kyb === "in_review") {
-    return <PendingReview onApprove={approveKyb} legalName={session.institution.legalName} />;
+    return <PendingReview onApprove={handleApprove} legalName={session.institution.legalName} />;
   }
 
-  return <KybForm onSubmit={submitKyb} rejected={kyb === "rejected"} />;
+  return <KybForm onSubmit={handleSubmit} rejected={kyb === "rejected"} />;
 }
 
 function KybForm({

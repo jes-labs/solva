@@ -50,7 +50,7 @@ export const footerColumns: FooterColumn[] = [
       { label: "Blog", href: routes.blog },
       // Careers has no page yet. It stays a placeholder on purpose.
       { label: "Careers", href: "#" },
-      { label: "Contact", href: routes.demo },
+      { label: "Contact", href: routes.contact },
     ],
   },
 ];

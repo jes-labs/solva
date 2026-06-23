@@ -18,6 +18,7 @@ export const routes = {
   verify: `${appUrl}/verify`,
   inclusion: `${appUrl}/inclusion`,
   demo: "/request-a-demo",
+  contact: "/contact",
   legal: "/legal",
   status: "/status",
   // The whitepaper is hosted externally rather than on a page; links to it open

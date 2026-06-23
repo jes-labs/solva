@@ -3,17 +3,10 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 
-const institutionTypes = ["Bank", "Fintech", "Exchange", "Stablecoin issuer", "Regulator"];
-
-// A loose email check: something, an @, something, a dot, something. Matches the
-// spec's intent without pretending to fully validate an address.
 const emailLooksValid = (value: string) => /.+@.+\..+/.test(value);
 
-const labelClass =
-  "mb-2 block font-mono text-[11px] uppercase tracking-[0.1em] text-sec";
+const labelClass = "mb-2 block font-mono text-[11px] uppercase tracking-[0.1em] text-sec";
 
-// Shared input styling. Border turns amber when the field is flagged invalid,
-// otherwise it sits on the hairline and brightens to the accent on focus.
 function inputClass(invalid: boolean) {
   return cn(
     "w-full rounded-[10px] border bg-bg px-3.5 py-[13px] text-[15px] text-fg transition-colors placeholder:text-sec",
@@ -21,14 +14,11 @@ function inputClass(invalid: boolean) {
   );
 }
 
-export function DemoForm() {
+export function ContactForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
-  const [type, setType] = useState("");
+  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  // Validation is silent until the first submit, then tracks live.
   const [attempted, setAttempted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -36,22 +26,23 @@ export function DemoForm() {
 
   const nameInvalid = attempted && name.trim() === "";
   const emailInvalid = attempted && !emailLooksValid(email);
-  const companyInvalid = attempted && company.trim() === "";
-  const hasError = nameInvalid || emailInvalid || companyInvalid;
+  const subjectInvalid = attempted && subject.trim() === "";
+  const messageInvalid = attempted && message.trim() === "";
+  const hasError = nameInvalid || emailInvalid || subjectInvalid || messageInvalid;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setAttempted(true);
-    const ok = name.trim() && emailLooksValid(email) && company.trim();
+    const ok = name.trim() && emailLooksValid(email) && subject.trim() && message.trim();
     if (!ok) return;
 
     setSubmitting(true);
     setSendError(null);
     try {
-      const res = await fetch("/api/demo", {
+      const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, company, role, type, message }),
+        body: JSON.stringify({ name, email, subject, message }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -72,9 +63,7 @@ export function DemoForm() {
   function reset() {
     setName("");
     setEmail("");
-    setCompany("");
-    setRole("");
-    setType("");
+    setSubject("");
     setMessage("");
     setAttempted(false);
     setSubmitted(false);
@@ -94,17 +83,17 @@ export function DemoForm() {
               <path d="M8 15.5l4.5 4.5L22 9" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h2 className="font-display text-[26px] font-semibold tracking-tight">Request received.</h2>
+          <h2 className="font-display text-[26px] font-semibold tracking-tight">Message sent.</h2>
           <p className="mt-2.5 max-w-[360px] text-[15.5px] leading-relaxed text-sec">
-            Thanks{firstName ? `, ${firstName}` : ""}. Our team will reach out within one business
-            day to schedule your walkthrough. We&rsquo;ve sent a confirmation to your inbox.
+            Thanks{firstName ? `, ${firstName}` : ""}. We&rsquo;ll get back to you within one business
+            day. A confirmation is on its way to your inbox.
           </p>
           <button
             type="button"
             onClick={reset}
             className="mt-6 rounded-[10px] border border-hair px-5 py-[11px] text-[14.5px] font-semibold text-fg transition-colors hover:border-hair-strong"
           >
-            Submit another
+            Send another
           </button>
         </div>
       </div>
@@ -115,11 +104,11 @@ export function DemoForm() {
     <form onSubmit={handleSubmit} noValidate className="rounded-panel border border-hair bg-surface p-9">
       <div className="mb-[18px] grid grid-cols-1 gap-[18px] sm:grid-cols-2">
         <div>
-          <label htmlFor="f-name" className={labelClass}>
+          <label htmlFor="c-name" className={labelClass}>
             Name
           </label>
           <input
-            id="f-name"
+            id="c-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Jordan Okafor"
@@ -128,11 +117,11 @@ export function DemoForm() {
           />
         </div>
         <div>
-          <label htmlFor="f-email" className={labelClass}>
+          <label htmlFor="c-email" className={labelClass}>
             Work email
           </label>
           <input
-            id="f-email"
+            id="c-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -143,76 +132,38 @@ export function DemoForm() {
         </div>
       </div>
 
-      <div className="mb-[18px] grid grid-cols-1 gap-[18px] sm:grid-cols-2">
-        <div>
-          <label htmlFor="f-company" className={labelClass}>
-            Company
-          </label>
-          <input
-            id="f-company"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            placeholder="Meridian Bank"
-            aria-invalid={companyInvalid}
-            className={inputClass(companyInvalid)}
-          />
-        </div>
-        <div>
-          <label htmlFor="f-role" className={labelClass}>
-            Role
-          </label>
-          <input
-            id="f-role"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder="Head of Risk"
-            className={inputClass(false)}
-          />
-        </div>
-      </div>
-
       <div className="mb-[18px]">
-        <span className={labelClass}>Institution type</span>
-        <div className="flex flex-wrap gap-2">
-          {institutionTypes.map((option) => {
-            const selected = type === option;
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setType(selected ? "" : option)}
-                aria-pressed={selected}
-                className={cn(
-                  "rounded-pill border px-3.5 py-[9px] text-[13.5px] font-medium transition-colors",
-                  selected
-                    ? "border-acc bg-acc text-on-acc"
-                    : "border-hair bg-surface text-sec hover:border-hair-strong hover:text-fg",
-                )}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
+        <label htmlFor="c-subject" className={labelClass}>
+          Subject
+        </label>
+        <input
+          id="c-subject"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Partnership, press, or a question"
+          aria-invalid={subjectInvalid}
+          className={inputClass(subjectInvalid)}
+        />
       </div>
 
       <div className="mb-[22px]">
-        <label htmlFor="f-message" className={labelClass}>
-          Anything we should know?
+        <label htmlFor="c-message" className={labelClass}>
+          Message
         </label>
         <textarea
-          id="f-message"
-          rows={4}
+          id="c-message"
+          rows={5}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="What are you hoping to prove, and to whom?"
-          className={cn(inputClass(false), "resize-y")}
+          placeholder="How can we help?"
+          aria-invalid={messageInvalid}
+          className={cn(inputClass(messageInvalid), "resize-y")}
         />
       </div>
 
       {hasError && (
         <p className="mb-3.5 font-mono text-[13.5px] text-amber" role="alert">
-          Please add your name, a work email, and your company.
+          Please add your name, a valid email, a subject, and a message.
         </p>
       )}
       {sendError && (
@@ -226,10 +177,10 @@ export function DemoForm() {
         disabled={submitting}
         className="w-full rounded-[11px] bg-acc py-[15px] text-[15.5px] font-semibold text-on-acc transition hover:-translate-y-px hover:shadow-cta disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
       >
-        {submitting ? "Sending…" : "Request a demo"}
+        {submitting ? "Sending…" : "Send message"}
       </button>
       <p className="mt-3.5 text-center text-[12.5px] leading-snug text-sec">
-        We&rsquo;ll only use your details to arrange the demo. No customer data is ever requested.
+        We reply to every message from a real inbox at support@joinsolva.xyz.
       </p>
     </form>
   );
