@@ -130,6 +130,10 @@ Protocol overview, quickstart, SDK reference, and the sandbox guide live in `app
 
 Work in progress, built for the Stellar Real-World ZK hackathon and the SDF grant track. The target chain is Stellar Testnet for the MVP and Mainnet for production. Open work is tracked in the repository [issues](https://github.com/jes-labs/solva/issues).
 
+## Contact
+
+Questions, partnerships, or press: [support@joinsolva.xyz](mailto:support@joinsolva.xyz).
+
 ## License
 
 Apache-2.0. See [LICENSE](./LICENSE).

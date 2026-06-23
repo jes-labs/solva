@@ -27,7 +27,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.60.0",
-    "recharts": "^2.15.0"
+    "recharts": "^2.15.0",
+    "resend": "^6.14.0"
   },
   "devDependencies": {
     "@solva/config": "workspace:*",

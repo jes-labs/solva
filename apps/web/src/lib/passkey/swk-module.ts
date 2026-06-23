@@ -50,7 +50,7 @@ export class PasskeyModule implements ModuleInterface {
   readonly moduleType = ModuleType.HOT_WALLET;
   readonly productId = PASSKEY_MODULE_ID;
   readonly productName = "Passkey";
-  readonly productUrl = "https://solva.example";
+  readonly productUrl = "https://app.joinsolva.xyz";
   readonly productIcon = PASSKEY_ICON;
 
   constructor(private readonly config: PasskeyModuleConfig) {}
