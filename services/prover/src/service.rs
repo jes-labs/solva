@@ -1,28 +1,37 @@
-// gRPC service implementation.
-//
-// Wires the generated Prover trait to the tree builder and the UltraHonk prover.
-// The witness holds secret balances, so this layer zeroizes its copy as soon as
-// proving returns, matching the security requirement that witness data never
-// lingers after the proof.
+//! gRPC service wiring for the Solva prover.
+//!
+//! `Prove` RPC:
+//!   1. Deserialise + validate the request.
+//!   2. Build the Merkle-sum tree.
+//!   3. Assemble the ACIR witness.
+//!   4. Generate the UltraHonk proof (locally verified inside `prove`).
+//!   5. Zeroize private balances.
+//!   6. Return `{ proof, public_inputs, serialized_tree }`.
 
+use crate::pb::prover_server::Prover;
+use crate::pb::{self, ProveRequest, ProveResponse};
+use crate::proving::{self, CircuitArtifacts, ProvingError};
+use crate::tree::MerkleSumTree;
+use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use zeroize::Zeroize;
 
-use crate::proving::{self, Witness};
-use crate::tree::MerkleSumTree;
-
-// Generated server stubs from proto/prover.proto. The package is
-// solva.prover.v1, so tonic emits this module path.
-pub mod pb {
-    tonic::include_proto!("solva.prover.v1");
+/// Tonic service.  `artifacts` is loaded once at startup and shared across
+/// all concurrent RPC calls behind an `Arc`.
+pub struct ProverService {
+    artifacts: Arc<CircuitArtifacts>,
 }
 
-use pb::prover_server::Prover;
-use pb::{ProveRequest, ProveResponse, PublicInputs};
-
-// Stateless prover handler. Horizontal scaling just runs more of these.
-#[derive(Default)]
-pub struct ProverService;
+impl ProverService {
+    /// Load circuit artifacts and construct the service.  Call once from
+    /// `main` before passing to `ProverServer::new`.
+    pub fn new(artifacts_dir: impl AsRef<std::path::Path>) -> eyre::Result<Self> {
+        let artifacts = CircuitArtifacts::load(artifacts_dir)?;
+        Ok(Self {
+            artifacts: Arc::new(artifacts),
+        })
+    }
+}
 
 #[tonic::async_trait]
 impl Prover for ProverService {
@@ -30,72 +39,118 @@ impl Prover for ProverService {
         &self,
         request: Request<ProveRequest>,
     ) -> Result<Response<ProveResponse>, Status> {
-        // The request fields are read once witness assembly lands (issue #9).
-        let _req = request.into_inner();
+        let req = request.into_inner();
 
-        // TODO(proving): parse decimal-string balances into u128 minor units and
-        // build the leaf nodes with the circuit's Poseidon2 leaf hashing. The
-        // tree and witness assembly are stubbed until the backend lands, so we
-        // build empty placeholders to exercise the zeroize path and the wiring.
-        let reserves: Vec<u128> = Vec::new();
-        let liabilities: Vec<u128> = Vec::new();
-        let prev_reserves: u128 = 0;
+        if req.reserves.len() != req.liabilities.len() {
+            return Err(Status::invalid_argument(
+                "reserves and liabilities must have equal length",
+            ));
+        }
+        if req.reserves.is_empty() {
+            return Err(Status::invalid_argument("at least one account is required"));
+        }
 
-        let tree = MerkleSumTree::build(placeholder_leaves());
+        let reserves: Vec<u128> = req
+            .reserves
+            .iter()
+            .map(|r| {
+                r.balance
+                    .parse::<u128>()
+                    .map_err(|e| Status::invalid_argument(format!("bad reserve balance: {e}")))
+            })
+            .collect::<Result<_, _>>()?;
 
-        let mut witness: Witness =
-            proving::assemble_witness(&reserves, &liabilities, prev_reserves, &tree);
+        let liabilities: Vec<u128> = req
+            .liabilities
+            .iter()
+            .map(|l| {
+                l.balance
+                    .parse::<u128>()
+                    .map_err(|e| Status::invalid_argument(format!("bad liability balance: {e}")))
+            })
+            .collect::<Result<_, _>>()?;
 
-        let prove_result = proving::prove(&witness);
+        let prev_reserves: u128 = req
+            .prev_reserves
+            .parse()
+            .map_err(|e| Status::invalid_argument(format!("bad prev_reserves: {e}")))?;
 
-        // Zeroize the secret witness copy before doing anything else, success or
-        // failure. After this point the balances are gone from this stack frame.
-        zeroize_witness(&mut witness);
+        use crate::tree::{fr_to_bytes, poseidon2_hash_two, Node};
+        use ark_bn254::Fr;
+        use ark_ff::Zero;
 
-        let bundle = prove_result.map_err(|e| Status::internal(e.to_string()))?;
+        let leaves: Vec<Node> = reserves
+            .iter()
+            .zip(liabilities.iter())
+            .map(|(&_r, &l)| {
+                // leaf hash = poseidon2(balance_as_field, 0)
+                let balance_bytes = fr_to_bytes(Fr::from(l));
+                Node {
+                    hash: poseidon2_hash_two(balance_bytes, fr_to_bytes(Fr::zero())),
+                    sum: l,
+                }
+            })
+            .collect();
 
-        let public_inputs = PublicInputs {
-            reserves_total: bundle.reserves_total.to_string(),
-            liabilities_total: bundle.liabilities_total.to_string(),
-            root_hash: encode_hex(&bundle.root_hash),
-            prev_reserves: bundle.prev_reserves.to_string(),
-        };
+        let tree = MerkleSumTree::build(leaves);
 
-        // TODO(proving): serialize the real tree to JSON for the audit log and
-        // inclusion paths once leaf hashing is wired.
-        let serialized_tree = Vec::new();
+        let serialized_tree = serde_json::to_vec(&reserves)
+            .map_err(|e| Status::internal(format!("tree serialize: {e}")))?;
+
+        let mut witness = proving::assemble_witness(&reserves, &liabilities, prev_reserves, &tree)
+            .map_err(proving_error_to_status)?;
+
+        let bundle_result =
+            proving::prove(&witness, &self.artifacts).map_err(proving_error_to_status);
+        witness.private_balances.zeroize();
+        let bundle = bundle_result?;
+
+        let root = tree.root();
+        let root_hex = hex::encode(root.hash);
 
         Ok(Response::new(ProveResponse {
             proof: bundle.proof,
-            public_inputs: Some(public_inputs),
+            public_inputs: Some(pb::PublicInputs {
+                reserves_total: bundle.reserves_total.to_string(),
+                liabilities_total: bundle.liabilities_total.to_string(),
+                root_hash: root_hex,
+                prev_reserves: bundle.prev_reserves.to_string(),
+            }),
             serialized_tree,
         }))
     }
 }
 
-// Placeholder leaf set so the tree wiring compiles before real hashing lands.
-fn placeholder_leaves() -> Vec<crate::tree::Node> {
-    vec![crate::tree::Node {
-        hash: [0u8; 32],
-        sum: 0,
-    }]
-}
-
-// Zeroes the secret fields of the witness. Vec<u128> and the scalar fields all
-// implement Zeroize, so this clears the heap and stack copies.
-fn zeroize_witness(witness: &mut Witness) {
-    witness.private_balances.zeroize();
-    witness.reserves_total.zeroize();
-    witness.liabilities_total.zeroize();
-    witness.root_hash.zeroize();
-    witness.prev_reserves.zeroize();
-}
-
-// Small local hex helper for the root hash so we avoid pulling another crate.
-fn encode_hex(bytes: &[u8; 32]) -> String {
-    let mut s = String::with_capacity(64);
-    for b in bytes {
-        s.push_str(&format!("{b:02x}"));
+fn proving_error_to_status(e: ProvingError) -> Status {
+    match &e {
+        ProvingError::WitnessAssembly(_) => Status::invalid_argument(e.to_string()),
+        ProvingError::ProofGeneration(_) => Status::internal(e.to_string()),
     }
-    s
 }
+
+// // Placeholder leaf set so the tree wiring compiles before real hashing lands.
+// fn placeholder_leaves() -> Vec<crate::tree::Node> {
+//     vec![crate::tree::Node {
+//         hash: [0u8; 32],
+//         sum: 0,
+//     }]
+// }
+//
+// // Zeroes the secret fields of the witness. Vec<u128> and the scalar fields all
+// // implement Zeroize, so this clears the heap and stack copies.
+// fn zeroize_witness(witness: &mut Witness) {
+//     witness.private_balances.zeroize();
+//     witness.reserves_total.zeroize();
+//     witness.liabilities_total.zeroize();
+//     witness.root_hash.zeroize();
+//     witness.prev_reserves.zeroize();
+// }
+//
+// // Small local hex helper for the root hash so we avoid pulling another crate.
+// fn encode_hex(bytes: &[u8; 32]) -> String {
+//     let mut s = String::with_capacity(64);
+//     for b in bytes {
+//         s.push_str(&format!("{b:02x}"));
+//     }
+//     s
+// }
