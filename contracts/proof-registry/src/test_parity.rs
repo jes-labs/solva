@@ -15,7 +15,7 @@ use std::string::ToString;
 //
 // Run: cargo test -p proof-registry poseidon2_parity
 use soroban_poseidon::Poseidon2Sponge;
-use soroban_sdk::crypto::bn254::Fr as Bn254Fr;
+use soroban_sdk::crypto::bn254::Bn254Fr;
 use soroban_sdk::{BytesN, Env, U256};
 
 // Read expected values from the committed JSON vector file at compile time.
