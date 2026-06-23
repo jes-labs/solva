@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Reveal, Counter } from "@/components/motion";
 import { Button, Card, Eyebrow } from "@/components/ui";
-import { AuthorAvatar } from "@/components/blog/author-avatar";
 import { routes } from "@/lib/routes";
 
 export const metadata: Metadata = {
@@ -41,9 +41,9 @@ const values = [
 ];
 
 const team = [
-  { name: "Josh", role: "Co-founder · ZK & protocol engineer" },
-  { name: "Sogo", role: "Co-founder · ZK & software engineer" },
-  { name: "Emmanuel", role: "Co-founder · Researcher & software engineer" },
+  { name: "Josh", role: "Co-founder · ZK & protocol engineer", image: "/team/josh.png" },
+  { name: "Sogo", role: "Co-founder · ZK & software engineer", image: "/team/sogo.jpeg" },
+  { name: "Emmanuel", role: "Co-founder · Researcher & software engineer", image: "/team/emmanuel.jpg" },
 ];
 
 const backers = ["Ledger Ventures", "Aperture", "Northgate", "Stellar Foundation", "Kestrel"];
@@ -140,7 +140,15 @@ export default function AboutPage() {
           {team.map((member) => (
             <Reveal key={member.name}>
               <Card className="h-full p-6">
-                <AuthorAvatar name={member.name} size={54} className="mb-4" />
+                <div className="mb-4 size-[54px] overflow-hidden rounded-full border border-hair">
+                  <Image
+                    src={member.image}
+                    alt={member.name}
+                    width={54}
+                    height={54}
+                    className="size-full object-cover"
+                  />
+                </div>
                 <h3 className="font-display text-[17px] font-semibold">{member.name}</h3>
                 <p className="mt-[3px] text-[13.5px] text-sec">{member.role}</p>
               </Card>
@@ -192,7 +200,7 @@ export default function AboutPage() {
                   love regulated finance.
                 </p>
                 <div className="mt-6">
-                  <Button href="mailto:hello@solva.example?subject=Open%20roles">
+                  <Button href="mailto:support@joinsolva.xyz?subject=Open%20roles">
                     See open roles
                   </Button>
                 </div>
@@ -207,10 +215,10 @@ export default function AboutPage() {
                 Press, partnerships, or just curious.
               </p>
               <a
-                href="mailto:hello@solva.example"
+                href="mailto:support@joinsolva.xyz"
                 className="mt-4 font-mono text-[15px] text-fg transition-colors hover:text-acc-text"
               >
-                hello@solva.example
+                support@joinsolva.xyz
               </a>
               <a
                 href={routes.demo}
