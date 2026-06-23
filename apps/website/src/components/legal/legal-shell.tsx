@@ -92,7 +92,7 @@ const docs: LegalDoc[] = [
       },
       {
         h: "Responsible disclosure",
-        b: "We run a coordinated disclosure program. Report suspected vulnerabilities to security@solva.example; please do not publicly disclose before we have responded.",
+        b: "We run a coordinated disclosure program. Report suspected vulnerabilities to support@joinsolva.xyz; please do not publicly disclose before we have responded.",
       },
       {
         h: "Incident response",
@@ -168,7 +168,7 @@ export function LegalShell() {
         <div className="mt-[34px] rounded-[14px] border border-hair bg-surface p-[22px]">
           <p className="text-sm leading-relaxed text-sec">
             This page is a plain-language template for demonstration. Questions about this policy can
-            go to <span className="font-mono text-fg">legal@solva.example</span>.
+            go to <span className="font-mono text-fg">support@joinsolva.xyz</span>.
           </p>
         </div>
       </article>

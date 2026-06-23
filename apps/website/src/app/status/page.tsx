@@ -120,7 +120,7 @@ export default function StatusPage() {
                 </p>
               </div>
             </div>
-            <Button variant="secondary" size="sm" href="mailto:hello@solva.example?subject=Status%20updates">
+            <Button variant="secondary" size="sm" href="mailto:support@joinsolva.xyz?subject=Status%20updates">
               Subscribe to updates
             </Button>
           </div>
