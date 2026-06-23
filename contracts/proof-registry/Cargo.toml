@@ -7,9 +7,10 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-soroban-sdk      = "25.3"
-soroban-poseidon = "25"
+soroban-sdk      = { version = "26", features = ["alloc"] }
+soroban-poseidon = "26"
+ultrahonk_soroban_verifier = { path = "../../crates/ultrahonk-soroban-verifier", default-features = false }
 
 [dev-dependencies]
-soroban-sdk      = { version = "25.3", features = ["testutils"] }
-soroban-poseidon = { version = "25",   features = ["testutils"] }
+soroban-sdk      = { version = "26", features = ["testutils", "alloc"] }
+soroban-poseidon = { version = "26", features = ["testutils"] }

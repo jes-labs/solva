@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "contracts/proof-registry",
+    "crates/ultrahonk-soroban-verifier",
     "services/prover",
 ]
 

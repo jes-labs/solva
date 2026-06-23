@@ -25,11 +25,36 @@ place as the proof it checks.
 - Instance: `owner`, `vk`, `latest_id`.
 - Persistent: `proofs: Map<u64, ProofMeta>` where `ProofMeta = { root_h, R, L, timestamp }`.
 
+## Verifier
+
+`verify_ultrahonk` runs the real UltraHonk over BN254 verifier, vendored into
+`crates/ultrahonk-soroban-verifier` from `yugocabrio/rs-soroban-ultrahonk` at
+commit `661db07200f890b1bd9a7349ed787c70a706dd12` (see that crate's `VENDORED.md`
+for provenance). `publish_proof` rebuilds the circuit's public inputs from
+`PubInputs` as four 32-byte big-endian field elements in the order
+`R, root_h, L, R_prev` (the layout `circuits/solvency` declares), then verifies
+the proof against the stored key. Proofs and the key must use the keccak
+transcript; see `circuits/README.md`.
+
+### Testnet record
+
+Deployed to Testnet (protocol 27) with the solvency verifying key and exercised
+with the sample proof from `circuits/solvency`:
+
+- Contract id: `CD42FXVTO3GHVYYLKRPNLAAFRBOZGHG7Z22VBCVLGD7SBK2XA6TMGJ27`
+  ([explorer](https://stellar.expert/explorer/testnet/contract/CD42FXVTO3GHVYYLKRPNLAAFRBOZGHG7Z22VBCVLGD7SBK2XA6TMGJ27)).
+- A genuine proof published successfully, returning id 1 and emitting
+  `proof_published_event`
+  ([tx](https://stellar.expert/explorer/testnet/tx/cf02542ff27eae59e377a74774a464f46600fad564e6612ab8a4a942870547e0)).
+  A proof with one flipped byte is rejected with error 3 (`ProofInvalid`),
+  covered by the contract tests.
+- `publish_proof` fee: 244729 stroops (0.0244729 XLM), in line with the
+  ~0.0123 XLM bare-verification cost from the reference Testnet validation plus
+  the registry's persistent write, event, and bound re-check.
+
 ## Hardening note
 
-The base reference verifier is not audited, and this contract is not audited
-yet. Before mainnet, run the OpenZeppelin Soroban security detectors over
-`proof-registry` and apply the audited OpenZeppelin contract patterns. The
-`verify_ultrahonk`, `poseidon2_leaf`, and `poseidon2_node` functions are marked
-stubs that must be replaced with the native BN254 and Poseidon2 host functions
-before any deployment.
+This contract is not audited yet, and the vendored verifier crate is not
+audited. Before mainnet, run the OpenZeppelin Soroban security detectors over
+`proof-registry` and the verifier crate, and apply the audited OpenZeppelin
+contract patterns.
