@@ -195,4 +195,3 @@ impl Neg for &Fr {
         Fr::zero(self.0.env()) - self
     }
 }
-

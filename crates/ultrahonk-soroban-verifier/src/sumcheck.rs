@@ -215,4 +215,3 @@ pub fn verify_sumcheck(
         Err("sumcheck final mismatch")
     }
 }
-

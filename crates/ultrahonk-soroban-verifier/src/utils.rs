@@ -243,4 +243,3 @@ pub fn load_vk_from_bytes(env: &Env, bytes: &Bytes) -> Result<VerificationKey, V
         lagrange_last: pts[26].clone(),
     })
 }
-

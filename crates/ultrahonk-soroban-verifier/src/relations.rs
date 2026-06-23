@@ -483,4 +483,3 @@ pub fn accumulate_relation_evaluations(
 
     scale_and_batch_subrelations(&evaluations, alphas)
 }
-

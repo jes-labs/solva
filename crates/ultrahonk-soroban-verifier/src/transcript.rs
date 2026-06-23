@@ -468,4 +468,3 @@ pub fn generate_transcript(
         shplonk_z,
     })
 }
-
