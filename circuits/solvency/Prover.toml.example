@@ -1,0 +1,23 @@
+# Sample witness for the solvency circuit (PRD 2, section 5.2).
+# Matches the in-circuit `test_solvent_passes` vector: a complete N=8 Merkle
+# Sum Tree of customers, R = 400 reserves covering L = 360 liabilities, with
+# R_prev = 400 so the fraud bound holds. root_h is the Poseidon2 sum-tree root
+# Noir computes for these leaves. Public inputs are R, root_h, L, R_prev.
+
+# Public inputs (declared order in main: R, root_h, L, R_prev).
+R = "400"
+root_h = "0x1a3ca29c3724320ab2fe855f698969f7c9e18486ad39434345a05c0cf716db1d"
+L = "360"
+R_prev = "400"
+
+# Private witness.
+leaf_ids = ["1", "2", "3", "4", "5", "6", "7", "8"]
+leaf_balances = ["10", "20", "30", "40", "50", "60", "70", "80"]
+reserves = ["200", "200", "0", "0"]
+
+# Sibling paths are unused for a complete tree (the root is recomputed from all
+# leaves), but the declared interface input still needs a value: 8 leaves x DEPTH 3.
+merkle_paths = [
+  ["0", "0", "0"], ["0", "0", "0"], ["0", "0", "0"], ["0", "0", "0"],
+  ["0", "0", "0"], ["0", "0", "0"], ["0", "0", "0"], ["0", "0", "0"],
+]
