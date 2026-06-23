@@ -12,4 +12,5 @@ sql:
         emit_interface: true
         emit_empty_slices: true
         # Generated files land beside the hand-written pool code in
-        # internal/repo. Do not commit them; regenerate with `just sqlc`.
+        # internal/repo. They are committed so builds and CI need no codegen
+        # step; regenerate with `just sqlc` after changing query/ or migrations/.
