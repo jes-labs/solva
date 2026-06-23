@@ -1,0 +1,14 @@
+[package]
+name = "ultrahonk_soroban_verifier"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "UltraHonk (BN254) proof verifier for Soroban. Vendored from yugocabrio/rs-soroban-ultrahonk."
+
+[dependencies]
+soroban-sdk = { version = "26", default-features = false }
+
+[features]
+default = []
+std = []
+trace = []
