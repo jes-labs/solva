@@ -7,8 +7,9 @@
 // check. No cross-contract calls.
 
 use soroban_poseidon::Poseidon2Sponge;
-use soroban_sdk::crypto::bn254::Fr as Bn254Fr;
+use soroban_sdk::crypto::bn254::Bn254Fr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Map, Vec, U256};
+use ultrahonk_soroban_verifier::{UltraHonkVerifier, PROOF_BYTES};
 
 use crate::storage::{DataKey, Error, PathNode, ProofMeta, ProofPublishedEvent, PubInputs};
 
@@ -175,11 +176,48 @@ fn poseidon2_node(env: &Env, left_hash: &BytesN<32>, right_hash: &BytesN<32>) ->
     u256_to_bytes32(env, sponge.compute_hash(&inputs))
 }
 
-// STUB. UltraHonk/BN254 proof verification.
-// Returns true unconditionally so registry storage and auth can be tested.
-// Must be replaced with the real verifier before deployment.
-fn verify_ultrahonk(_env: &Env, _vk: &Bytes, _proof: &Bytes, _pub_inputs: &PubInputs) -> bool {
-    true
+// UltraHonk/BN254 proof verification against the stored verifying key.
+//
+// Runs the vendored `ultrahonk_soroban_verifier` (forked from
+// yugocabrio/rs-soroban-ultrahonk), which calls the native BN254 host functions.
+// The proof is the keccak-transcript UltraHonk proof bytes; the public inputs
+// are rebuilt from `pub_inputs` into the exact field layout the circuit
+// declares. Returns true only when the proof verifies.
+fn verify_ultrahonk(env: &Env, vk: &Bytes, proof: &Bytes, pub_inputs: &PubInputs) -> bool {
+    // The verifier expects a fixed-size proof; reject anything else up front so
+    // a malformed length cannot reach the parser.
+    if proof.len() as usize != PROOF_BYTES {
+        return false;
+    }
+    let verifier = match UltraHonkVerifier::new(env, vk) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    let public_inputs = encode_public_inputs(env, pub_inputs);
+    verifier.verify(env, proof, &public_inputs).is_ok()
+}
+
+// Serialize the public inputs into the byte layout the solvency circuit
+// declares: four 32-byte big-endian BN254 field elements in the order
+// `R, root_h, L, R_prev`. This MUST match the order in circuits/solvency and
+// the `public_inputs` file barretenberg emits, or verification fails. The u128
+// aggregates are left-padded into the low 16 bytes of each 32-byte word.
+fn encode_public_inputs(env: &Env, pi: &PubInputs) -> Bytes {
+    let mut out = Bytes::new(env);
+    append_u128_field(&mut out, pi.reserves_total); // R
+    out.append(&Bytes::from_array(env, &pi.root_hash.to_array())); // root_h
+    append_u128_field(&mut out, pi.liabilities_total); // L
+    append_u128_field(&mut out, pi.prev_reserves); // R_prev
+    out
+}
+
+// Append a u128 as a 32-byte big-endian field element (16 zero bytes, then the
+// 16-byte big-endian value).
+fn append_u128_field(out: &mut Bytes, value: u128) {
+    let mut word = [0u8; 32];
+    word[16..].copy_from_slice(&value.to_be_bytes());
+    let env = out.env();
+    out.append(&Bytes::from_array(env, &word));
 }
 
 #[cfg(test)]

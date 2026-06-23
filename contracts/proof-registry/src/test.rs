@@ -10,7 +10,7 @@ extern crate std;
 use std::format;
 
 use soroban_poseidon::Poseidon2Sponge;
-use soroban_sdk::crypto::bn254::Fr as Bn254Fr;
+use soroban_sdk::crypto::bn254::Bn254Fr;
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, Bytes, BytesN, Env, U256,
@@ -18,68 +18,106 @@ use soroban_sdk::{
 
 use crate::{Error, ProofRegistry, ProofRegistryClient, PubInputs};
 
+// Verifying key and proof for the solvency circuit's solvent sample vector,
+// generated with the pinned tooling (see circuits/README.md).
+static SOLVENCY_VK: &[u8] = include_bytes!("testdata/solvency_vk.bin");
+static SOLVENCY_PROOF: &[u8] = include_bytes!("testdata/solvency_proof.bin");
+
+// Poseidon2 sum-tree root for the sample leaves (ids 1..8, balances 10..80).
+// This is the `root_h` public input the proof commits to.
+const SAMPLE_ROOT_H: [u8; 32] = [
+    0x1a, 0x3c, 0xa2, 0x9c, 0x37, 0x24, 0x32, 0x0a, 0xb2, 0xfe, 0x85, 0x5f, 0x69, 0x89, 0x69, 0xf7,
+    0xc9, 0xe1, 0x84, 0x86, 0xad, 0x39, 0x43, 0x43, 0x45, 0xa0, 0x5c, 0x0c, 0xf7, 0x16, 0xdb, 0x1d,
+];
+
+// Deploys the contract with the real solvency verifying key.
 fn setup() -> (Env, ProofRegistryClient<'static>, Address) {
     let env = Env::default();
     let owner = Address::generate(&env);
-    let vk = Bytes::from_array(&env, &[0u8; 32]);
+    let vk = Bytes::from_slice(&env, SOLVENCY_VK);
     let contract_id = env.register(ProofRegistry, (owner.clone(), vk));
     let client = ProofRegistryClient::new(&env, &contract_id);
     (env, client, owner)
 }
 
-fn sample_inputs(env: &Env, r: u128, l: u128) -> PubInputs {
+// The public inputs the sample proof commits to. The circuit binds these, so
+// they are the only values the proof verifies against (R = 400, L = 360,
+// R_prev = 400).
+fn solvent_inputs(env: &Env) -> PubInputs {
     PubInputs {
-        reserves_total: r,
-        liabilities_total: l,
-        root_hash: BytesN::from_array(env, &[7u8; 32]),
-        prev_reserves: 0,
+        reserves_total: 400,
+        liabilities_total: 360,
+        root_hash: BytesN::from_array(env, &SAMPLE_ROOT_H),
+        prev_reserves: 400,
     }
 }
 
 // Section 1: registry behavior
 
 #[test]
-fn publish_then_read_round_trip() {
+fn real_proof_verifies_and_is_recorded() {
     let (env, client, _owner) = setup();
     env.mock_all_auths();
     env.ledger().set_timestamp(1000);
 
-    let proof = Bytes::from_array(&env, &[1u8; 16]);
-    let inputs = sample_inputs(&env, 500, 300);
+    let proof = Bytes::from_slice(&env, SOLVENCY_PROOF);
+    let inputs = solvent_inputs(&env);
 
+    // A genuine proof against the stored vk verifies and is recorded.
     let id = client.publish_proof(&proof, &inputs);
     assert_eq!(id, 1);
 
     let meta = client.get_proof(&id);
-    assert_eq!(meta.r, 500);
-    assert_eq!(meta.l, 300);
+    assert_eq!(meta.r, 400);
+    assert_eq!(meta.l, 360);
     assert_eq!(meta.timestamp, 1000);
+    assert_eq!(meta.root_h, BytesN::from_array(&env, &SAMPLE_ROOT_H));
 
-    let latest = client.get_latest_proof();
-    assert_eq!(latest.r, 500);
+    assert_eq!(client.get_latest_proof().r, 400);
 
-    let id2 = client.publish_proof(&proof, &sample_inputs(&env, 900, 100));
+    // Publishing the same valid proof again bumps the monotonic id.
+    let id2 = client.publish_proof(&proof, &inputs);
     assert_eq!(id2, 2);
-    assert_eq!(client.get_latest_proof().r, 900);
+}
+
+#[test]
+fn tampered_proof_is_rejected() {
+    let (env, client, _owner) = setup();
+    env.mock_all_auths();
+
+    // Flip one byte of an otherwise valid proof. Verification must fail.
+    let mut proof = Bytes::from_slice(&env, SOLVENCY_PROOF);
+    proof.set(100, proof.get(100).unwrap() ^ 0x01);
+    let inputs = solvent_inputs(&env);
+
+    let result = client.try_publish_proof(&proof, &inputs);
+    assert_eq!(result, Err(Ok(Error::ProofInvalid)));
+}
+
+#[test]
+fn mismatched_public_inputs_are_rejected() {
+    let (env, client, _owner) = setup();
+    env.mock_all_auths();
+
+    // The proof is intact, but the public inputs do not match what it commits
+    // to (L is off by one). The proof is bound to its public inputs, so this
+    // must fail verification rather than record a false statement.
+    let proof = Bytes::from_slice(&env, SOLVENCY_PROOF);
+    let mut inputs = solvent_inputs(&env);
+    inputs.liabilities_total = 361;
+
+    let result = client.try_publish_proof(&proof, &inputs);
+    assert_eq!(result, Err(Ok(Error::ProofInvalid)));
 }
 
 #[test]
 fn publish_requires_owner_auth() {
     let (env, client, _owner) = setup();
-    let proof = Bytes::from_array(&env, &[1u8; 16]);
-    let inputs = sample_inputs(&env, 500, 300);
+    // No mocked auths: require_auth runs before verification and must reject.
+    let proof = Bytes::from_slice(&env, SOLVENCY_PROOF);
+    let inputs = solvent_inputs(&env);
     let result = client.try_publish_proof(&proof, &inputs);
     assert!(result.is_err());
-}
-
-#[test]
-fn insolvent_bound_is_rejected() {
-    let (env, client, _owner) = setup();
-    env.mock_all_auths();
-    let proof = Bytes::from_array(&env, &[1u8; 16]);
-    let inputs = sample_inputs(&env, 100, 500);
-    let result = client.try_publish_proof(&proof, &inputs);
-    assert_eq!(result, Err(Ok(Error::InsolventBound)));
 }
 
 // Section 2: Poseidon2 parity tests
