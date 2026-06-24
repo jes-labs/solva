@@ -2,10 +2,13 @@
 resolver = "2"
 members = [
     "contracts/proof-registry",
-    "crates/ultrahonk-soroban-verifier",
     "services/prover",
 ]
 
+# primeorder 0.14.0-rc.13 (published on crates.io) imports Double from
+# elliptic_curve::point, but elliptic-curve 0.14.0-rc.36 moved it to
+# elliptic_curve::ops. The local patch fixes the three broken import lines.
+# Remove this block once primeorder 0.14.0-rc.14 (or stable 0.14) is published.
 [patch.crates-io]
 primeorder = { path = "patches/primeorder" }
 
