@@ -3,6 +3,20 @@
 // Each node carries a hash and a running sum of the balances beneath it. The
 // root commits to both the set of leaves and the total liability L, so the
 // circuit can prove L without revealing any single balance.
+//
+// Hashing
+// poseidon2_hash_two(a, b) matches Poseidon2::hash([a, b], 2) in the Noir
+// stdlib (circuits/lib/src/lib.nr hash2 / hash_leaf). The sponge uses:
+//   state = [a, b, 0, IV]  where IV = 2 * 2^64 (two-input domain separator)
+//   t=4, R_F=8, R_P=56, S-box x^5, Barretenberg round constants
+//   output = state[0] after one permutation
+//
+// hash_pair feeds only the two child hashes -- not the sums -- matching
+// MerkleSumNode::combine in the circuit exactly. Sums ride in Node::sum.
+//
+// Permutation source: noir-lang/noir v1.0.0-beta.9
+//   acvm-repo/bn254_blackbox_solver/src/poseidon2.rs
+// Do not change constants or matrix without updating the Noir circuit.
 use ark_bn254::Fr;
 use ark_ff::{BigInteger, PrimeField, Zero};
 use std::sync::LazyLock;
@@ -17,7 +31,6 @@ pub struct Node {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[allow(dead_code)]
 pub struct PathStep {
     pub sibling: Node,
     pub sibling_is_left: bool,
@@ -29,7 +42,6 @@ pub struct MerkleSumTree {
     levels: Vec<Vec<Node>>,
 }
 
-#[allow(dead_code)]
 impl MerkleSumTree {
     pub fn build(leaves: Vec<Node>) -> Self {
         assert!(!leaves.is_empty(), "tree needs at least one leaf");
@@ -51,6 +63,7 @@ impl MerkleSumTree {
         self.levels.last().unwrap()[0].clone()
     }
 
+    #[allow(dead_code)]
     pub fn inclusion_path(&self, index: usize) -> Vec<PathStep> {
         let leaf_count = self.levels[0].len();
         assert!(index < leaf_count, "leaf index out of range");
@@ -191,7 +204,6 @@ fn fh(hex: &str) -> Fr {
     Fr::from_be_bytes_mod_order(&hex::decode(hex).expect("valid hex constant"))
 }
 
-// ---------------------------------------------------------------------------
 // Internal matrix diagonal
 // Source: noir-lang/noir v1.0.0-beta.9 acvm-repo/bn254_blackbox_solver/src/poseidon2.rs
 static MD: LazyLock<[Fr; 4]> = LazyLock::new(|| {
@@ -203,7 +215,6 @@ static MD: LazyLock<[Fr; 4]> = LazyLock::new(|| {
     ]
 });
 
-// ---------------------------------------------------------------------------
 // Round constants (64 rounds x 4 elements)
 // Source: same file. Partial rounds 4..60 have zeros in positions 1-3.
 static RC: LazyLock<[[Fr; 4]; 64]> = LazyLock::new(|| {
