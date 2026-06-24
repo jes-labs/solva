@@ -225,3 +225,88 @@ func TestFetchSignedNoSources(t *testing.T) {
 		t.Error("expected an error when no sources are configured")
 	}
 }
+
+// Acceptance (#105): with a client id the adapter runs the OAuth handshake and
+// sends the bearer; without one it sends no auth and a token-gated server
+// rejects it.
+func TestFetchSignedAuthenticates(t *testing.T) {
+	s := newTestSigner(t)
+	const clientID = "solva-test"
+	const wantToken = "test-access-token"
+	var sawBearer atomic.Bool
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("client_id") != clientID {
+			http.Error(w, "bad client", http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"code": "auth-code"})
+	})
+	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.Form.Get("code") != "auth-code" {
+			http.Error(w, "bad code", http.StatusBadRequest)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": wantToken, "token_type": "Bearer", "expires_in": 3600,
+		})
+	})
+	mux.HandleFunc("/v1/accounts/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+wantToken {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		sawBearer.Store(true)
+		writeSignedBalance(t, w, s, accountFromPath(r.URL.Path), "1000000")
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	// With a client id: handshake runs, bearer is sent, fetch succeeds.
+	authed := NewAdapter(Config{
+		BaseURL: srv.URL, Accounts: []string{"acct-anchor"}, PubKey: s.pub(),
+		ClientID: clientID, MaxAttempts: 1,
+	})
+	snap, err := authed.FetchSigned(context.Background(), "tenant-1")
+	if err != nil {
+		t.Fatalf("authenticated fetch: %v", err)
+	}
+	if !sawBearer.Load() {
+		t.Error("balance request did not carry the bearer token")
+	}
+	if len(snap.Reserves) != 1 {
+		t.Fatalf("reserves: %+v", snap.Reserves)
+	}
+
+	// Without a client id: no auth header, the gated server rejects it.
+	noAuth := NewAdapter(Config{
+		BaseURL: srv.URL, Accounts: []string{"acct-anchor"}, PubKey: s.pub(),
+		MaxAttempts: 1,
+	})
+	if _, err := noAuth.FetchSigned(context.Background(), "tenant-1"); err == nil {
+		t.Error("expected the unauthenticated fetch to be rejected by the token-gated server")
+	}
+}
+
+// Acceptance (#105): a failed handshake aborts the cycle with a clear error.
+func TestFetchSignedAuthHandshakeFails(t *testing.T) {
+	s := newTestSigner(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "auth down", http.StatusInternalServerError) // authorize never succeeds
+	}))
+	defer srv.Close()
+
+	a := NewAdapter(Config{
+		BaseURL: srv.URL, Accounts: []string{"acct-anchor"}, PubKey: s.pub(),
+		ClientID: "solva-test", MaxAttempts: 1,
+	})
+	_, err := a.FetchSigned(context.Background(), "tenant-1")
+	if err == nil {
+		t.Fatal("expected the handshake failure to abort the cycle")
+	}
+	if !strings.Contains(err.Error(), "authenticate") {
+		t.Errorf("want a clear authenticate error, got %v", err)
+	}
+}
