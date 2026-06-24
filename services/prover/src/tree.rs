@@ -37,6 +37,7 @@ pub struct PathStep {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct MerkleSumTree {
     levels: Vec<Vec<Node>>,
 }
@@ -62,6 +63,7 @@ impl MerkleSumTree {
         self.levels.last().unwrap()[0].clone()
     }
 
+    #[allow(dead_code)]
     pub fn inclusion_path(&self, index: usize) -> Vec<PathStep> {
         let leaf_count = self.levels[0].len();
         assert!(index < leaf_count, "leaf index out of range");
