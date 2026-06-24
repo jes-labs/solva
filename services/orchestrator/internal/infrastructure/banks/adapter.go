@@ -5,16 +5,28 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
 	"github.com/jes-labs/solva/services/orchestrator/internal/usecase"
 )
 
+// Default retry and timeout settings, used when Config leaves them zero.
+const (
+	defaultMaxAttempts = 3
+	defaultBaseBackoff = 200 * time.Millisecond
+	defaultHTTPTimeout = 10 * time.Second
+)
+
 // balanceResponse is the sandbox's signed balance payload. Signature covers the
-// canonical JSON of the embedded balance fields, base64 over DER. The orchestrator
+// canonical JSON of the embedded fields, base64 over DER. The orchestrator
 // verifies it with the configured public key before trusting the figure.
 type balanceResponse struct {
 	SourceID  string `json:"source_id"`
@@ -24,64 +36,172 @@ type balanceResponse struct {
 	Signature string `json:"signature"`
 }
 
-// Adapter fetches signed balances from the sandbox Open Banking API. It maps one
-// tenant to its set of reserve sources. The source listing is a skeleton: a real
-// build loads sources from reserve_sources in Postgres.
-type Adapter struct {
-	baseURL string
-	pubKey  *ecdsa.PublicKey
-	http    *http.Client
+// transientError marks a failure worth retrying: a network error or a 5xx from
+// the source. Permanent failures, above all a bad signature, are returned bare
+// so the retry loop stops at once. We never retry a forged response.
+type transientError struct{ err error }
+
+func (e transientError) Error() string { return e.err.Error() }
+func (e transientError) Unwrap() error { return e.err }
+
+// Config builds an Adapter. PubKey verifies every source's signature; in the
+// sandbox one key signs all accounts. Accounts is the set of reserve sources to
+// read. The retry and timeout fields fall back to sensible defaults when zero.
+type Config struct {
+	BaseURL  string
+	Accounts []string
+	PubKey   *ecdsa.PublicKey
+	// ClientID turns on OAuth. When set, the adapter runs the authorize/token
+	// handshake and sends a bearer token on each request. Left empty it sends
+	// no auth, which keeps unit tests token-free.
+	ClientID    string
+	MaxAttempts int
+	BaseBackoff time.Duration
+	HTTPTimeout time.Duration
 }
 
-// NewAdapter builds the adapter with the sandbox base URL and the public key
-// used to verify responses.
-func NewAdapter(baseURL string, pubKey *ecdsa.PublicKey) *Adapter {
+// Adapter fetches signed balances from the sandbox Open Banking API and verifies
+// each ECDSA signature before the figure is trusted. Resolving a tenant's
+// sources from reserve_sources in Postgres is a later step; for now the source
+// set is configured directly.
+type Adapter struct {
+	baseURL     string
+	accounts    []string
+	pubKey      *ecdsa.PublicKey
+	clientID    string
+	http        *http.Client
+	maxAttempts int
+	baseBackoff time.Duration
+}
+
+// NewAdapter builds the adapter, applying defaults for any unset retry/timeout.
+func NewAdapter(c Config) *Adapter {
+	maxAttempts := c.MaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = defaultMaxAttempts
+	}
+	baseBackoff := c.BaseBackoff
+	if baseBackoff <= 0 {
+		baseBackoff = defaultBaseBackoff
+	}
+	timeout := c.HTTPTimeout
+	if timeout <= 0 {
+		timeout = defaultHTTPTimeout
+	}
 	return &Adapter{
-		baseURL: baseURL,
-		pubKey:  pubKey,
-		http:    &http.Client{Timeout: 10 * time.Second},
+		baseURL:     c.BaseURL,
+		accounts:    c.Accounts,
+		pubKey:      c.PubKey,
+		clientID:    c.ClientID,
+		http:        &http.Client{Timeout: timeout},
+		maxAttempts: maxAttempts,
+		baseBackoff: baseBackoff,
 	}
 }
 
-// FetchSigned gathers the tenant's reserves and verifies each signature. A bad
-// signature fails the whole fetch; a partial, unverified snapshot is never
-// returned.
+// FetchSigned reads every configured source in parallel, verifies each
+// signature, and returns one ReserveSnapshot. The first failure, whether a bad
+// signature or an exhausted retry, cancels the rest and fails the whole fetch:
+// a partial, unverified snapshot is never returned.
 func (a *Adapter) FetchSigned(ctx context.Context, tenantID string) (entity.ReserveSnapshot, error) {
-	// Skeleton: resolve the tenant's accounts from the repo here. For now we
-	// query a single illustrative account so the verify path is exercised.
-	accountID := tenantID
+	if len(a.accounts) == 0 {
+		return entity.ReserveSnapshot{}, errors.New("banks: no reserve sources configured")
+	}
 
-	resp, err := a.fetchBalance(ctx, accountID)
-	if err != nil {
+	// Authenticate once for the whole batch when OAuth is configured. A failed
+	// handshake aborts the cycle before any balance is read.
+	token := ""
+	if a.clientID != "" {
+		t, err := a.fetchToken(ctx)
+		if err != nil {
+			return entity.ReserveSnapshot{}, fmt.Errorf("authenticate: %w", err)
+		}
+		token = t
+	}
+
+	// One slot per source. Each goroutine writes its own index, so no lock is
+	// needed; the indices never alias.
+	reserves := make([]entity.Reserve, len(a.accounts))
+	group, groupCtx := errgroup.WithContext(ctx)
+	for i, account := range a.accounts {
+		group.Go(func() error {
+			resp, err := a.fetchWithRetry(groupCtx, account, token)
+			if err != nil {
+				return fmt.Errorf("source %s: %w", account, err)
+			}
+			reserves[i] = entity.Reserve{
+				SourceID: resp.SourceID,
+				Balance:  resp.Balance,
+				Currency: resp.Currency,
+			}
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
 		return entity.ReserveSnapshot{}, err
 	}
 
-	reserve := entity.Reserve{
-		SourceID: resp.SourceID,
-		Balance:  resp.Balance,
-		Currency: resp.Currency,
-	}
 	return entity.ReserveSnapshot{
 		TenantID:   tenantID,
-		Reserves:   []entity.Reserve{reserve},
+		Reserves:   reserves,
 		CapturedAt: time.Now().UTC(),
 	}, nil
 }
 
-// fetchBalance calls one balance endpoint, then verifies the signature over the
-// canonical payload.
-func (a *Adapter) fetchBalance(ctx context.Context, accountID string) (balanceResponse, error) {
-	url := fmt.Sprintf("%s/v1/accounts/%s/balance", a.baseURL, accountID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+// fetchWithRetry calls one source, retrying transient failures with exponential
+// backoff. Permanent failures return immediately. A cancelled context stops the
+// retries at once.
+func (a *Adapter) fetchWithRetry(ctx context.Context, account, token string) (balanceResponse, error) {
+	backoff := a.baseBackoff
+	var lastErr error
+	for attempt := 1; attempt <= a.maxAttempts; attempt++ {
+		resp, err := a.fetchBalance(ctx, account, token)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+
+		// Only network errors and 5xx are worth another try. Anything else,
+		// especially a failed signature, is final.
+		var transient transientError
+		if !errors.As(err, &transient) {
+			return balanceResponse{}, err
+		}
+		if attempt == a.maxAttempts {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return balanceResponse{}, ctx.Err()
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+	}
+	return balanceResponse{}, fmt.Errorf("after %d attempts: %w", a.maxAttempts, lastErr)
+}
+
+// fetchBalance calls one balance endpoint and verifies the signature over the
+// canonical payload. Network errors and 5xx are wrapped as transient; a bad
+// signature or a 4xx is permanent.
+func (a *Adapter) fetchBalance(ctx context.Context, account, token string) (balanceResponse, error) {
+	endpoint := fmt.Sprintf("%s/v1/accounts/%s/balance", a.baseURL, account)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return balanceResponse{}, fmt.Errorf("build balance request: %w", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	res, err := a.http.Do(req)
 	if err != nil {
-		return balanceResponse{}, fmt.Errorf("fetch balance: %w", err)
+		// Connection refused, timeout, DNS: worth retrying.
+		return balanceResponse{}, transientError{fmt.Errorf("fetch balance: %w", err)}
 	}
 	defer res.Body.Close()
+	if res.StatusCode >= 500 {
+		return balanceResponse{}, transientError{fmt.Errorf("balance request status %d", res.StatusCode)}
+	}
 	if res.StatusCode != http.StatusOK {
 		return balanceResponse{}, fmt.Errorf("balance request status %d", res.StatusCode)
 	}
@@ -104,6 +224,58 @@ func (a *Adapter) fetchBalance(ctx context.Context, accountID string) (balanceRe
 		return balanceResponse{}, err
 	}
 	return body, nil
+}
+
+// fetchToken runs the sandbox OAuth handshake: authorize for a code, then
+// exchange it for a bearer token. One attempt; a failure aborts the cycle.
+func (a *Adapter) fetchToken(ctx context.Context) (string, error) {
+	authURL := fmt.Sprintf("%s/oauth/authorize?client_id=%s", a.baseURL, url.QueryEscape(a.clientID))
+	authReq, err := http.NewRequestWithContext(ctx, http.MethodGet, authURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("build authorize request: %w", err)
+	}
+	authRes, err := a.http.Do(authReq)
+	if err != nil {
+		return "", fmt.Errorf("authorize: %w", err)
+	}
+	defer authRes.Body.Close()
+	if authRes.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("authorize status %d", authRes.StatusCode)
+	}
+	var auth struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(authRes.Body).Decode(&auth); err != nil {
+		return "", fmt.Errorf("decode authorize: %w", err)
+	}
+	if auth.Code == "" {
+		return "", errors.New("banks: empty authorization code")
+	}
+
+	form := url.Values{"code": {auth.Code}}
+	tokenReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/oauth/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("build token request: %w", err)
+	}
+	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	tokenRes, err := a.http.Do(tokenReq)
+	if err != nil {
+		return "", fmt.Errorf("token exchange: %w", err)
+	}
+	defer tokenRes.Body.Close()
+	if tokenRes.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("token status %d", tokenRes.StatusCode)
+	}
+	var tok struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.NewDecoder(tokenRes.Body).Decode(&tok); err != nil {
+		return "", fmt.Errorf("decode token: %w", err)
+	}
+	if tok.AccessToken == "" {
+		return "", errors.New("banks: empty access token")
+	}
+	return tok.AccessToken, nil
 }
 
 // canonicalPayload serializes the signed fields in a fixed order. It must match

@@ -65,7 +65,12 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		pg.Close()
 		return deps{}, nil, fmt.Errorf("parse bank public key: %w", err)
 	}
-	bankAdapter := banks.NewAdapter(cfg.BankBaseURL, pubKey)
+	bankAdapter := banks.NewAdapter(banks.Config{
+		BaseURL:  cfg.BankBaseURL,
+		Accounts: cfg.BankAccounts,
+		PubKey:   pubKey,
+		ClientID: cfg.BankClientID,
+	})
 
 	cleanup := func() {
 		_ = prover.Close()
