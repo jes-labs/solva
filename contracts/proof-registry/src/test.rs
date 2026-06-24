@@ -13,10 +13,10 @@ use soroban_poseidon::Poseidon2Sponge;
 use soroban_sdk::crypto::bn254::Bn254Fr;
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    Address, Bytes, BytesN, Env, U256,
+    Address, Bytes, BytesN, Env, Vec, U256,
 };
 
-use crate::{Error, ProofRegistry, ProofRegistryClient, PubInputs};
+use crate::{Error, PathNode, ProofRegistry, ProofRegistryClient, PubInputs};
 
 // Verifying key and proof for the solvency circuit's solvent sample vector,
 // generated with the pinned tooling (see circuits/README.md).
@@ -118,6 +118,120 @@ fn publish_requires_owner_auth() {
     let inputs = solvent_inputs(&env);
     let result = client.try_publish_proof(&proof, &inputs);
     assert!(result.is_err());
+}
+
+// Native Poseidon2 inclusion check.
+
+// Convert a 32-byte big-endian node hash back into a field element, matching
+// bytes32_to_u256 in lib.rs.
+fn b32_to_u256(env: &Env, b: &BytesN<32>) -> U256 {
+    U256::from_be_bytes(env, &b.clone().into())
+}
+
+// Build the 8-leaf Poseidon2 sum tree for the sample leaves (ids 1..8,
+// balances 10..80) and return the levels bottom-up. Each node is (hash, sum).
+// Mirrors the prover fold in services/prover/src/tree.rs.
+fn build_sample_levels(env: &Env) -> std::vec::Vec<std::vec::Vec<(BytesN<32>, u128)>> {
+    let mut leaves: std::vec::Vec<(BytesN<32>, u128)> = std::vec::Vec::new();
+    for i in 1u128..=8 {
+        let bal = 10 * i;
+        let hash = poseidon2_two(env, U256::from_u128(env, i), U256::from_u128(env, bal));
+        leaves.push((hash, bal));
+    }
+
+    let mut levels: std::vec::Vec<std::vec::Vec<(BytesN<32>, u128)>> = std::vec::Vec::new();
+    levels.push(leaves);
+    while levels.last().unwrap().len() > 1 {
+        let cur = levels.last().unwrap();
+        let mut parents: std::vec::Vec<(BytesN<32>, u128)> = std::vec::Vec::new();
+        let mut k = 0;
+        while k < cur.len() {
+            let (lh, ls) = &cur[k];
+            let (rh, rs) = if k + 1 < cur.len() {
+                &cur[k + 1]
+            } else {
+                &cur[k]
+            };
+            let hash = poseidon2_two(env, b32_to_u256(env, lh), b32_to_u256(env, rh));
+            parents.push((hash, ls.saturating_add(*rs)));
+            k += 2;
+        }
+        levels.push(parents);
+    }
+    levels
+}
+
+// Derive the sibling path for one leaf, in the PathNode shape the contract
+// expects. Odd index means the sibling sits on the left, matching
+// tree.rs::inclusion_path.
+fn inclusion_path(
+    env: &Env,
+    levels: &[std::vec::Vec<(BytesN<32>, u128)>],
+    index: usize,
+) -> Vec<PathNode> {
+    let mut path: Vec<PathNode> = Vec::new(env);
+    let mut idx = index;
+    for level in &levels[..levels.len() - 1] {
+        let is_right = idx % 2 == 1;
+        let sib = if is_right { idx - 1 } else { idx + 1 };
+        let node = level.get(sib).unwrap_or(&level[idx]);
+        path.push_back(PathNode {
+            hash: node.0.clone(),
+            sum: node.1,
+            sibling_is_left: is_right,
+        });
+        idx /= 2;
+    }
+    path
+}
+
+#[test]
+fn inclusion_path_verifies_and_tampering_is_rejected() {
+    let (env, client, _owner) = setup();
+    env.mock_all_auths();
+
+    // The contract's native Poseidon2 builds the same root the prover committed
+    // (SAMPLE_ROOT_H), with root sum == L == 360. This ties the on-chain hash to
+    // the prover tree for the sample leaves.
+    let levels = build_sample_levels(&env);
+    let root = &levels.last().unwrap()[0];
+    assert_eq!(root.0, BytesN::from_array(&env, &SAMPLE_ROOT_H));
+    assert_eq!(root.1, 360);
+
+    // Record the proof so the registry holds root_h = SAMPLE_ROOT_H and l = 360.
+    let proof = Bytes::from_slice(&env, SOLVENCY_PROOF);
+    let id = client.publish_proof(&proof, &solvent_inputs(&env));
+
+    // Leaf 0 is customer id_hash = 1, balance = 10.
+    let mut id_bytes = [0u8; 32];
+    id_bytes[31] = 1;
+    let id_hash = BytesN::from_array(&env, &id_bytes);
+    let path = inclusion_path(&env, &levels, 0);
+
+    // A correct path for the recorded leaf passes.
+    assert!(client.verify_inclusion(&id, &id_hash, &10u128, &path));
+
+    // Wrong balance changes the leaf hash, so the recomputed root mismatches.
+    assert!(!client.verify_inclusion(&id, &id_hash, &11u128, &path));
+
+    // Flipping a sibling hash breaks the recomputed root hash.
+    let mut bad_hash_path = path.clone();
+    let mut step = bad_hash_path.get(0).unwrap();
+    let mut hash_bytes = step.hash.to_array();
+    // Flip the least-significant byte so the value stays well below the BN254
+    // field modulus while still changing the recomputed hash.
+    hash_bytes[31] ^= 0x01;
+    step.hash = BytesN::from_array(&env, &hash_bytes);
+    bad_hash_path.set(0, step);
+    assert!(!client.verify_inclusion(&id, &id_hash, &10u128, &bad_hash_path));
+
+    // A wrong sibling sum keeps the hash intact but makes node_sum != l, so the
+    // sum check rejects it.
+    let mut bad_sum_path = path.clone();
+    let mut step = bad_sum_path.get(0).unwrap();
+    step.sum += 1;
+    bad_sum_path.set(0, step);
+    assert!(!client.verify_inclusion(&id, &id_hash, &10u128, &bad_sum_path));
 }
 
 // Section 2: Poseidon2 parity tests
