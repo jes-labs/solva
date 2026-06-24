@@ -55,6 +55,10 @@ deploy-contract network="testnet":
 gen-bindings:
     stellar contract bindings typescript --output-dir packages/contract-bindings/src/generated --overwrite
 
+# Regenerate the sqlc database layer after changing query/ or migrations/.
+sqlc:
+    cd services/orchestrator && sqlc generate
+
 # Run every test suite across all languages.
 test:
     cd circuits/solvency && nargo test
