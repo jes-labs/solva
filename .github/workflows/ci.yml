@@ -81,12 +81,31 @@ jobs:
     strategy:
       matrix:
         module: [services/orchestrator, services/sandbox]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: solva
+          POSTGRES_PASSWORD: solva
+          POSTGRES_DB: solva
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
           cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: apply migrations
+        if: matrix.module == 'services/orchestrator'
+        env:
+          PGPASSWORD: solva
+        run: psql -h localhost -U solva -d solva -v ON_ERROR_STOP=1 -f services/orchestrator/migrations/0001_init.sql
       - name: build
         working-directory: ${{ matrix.module }}
         run: go build ./...
@@ -95,6 +114,8 @@ jobs:
         run: go vet ./...
       - name: test
         working-directory: ${{ matrix.module }}
+        env:
+          TEST_DATABASE_URL: postgres://solva:solva@localhost:5432/solva
         run: go test ./...
 
   rust:
