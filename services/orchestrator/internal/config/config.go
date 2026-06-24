@@ -30,6 +30,9 @@ type Config struct {
 	// Per-tenant resolution from reserve_sources lands later; for now the set
 	// is configured directly.
 	BankAccounts []string
+	// BankClientID is the OAuth client id the adapter authenticates with. Empty
+	// disables auth, which the adapter unit tests rely on.
+	BankClientID string
 	// CycleInterval is how often the scheduler triggers a cycle per tenant.
 	CycleInterval time.Duration
 	// LogLevel is the zerolog level, for example "info" or "debug".
@@ -48,6 +51,7 @@ func Load() (Config, error) {
 		BankBaseURL:      env("ORCH_BANK_BASE_URL", "http://localhost:8090"),
 		BankPublicKeyPEM: env("ORCH_BANK_PUBLIC_KEY_PEM", ""),
 		BankAccounts:     splitList(env("ORCH_BANK_ACCOUNTS", "acct-anchor,acct-beacon,acct-cedar")),
+		BankClientID:     env("ORCH_BANK_CLIENT_ID", "solva-orchestrator"),
 		LogLevel:         env("ORCH_LOG_LEVEL", "info"),
 	}
 

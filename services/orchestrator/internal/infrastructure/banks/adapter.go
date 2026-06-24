@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -46,9 +48,13 @@ func (e transientError) Unwrap() error { return e.err }
 // sandbox one key signs all accounts. Accounts is the set of reserve sources to
 // read. The retry and timeout fields fall back to sensible defaults when zero.
 type Config struct {
-	BaseURL     string
-	Accounts    []string
-	PubKey      *ecdsa.PublicKey
+	BaseURL  string
+	Accounts []string
+	PubKey   *ecdsa.PublicKey
+	// ClientID turns on OAuth. When set, the adapter runs the authorize/token
+	// handshake and sends a bearer token on each request. Left empty it sends
+	// no auth, which keeps unit tests token-free.
+	ClientID    string
 	MaxAttempts int
 	BaseBackoff time.Duration
 	HTTPTimeout time.Duration
@@ -62,6 +68,7 @@ type Adapter struct {
 	baseURL     string
 	accounts    []string
 	pubKey      *ecdsa.PublicKey
+	clientID    string
 	http        *http.Client
 	maxAttempts int
 	baseBackoff time.Duration
@@ -85,6 +92,7 @@ func NewAdapter(c Config) *Adapter {
 		baseURL:     c.BaseURL,
 		accounts:    c.Accounts,
 		pubKey:      c.PubKey,
+		clientID:    c.ClientID,
 		http:        &http.Client{Timeout: timeout},
 		maxAttempts: maxAttempts,
 		baseBackoff: baseBackoff,
@@ -100,13 +108,24 @@ func (a *Adapter) FetchSigned(ctx context.Context, tenantID string) (entity.Rese
 		return entity.ReserveSnapshot{}, errors.New("banks: no reserve sources configured")
 	}
 
+	// Authenticate once for the whole batch when OAuth is configured. A failed
+	// handshake aborts the cycle before any balance is read.
+	token := ""
+	if a.clientID != "" {
+		t, err := a.fetchToken(ctx)
+		if err != nil {
+			return entity.ReserveSnapshot{}, fmt.Errorf("authenticate: %w", err)
+		}
+		token = t
+	}
+
 	// One slot per source. Each goroutine writes its own index, so no lock is
 	// needed; the indices never alias.
 	reserves := make([]entity.Reserve, len(a.accounts))
 	group, groupCtx := errgroup.WithContext(ctx)
 	for i, account := range a.accounts {
 		group.Go(func() error {
-			resp, err := a.fetchWithRetry(groupCtx, account)
+			resp, err := a.fetchWithRetry(groupCtx, account, token)
 			if err != nil {
 				return fmt.Errorf("source %s: %w", account, err)
 			}
@@ -132,11 +151,11 @@ func (a *Adapter) FetchSigned(ctx context.Context, tenantID string) (entity.Rese
 // fetchWithRetry calls one source, retrying transient failures with exponential
 // backoff. Permanent failures return immediately. A cancelled context stops the
 // retries at once.
-func (a *Adapter) fetchWithRetry(ctx context.Context, account string) (balanceResponse, error) {
+func (a *Adapter) fetchWithRetry(ctx context.Context, account, token string) (balanceResponse, error) {
 	backoff := a.baseBackoff
 	var lastErr error
 	for attempt := 1; attempt <= a.maxAttempts; attempt++ {
-		resp, err := a.fetchBalance(ctx, account)
+		resp, err := a.fetchBalance(ctx, account, token)
 		if err == nil {
 			return resp, nil
 		}
@@ -164,11 +183,14 @@ func (a *Adapter) fetchWithRetry(ctx context.Context, account string) (balanceRe
 // fetchBalance calls one balance endpoint and verifies the signature over the
 // canonical payload. Network errors and 5xx are wrapped as transient; a bad
 // signature or a 4xx is permanent.
-func (a *Adapter) fetchBalance(ctx context.Context, account string) (balanceResponse, error) {
-	url := fmt.Sprintf("%s/v1/accounts/%s/balance", a.baseURL, account)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (a *Adapter) fetchBalance(ctx context.Context, account, token string) (balanceResponse, error) {
+	endpoint := fmt.Sprintf("%s/v1/accounts/%s/balance", a.baseURL, account)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return balanceResponse{}, fmt.Errorf("build balance request: %w", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	res, err := a.http.Do(req)
@@ -202,6 +224,58 @@ func (a *Adapter) fetchBalance(ctx context.Context, account string) (balanceResp
 		return balanceResponse{}, err
 	}
 	return body, nil
+}
+
+// fetchToken runs the sandbox OAuth handshake: authorize for a code, then
+// exchange it for a bearer token. One attempt; a failure aborts the cycle.
+func (a *Adapter) fetchToken(ctx context.Context) (string, error) {
+	authURL := fmt.Sprintf("%s/oauth/authorize?client_id=%s", a.baseURL, url.QueryEscape(a.clientID))
+	authReq, err := http.NewRequestWithContext(ctx, http.MethodGet, authURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("build authorize request: %w", err)
+	}
+	authRes, err := a.http.Do(authReq)
+	if err != nil {
+		return "", fmt.Errorf("authorize: %w", err)
+	}
+	defer authRes.Body.Close()
+	if authRes.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("authorize status %d", authRes.StatusCode)
+	}
+	var auth struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(authRes.Body).Decode(&auth); err != nil {
+		return "", fmt.Errorf("decode authorize: %w", err)
+	}
+	if auth.Code == "" {
+		return "", errors.New("banks: empty authorization code")
+	}
+
+	form := url.Values{"code": {auth.Code}}
+	tokenReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/oauth/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("build token request: %w", err)
+	}
+	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	tokenRes, err := a.http.Do(tokenReq)
+	if err != nil {
+		return "", fmt.Errorf("token exchange: %w", err)
+	}
+	defer tokenRes.Body.Close()
+	if tokenRes.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("token status %d", tokenRes.StatusCode)
+	}
+	var tok struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.NewDecoder(tokenRes.Body).Decode(&tok); err != nil {
+		return "", fmt.Errorf("decode token: %w", err)
+	}
+	if tok.AccessToken == "" {
+		return "", errors.New("banks: empty access token")
+	}
+	return tok.AccessToken, nil
 }
 
 // canonicalPayload serializes the signed fields in a fixed order. It must match

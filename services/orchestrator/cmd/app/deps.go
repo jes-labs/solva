@@ -69,6 +69,7 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		BaseURL:  cfg.BankBaseURL,
 		Accounts: cfg.BankAccounts,
 		PubKey:   pubKey,
+		ClientID: cfg.BankClientID,
 	})
 
 	cleanup := func() {
