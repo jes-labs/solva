@@ -111,3 +111,29 @@ parity-prover:
 # Layer 3 — Stellar contract
 parity-contract:
     cargo test -p proof-registry poseidon2_parity -- --nocapture
+
+# Install the Go protoc plugins required by buf.gen.yaml.
+_install-proto-plugins:
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+# Generate gRPC stubs for Go from proto/prover.proto.
+# Rust stubs are generated automatically by the prover's build.rs (tonic-build).
+proto: _install-proto-plugins
+    buf generate
+    @echo "✓ Go stubs regenerated → services/orchestrator/internal/infrastructure/grpc/proverpb"
+
+# Check that committed Go stubs match what buf generate would produce.
+# Run before opening a PR if you changed any .proto file.
+proto-check: _install-proto-plugins
+    #!/usr/bin/env bash
+    set -euo pipefail
+    buf generate
+    if ! git diff --quiet -- services/orchestrator/internal/infrastructure/grpc/proverpb; then
+        echo ""
+        echo "Stale Go stubs detected. Run 'just proto' and commit the result."
+        echo ""
+        git diff -- services/orchestrator/internal/infrastructure/grpc/proverpb
+        exit 1
+    fi
+    echo "✓ Go stubs are up to date."
