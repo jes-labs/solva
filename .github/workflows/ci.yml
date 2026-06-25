@@ -105,7 +105,12 @@ jobs:
         if: matrix.module == 'services/orchestrator'
         env:
           PGPASSWORD: solva
-        run: psql -h localhost -U solva -d solva -v ON_ERROR_STOP=1 -f services/orchestrator/migrations/0001_init.sql
+        # Apply every up-migration in order, skipping the .down.sql reversals.
+        run: |
+          for f in $(ls services/orchestrator/migrations/*.sql | grep -v '\.down\.sql$' | sort); do
+            echo "applying $f"
+            psql -h localhost -U solva -d solva -v ON_ERROR_STOP=1 -f "$f"
+          done
       - name: build
         working-directory: ${{ matrix.module }}
         run: go build ./...
