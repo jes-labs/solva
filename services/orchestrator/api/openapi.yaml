@@ -1,0 +1,203 @@
+openapi: "3.1.0"
+
+info:
+  title: Solva Orchestrator API
+  version: "0.1.0"
+  description: >
+    REST API exposed by the Solva orchestrator service. These endpoints back
+    the web dashboard, the public proof-verify page, and the TypeScript SDK.
+    Authentication (smart-wallet JWT) is out of scope for this release.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /v1/cycles:
+    post:
+      operationId: triggerCycle
+      summary: Trigger a manual proof cycle
+      responses:
+        "202":
+          description: Cycle accepted and enqueued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CycleTriggerResult"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/proofs/latest:
+    get:
+      operationId: getLatestProof
+      summary: Get the latest proof for a tenant
+      parameters:
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The most recent proof.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proof"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/proofs/{id}:
+    get:
+      operationId: getProofById
+      summary: Get a proof by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The requested proof.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proof"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/proofs/inclusion/{ref}:
+    get:
+      operationId: getProofByInclusionRef
+      summary: Get the proof that includes a customer reference
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The proof that includes the given reference.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proof"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /health:
+    get:
+      operationId: healthLiveness
+      summary: Liveness check
+      responses:
+        "200":
+          description: Service is alive.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /metrics:
+    get:
+      operationId: prometheusMetrics
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus text exposition format.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    Proof:
+      type: object
+      required:
+        [
+          id,
+          tenant_id,
+          cycle_seq,
+          reserve_total,
+          liability_total,
+          merkle_root,
+          created_at,
+        ]
+      properties:
+        id:
+          type: string
+        tenant_id:
+          type: string
+        cycle_seq:
+          type: integer
+          format: int64
+        reserve_total:
+          type: string
+        liability_total:
+          type: string
+        merkle_root:
+          type: string
+        public_inputs:
+          type: string
+          format: byte
+        proof_bytes:
+          type: string
+          format: byte
+        contract_id:
+          type: string
+        tx_hash:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CycleTriggerResult:
+      type: object
+      required: [cycle_id, status]
+      properties:
+        cycle_id:
+          type: string
+        status:
+          type: string
+          enum: [accepted]
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: The request was malformed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: The requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: An unexpected server error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
