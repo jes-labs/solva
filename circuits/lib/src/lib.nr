@@ -1,4 +1,4 @@
-// Solva Shared Library Helpers.
+// Solva Shared Library Helpers (PRD 2, section 5.1).
 //
 // Provides core arithmetic and cryptographic primitives used across all
 // circuits, including 64-bit range checks and Poseidon2 Merkle Sum Tree nodes.
@@ -41,6 +41,8 @@ impl MerkleSumNode {
         }
     }
 }
+
+// --- Unit Tests ---
 
 #[test]
 // Verifies that valid 64-bit integers pass the range check wrapper.
