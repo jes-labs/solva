@@ -9,6 +9,9 @@ fmt-check:
 fix:
   cargo fmt --all
 
+lint-check:
+  cargo clippy --workspace -- -D warnings
+
 # List available recipes.
 default:
     @just --list

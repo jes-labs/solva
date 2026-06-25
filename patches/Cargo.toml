@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+    "contracts/proof-registry",
+    "services/prover",
+]
+
+# primeorder 0.14.0-rc.13 (published on crates.io) imports Double from
+# elliptic_curve::point, but elliptic-curve 0.14.0-rc.36 moved it to
+# elliptic_curve::ops. The local patch fixes the three broken import lines.
+# Remove this block once primeorder 0.14.0-rc.14 (or stable 0.14) is published.
+[patch.crates-io]
+primeorder = { path = "patches/primeorder" }
+
+# Soroban contracts compile to small wasm. Optimize for size.
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true

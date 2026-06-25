@@ -118,6 +118,6 @@ with the sample proof from `circuits/solvency`:
 The base reference verifier is not audited, and this contract is not audited
 yet. Before mainnet, run the OpenZeppelin Soroban security detectors over
 `proof-registry` and apply the audited OpenZeppelin contract patterns. The
-`poseidon2_leaf` and `poseidon2_node` functions are still stubs that must be
-replaced with the native Poseidon2 host function before the inclusion check is
-trusted on chain.
+`poseidon2_leaf` and `poseidon2_node` functions use the native protocol-25
+Poseidon2 host function (via `soroban-poseidon`), and `verify_inclusion` checks
+both the recomputed root hash and the sum against the committed values.

@@ -6,6 +6,9 @@ members = [
     "services/prover",
 ]
 
+[patch.crates-io]
+primeorder = { path = "patches/primeorder" }
+
 # Soroban contracts compile to small wasm. Optimize for size.
 [profile.release]
 opt-level = "z"
