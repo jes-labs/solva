@@ -57,7 +57,6 @@ func startFakeProver(t *testing.T, fp *fakeProver) (*grpcinfra.ProverClient, fun
 	}
 }
 
-// ---------------------------------------------------------------------------
 // Request and response mapping
 
 func TestProve_RequestMapping(t *testing.T) {
@@ -168,7 +167,6 @@ func TestProve_ResponseMapping(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // Zeroization
 //
 // zeroizeRequest operates on the ProverClient-allocated request struct, not on
@@ -243,9 +241,7 @@ func TestProve_CallerSlicesUntouched(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // Error paths
-
 func TestProve_PropagatesRPCError(t *testing.T) {
 	fp := &fakeProver{respondErr: fmt.Errorf("prover crashed")}
 	client, stop := startFakeProver(t, fp)
