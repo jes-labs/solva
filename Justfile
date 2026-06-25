@@ -48,8 +48,18 @@ build-contract:
     stellar contract build
 
 # Deploy the contract to testnet. Requires a funded identity.
-deploy-contract network="testnet":
-    stellar contract deploy --wasm target/wasm32v1-none/release/proof_registry.wasm --network {{network}}
+# The constructor takes the registry owner (the account allowed to publish) and
+# the embedded solvency verifying key. The deployed contract id is written to
+# contracts/proof-registry/.contract_id.
+deploy-contract network="testnet" owner="solva-spike":
+    stellar contract deploy \
+      --wasm target/wasm32v1-none/release/proof_registry.wasm \
+      --source {{owner}} \
+      --network {{network}} \
+      -- \
+      --owner {{owner}} \
+      --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin \
+      | tail -1 | tee contracts/proof-registry/.contract_id
 
 # Regenerate the TypeScript contract bindings after a contract change.
 gen-bindings:
