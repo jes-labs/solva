@@ -1,23 +1,8 @@
-// ─── Parity tests for services/prover/src/tree.rs ────────────────────────────
-//
-// Append this block at the bottom of tree.rs, inside the file (not a separate
-// module file) so it has access to the private `poseidon2` and `hash_pair` fns.
-//
-// These tests are the Rust side of the three-layer parity gate.
-// They will NOT PASS until two things are done:
-//
-//   1. poseidon2() is wired to a real BN254 Poseidon2 implementation.
-//   2. hash_pair() is fixed to pass TWO inputs, not four.
-//      Current (WRONG):  poseidon2(&[left.hash, right.hash, field_from_u128(left.sum), field_from_u128(right.sum)])
-//      Required (RIGHT): poseidon2(&[left.hash, right.hash])
-//      See circuits/lib/POSEIDON2_PARAMS.md for the full explanation.
-//
-// Run with:
-//   cargo test -p solva-prover poseidon2_parity
-
 #[cfg(test)]
 mod parity_tests {
-    use crate::tree::{fr_to_bytes, permutation, poseidon2_hash_two, FieldElem};
+    use crate::tree::{
+        fr_to_bytes, permutation, poseidon2_hash_two, FieldElem, MerkleSumTree, Node, PathStep,
+    };
     use ark_bn254::Fr;
     use ark_ff::Zero;
 
@@ -125,5 +110,173 @@ mod parity_tests {
             poseidon2_hash_two(two, one),
             "parity: hash_two is commutative, which is wrong"
         );
+    }
+
+    // Tree determinism tests
+    // The same leaf set must always produce the same root. This catches any
+    // non-determinism in leaf ordering or the hash function.
+
+    fn make_leaf(balance: u128) -> crate::tree::Node {
+        use ark_ff::Zero;
+        let balance_bytes = fr_to_bytes(ark_bn254::Fr::from(balance));
+        crate::tree::Node {
+            hash: poseidon2_hash_two(balance_bytes, fr_to_bytes(ark_bn254::Fr::zero())),
+            sum: balance,
+        }
+    }
+
+    #[test]
+    fn tree_determinism_same_root() {
+        // Build the same tree twice; roots must be identical.
+        let balances = [100u128, 200, 300, 400];
+        let leaves_a: Vec<_> = balances.iter().map(|&b| make_leaf(b)).collect();
+        let leaves_b: Vec<_> = balances.iter().map(|&b| make_leaf(b)).collect();
+
+        let tree_a = MerkleSumTree::build(leaves_a);
+        let tree_b = MerkleSumTree::build(leaves_b);
+
+        assert_eq!(
+            tree_a.root(),
+            tree_b.root(),
+            "determinism: same leaves produced different roots"
+        );
+    }
+
+    #[test]
+    fn tree_determinism_different_order_changes_root() {
+        // Reordering leaves must change the root (the tree is order-sensitive).
+        let leaves_fwd: Vec<_> = [100u128, 200].iter().map(|&b| make_leaf(b)).collect();
+        let leaves_rev: Vec<_> = [200u128, 100].iter().map(|&b| make_leaf(b)).collect();
+
+        let root_fwd = MerkleSumTree::build(leaves_fwd).root();
+        let root_rev = MerkleSumTree::build(leaves_rev).root();
+
+        assert_ne!(
+            root_fwd, root_rev,
+            "determinism: different leaf order produced the same root"
+        );
+    }
+
+    #[test]
+    fn tree_root_sum_equals_total_balance() {
+        let balances = [100u128, 200, 300, 400];
+        let leaves: Vec<_> = balances.iter().map(|&b| make_leaf(b)).collect();
+        let tree = MerkleSumTree::build(leaves);
+        assert_eq!(
+            tree.root().sum,
+            1000,
+            "root sum must equal the sum of all leaf balances"
+        );
+    }
+
+    // Inclusion path tests
+    //
+    // For each leaf, walk the inclusion path returned by inclusion_path(i) and
+    // check that recomputing the root from that leaf and its siblings matches
+    // the tree root. This is the same fold the circuit's verify_inclusion
+    // performs.
+
+    // Recomputes the root from a leaf node and the sibling path.
+    // Mirrors circuits/merkle/src/lib.nr verify_inclusion.
+    fn recompute_root(leaf: &Node, path: &[PathStep]) -> crate::tree::Node {
+        let mut node = leaf.clone();
+        for step in path {
+            let (left, right) = if step.sibling_is_left {
+                (&step.sibling, &node)
+            } else {
+                (&node, &step.sibling)
+            };
+            node = Node {
+                hash: poseidon2_hash_two(left.hash, right.hash),
+                sum: left.sum + right.sum,
+            };
+        }
+        node
+    }
+
+    #[test]
+    fn inclusion_path_all_leaves_reach_root() {
+        // Four-leaf tree (power of two, matching the circuit's expected shape).
+        let balances = [111u128, 222, 333, 444];
+        let leaves: Vec<_> = balances.iter().map(|&b| make_leaf(b)).collect();
+        let tree = MerkleSumTree::build(leaves.clone());
+        let expected_root = tree.root();
+
+        for (i, leaf) in leaves.iter().enumerate() {
+            let path = tree.inclusion_path(i);
+            let recomputed = recompute_root(leaf, &path);
+            assert_eq!(
+                recomputed.hash, expected_root.hash,
+                "inclusion path for leaf {i} does not reach the correct root hash"
+            );
+            assert_eq!(
+                recomputed.sum, expected_root.sum,
+                "inclusion path for leaf {i} does not reach the correct root sum"
+            );
+        }
+    }
+
+    #[test]
+    fn inclusion_path_two_leaves() {
+        // Minimal two-leaf case: DEPTH=1 path, one sibling step.
+        let leaves: Vec<_> = [500u128, 600].iter().map(|&b| make_leaf(b)).collect();
+        let tree = MerkleSumTree::build(leaves.clone());
+        let root = tree.root();
+
+        for (i, leaf) in leaves.iter().enumerate() {
+            let path = tree.inclusion_path(i);
+            assert_eq!(path.len(), 1, "depth-1 tree must have path length 1");
+            let recomputed = recompute_root(leaf, &path);
+            assert_eq!(
+                recomputed.hash, root.hash,
+                "two-leaf inclusion path for leaf {i} gives wrong root hash"
+            );
+        }
+    }
+
+    #[test]
+    fn inclusion_path_parity_with_circuit_vector() {
+        // Cross-check against a known root computed the same way the circuit
+        // would. We build a two-leaf tree with balances [1, 2] and verify:
+        //   leaf_0.hash = hash_two(fr(1), fr(0))   -- hash_two(balance, 0)
+        //   leaf_1.hash = hash_two(fr(2), fr(0))
+        //   root.hash   = hash_two(leaf_0.hash, leaf_1.hash)
+        use ark_ff::Zero;
+
+        let b0 = fr_to_bytes(ark_bn254::Fr::from(1u64));
+        let b1 = fr_to_bytes(ark_bn254::Fr::from(2u64));
+        let zero = fr_to_bytes(ark_bn254::Fr::zero());
+
+        let leaf0_hash = poseidon2_hash_two(b0, zero);
+        let leaf1_hash = poseidon2_hash_two(b1, zero);
+        let expected_root_hash = poseidon2_hash_two(leaf0_hash, leaf1_hash);
+
+        let leaves = vec![
+            crate::tree::Node {
+                hash: leaf0_hash,
+                sum: 1,
+            },
+            crate::tree::Node {
+                hash: leaf1_hash,
+                sum: 2,
+            },
+        ];
+        let tree = MerkleSumTree::build(leaves.clone());
+
+        assert_eq!(
+            tree.root().hash,
+            expected_root_hash,
+            "tree root does not match manually computed poseidon2(leaf0, leaf1)"
+        );
+
+        // Both inclusion paths must reconstruct that same root.
+        for (i, leaf) in leaves.iter().enumerate() {
+            let path = tree.inclusion_path(i);
+            let recomputed = recompute_root(leaf, &path);
+            assert_eq!(
+                recomputed.hash, expected_root_hash,
+                "inclusion path for leaf {i} diverges from manually computed root"
+            );
+        }
     }
 }

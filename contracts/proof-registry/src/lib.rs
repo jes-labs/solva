@@ -130,7 +130,11 @@ impl ProofRegistry {
             node_sum = node_sum.saturating_add(step.sum);
         }
 
-        Ok(node_hash == meta.root_h)
+        // The recomputed root must match BOTH the committed hash and the
+        // committed total liability sum (root sum == L == meta.l), matching the
+        // Noir circuit's verify_inclusion. saturating_add above means an
+        // over-large path just fails this equality rather than panicking.
+        Ok(node_hash == meta.root_h && node_sum == meta.l)
     }
 }
 
