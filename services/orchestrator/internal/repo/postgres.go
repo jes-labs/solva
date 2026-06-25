@@ -208,6 +208,39 @@ func (p *Postgres) LatestReserves(ctx context.Context, tenantID string) (string,
 	return fromNumeric(n)
 }
 
+// ClaimCycle records the cycle's idempotency key. The INSERT ... ON CONFLICT DO
+// NOTHING RETURNING returns a row when the key is new, and no row when it was
+// already claimed. A missing row is the durable "duplicate" signal, not an error.
+func (p *Postgres) ClaimCycle(ctx context.Context, tenantID, requestKey string) (bool, error) {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return false, err
+	}
+	if _, err := p.q.ClaimCycle(ctx, ClaimCycleParams{TenantID: tid, RequestKey: requestKey}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("claim cycle: %w", err)
+	}
+	return true, nil
+}
+
+// AppendAudit writes one event to the append-only audit log.
+func (p *Postgres) AppendAudit(ctx context.Context, tenantID, event string, payload []byte) error {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return err
+	}
+	if err := p.q.CreateAuditLog(ctx, CreateAuditLogParams{
+		TenantID: tid,
+		Event:    event,
+		Payload:  payload,
+	}); err != nil {
+		return fmt.Errorf("append audit: %w", err)
+	}
+	return nil
+}
+
 // proofFromRow maps a generated proofs row to the domain Proof, converting each
 // pgtype value back to the string/time form the entity uses.
 func proofFromRow(row Proof) (entity.Proof, error) {

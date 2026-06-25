@@ -5,6 +5,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -43,9 +44,18 @@ func (s *Scheduler) Run(ctx context.Context) {
 		case <-ctx.Done():
 			s.log.Info().Msg("scheduler stopped")
 			return
-		case <-ticker.C:
+		case tick := <-ticker.C:
+			// One key per tick. A duplicated tick for a tenant is deduped by the
+			// Postgres claim; distinct ticks each carry a distinct key and run.
+			requestKey := "scheduled:" + tick.UTC().Format(time.RFC3339)
 			for _, tenantID := range s.tenants {
-				if err := s.cycle.Run(ctx, tenantID); err != nil {
+				err := s.cycle.Run(ctx, tenantID, requestKey)
+				switch {
+				case err == nil,
+					errors.Is(err, usecase.ErrCycleInProgress),
+					errors.Is(err, usecase.ErrDuplicateCycle):
+					// Ran, or an idempotency guard tripped: both expected.
+				default:
 					s.log.Error().Err(err).Str("tenant", tenantID).Msg("scheduled cycle failed")
 				}
 			}
