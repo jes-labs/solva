@@ -94,6 +94,8 @@ pub fn verify_inclusion<let DEPTH: u32>(
     assert(node.sum == expected_root_sum, "inclusion sum mismatch");
 }
 
+// --- Unit Tests ---
+
 #[test]
 fn test_compute_root_and_verify_inclusion_passes() {
     // Setup a 4-leaf complete Merkle Sum Tree (N=4, DEPTH=2)
