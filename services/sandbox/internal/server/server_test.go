@@ -172,3 +172,55 @@ func verifyLikeOrchestrator(pubPEM []byte, body balanceResponse) error {
 	}
 	return nil
 }
+
+// The admin endpoint seeds a named scenario, and the balance endpoint then
+// reflects it. An unknown scenario returns 400 with the available list.
+func TestSeedScenarioEndpoint(t *testing.T) {
+	ts := newTestServer(t)
+	token := oauthToken(t, ts.URL)
+
+	res, err := http.Post(ts.URL+"/admin/scenarios/near-breach", "", nil)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("seed status = %d, want 200", res.StatusCode)
+	}
+
+	// The seeded balance is now the near-breach value for acct-anchor.
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/v1/accounts/acct-anchor/balance", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	br, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("balance: %v", err)
+	}
+	defer br.Body.Close()
+	var body balanceResponse
+	if err := json.NewDecoder(br.Body).Decode(&body); err != nil {
+		t.Fatalf("decode balance: %v", err)
+	}
+	if body.Balance != "4200000" {
+		t.Errorf("acct-anchor balance = %s, want 4200000 (near-breach)", body.Balance)
+	}
+
+	// An unknown scenario is rejected and lists the available scenarios.
+	bad, err := http.Post(ts.URL+"/admin/scenarios/nope", "", nil)
+	if err != nil {
+		t.Fatalf("bad seed: %v", err)
+	}
+	defer bad.Body.Close()
+	if bad.StatusCode != http.StatusBadRequest {
+		t.Errorf("bad seed status = %d, want 400", bad.StatusCode)
+	}
+	var errBody struct {
+		Error     string   `json:"error"`
+		Available []string `json:"available"`
+	}
+	if err := json.NewDecoder(bad.Body).Decode(&errBody); err != nil {
+		t.Fatalf("decode error body: %v", err)
+	}
+	if len(errBody.Available) == 0 {
+		t.Error("unknown scenario response should list available scenarios")
+	}
+}
