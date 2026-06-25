@@ -42,8 +42,6 @@ impl MerkleSumNode {
     }
 }
 
-// --- Unit Tests ---
-
 #[test]
 // Verifies that valid 64-bit integers pass the range check wrapper.
 fn test_assert_u64_valid() {

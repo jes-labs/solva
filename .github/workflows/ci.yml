@@ -173,10 +173,41 @@ jobs:
           setup_only: true
       - run: buf lint
 
+  proto-stale-stubs:
+    needs: [changes, proto]
+    if: needs.changes.outputs.proto == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: install protoc-gen-go and protoc-gen-go-grpc
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: regenerate stubs
+        run: buf generate
+
+      - name: fail if stubs are stale
+        run: |
+          if ! git diff --quiet -- services/orchestrator/internal/infrastructure/grpc/proverpb; then
+            echo "::error::Go stubs are stale. Run 'just proto' and commit the result."
+            git diff -- services/orchestrator/internal/infrastructure/grpc/proverpb
+            exit 1
+          fi
+
   # Single required status check. It always runs and fails if any tier that ran
   # did not succeed. Tiers that were skipped do not count as failures.
   ci:
-    needs: [ts, go, rust, circuits, proto]
+    needs: [ts, go, rust, circuits, proto, proto-stale-stubs]
     if: always()
     runs-on: ubuntu-latest
     steps:
