@@ -53,6 +53,12 @@ type ProofRepo interface {
 	GetLatestProof(ctx context.Context, tenantID string) (entity.Proof, error)
 	GetInclusion(ctx context.Context, ref string) (entity.InclusionRef, error)
 	LoadLiabilities(ctx context.Context, tenantID string) ([]Liability, error)
+	// ClaimCycle records the cycle's idempotency key. It returns true when the
+	// key is new (claimed) and false when it was already claimed (a duplicate).
+	// This is the durable idempotency layer that backs the Redis lock.
+	ClaimCycle(ctx context.Context, tenantID, requestKey string) (bool, error)
+	// AppendAudit writes one event to the append-only audit log.
+	AppendAudit(ctx context.Context, tenantID, event string, payload []byte) error
 }
 
 // ReserveRepo records reserve snapshots and reports the previous cycle total,

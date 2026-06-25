@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -15,7 +17,7 @@ import (
 
 // cycleRunner is the slice of the cycle use case the HTTP layer needs.
 type cycleRunner interface {
-	Run(ctx context.Context, tenantID string) error
+	Run(ctx context.Context, tenantID, requestKey string) error
 }
 
 // queryService is the slice of the read use case the HTTP layer needs.
@@ -55,10 +57,21 @@ func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.cycle.Run(r.Context(), req.TenantID)
+	// The caller supplies an Idempotency-Key to make a retry safe; without one
+	// each trigger gets a fresh key and runs independently.
+	requestKey := r.Header.Get("Idempotency-Key")
+	if requestKey == "" {
+		requestKey = randomRequestKey()
+	}
+
+	err := h.cycle.Run(r.Context(), req.TenantID, requestKey)
 	switch {
 	case errors.Is(err, usecase.ErrCycleInProgress):
 		writeError(w, http.StatusConflict, "cycle already in progress")
+		return
+	case errors.Is(err, usecase.ErrDuplicateCycle):
+		// The key already ran: an idempotent no-op, reported as success.
+		writeJSON(w, http.StatusOK, map[string]string{"status": "already processed"})
 		return
 	case err != nil:
 		h.log.Error().Err(err).Str("tenant", req.TenantID).Msg("trigger cycle")
@@ -66,6 +79,15 @@ func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+
+// randomRequestKey makes a fallback idempotency key when the caller sends no
+// Idempotency-Key header. A client that wants retry-safe behaviour supplies its
+// own key so a replay reuses it.
+func randomRequestKey() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
 }
 
 // GetLatestProof returns the latest proof for a tenant. The tenant comes from

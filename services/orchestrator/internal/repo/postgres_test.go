@@ -146,3 +146,30 @@ func TestGetProofNotFound(t *testing.T) {
 		t.Errorf("want ErrNotFound, got %v", err)
 	}
 }
+
+// TestClaimCycle exercises the durable idempotency layer against the real
+// unique constraint: the first claim of a key succeeds, a replay is rejected,
+// and a different key claims independently.
+func TestClaimCycle(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	q := New(store.pool)
+
+	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Meridian Bank", Plan: "growth"})
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	tid := fromUUID(tenantID)
+
+	if ok, err := store.ClaimCycle(ctx, tid, "key-1"); err != nil || !ok {
+		t.Fatalf("first claim: ok=%v err=%v, want ok=true", ok, err)
+	}
+	// Replaying the same key hits the unique constraint and is rejected, not errored.
+	if ok, err := store.ClaimCycle(ctx, tid, "key-1"); err != nil || ok {
+		t.Fatalf("replayed claim: ok=%v err=%v, want ok=false", ok, err)
+	}
+	// A distinct key is independent and claims cleanly.
+	if ok, err := store.ClaimCycle(ctx, tid, "key-2"); err != nil || !ok {
+		t.Fatalf("second key claim: ok=%v err=%v, want ok=true", ok, err)
+	}
+}
