@@ -44,6 +44,10 @@ type Config struct {
 	BankClientID string
 	// CycleInterval is how often the scheduler triggers a cycle per tenant.
 	CycleInterval time.Duration
+	// SchedulerEnabled controls whether the background cron scheduler starts.
+	// Set ORCH_SCHEDULER_ENABLED=true to activate it. Disabled by default so
+	// the HTTP-only deployment (e.g. for testing) does not start background work.
+	SchedulerEnabled bool
 	// LogLevel is the zerolog level, for example "info" or "debug".
 	LogLevel string
 }
@@ -64,6 +68,7 @@ func Load() (Config, error) {
 		BankPublicKeyPEM:         env("ORCH_BANK_PUBLIC_KEY_PEM", ""),
 		BankAccounts:             splitList(env("ORCH_BANK_ACCOUNTS", "acct-anchor,acct-beacon,acct-cedar")),
 		BankClientID:             env("ORCH_BANK_CLIENT_ID", "solva-orchestrator"),
+		SchedulerEnabled:         env("ORCH_SCHEDULER_ENABLED", "false") == "true",
 		LogLevel:                 env("ORCH_LOG_LEVEL", "info"),
 	}
 

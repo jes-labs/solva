@@ -68,6 +68,32 @@ type ReserveRepo interface {
 	LatestReserves(ctx context.Context, tenantID string) (string, error)
 }
 
+// TenantRepo lists tenants the scheduler needs to drive.
+type TenantRepo interface {
+	// ListTenants returns every active tenant. The scheduler calls this on
+	// each tick so newly provisioned tenants are picked up without a restart.
+	ListTenants(ctx context.Context) ([]entity.Tenant, error)
+}
+
+// CadenceForPlan maps a billing plan name to its cycle interval. Free tenants
+// run hourly; pro tenants run every hour by default but can be tightened to
+// daily. Unknown plans fall back to hourly so a misconfigured tenant still
+// produces proofs rather than being silently skipped.
+//
+// PRD 2 §7.1 defines the two supported cadences. Billing logic (which plan a
+// tenant is on) is intentionally out of scope here: the plan field is read,
+// not written.
+func CadenceForPlan(plan string) (hourly, daily bool) {
+	switch plan {
+	case "pro":
+		return true, false // pro: hourly
+	case "free":
+		return false, true // free: daily
+	default:
+		return true, false // unknown: default to hourly
+	}
+}
+
 // Cache holds the latest proof id per tenant and the idempotency locks that
 // stop a cycle from running twice at once.
 type Cache interface {
