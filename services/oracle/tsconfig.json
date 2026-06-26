@@ -4,12 +4,7 @@
     "lib": ["ES2022"],
     "types": ["node"],
     "outDir": "dist",
-    "rootDir": "src",
-    "paths": {
-      "@solva/contract-bindings": [
-        "../../packages/contract-bindings/src/index.ts"
-      ]
-    }
+    "rootDir": "src"
   },
   "include": ["src"],
   "exclude": ["dist", "node_modules"]

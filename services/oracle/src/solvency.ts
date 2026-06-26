@@ -94,10 +94,9 @@ export function chainSolvencyDeps(
         // proof without re-submitting the blob.
         return await registryClient.verifyInclusion({
           proofId: proof.id,
-          rootHash: proof.publicInputs.rootHash,
-          leafHash: "",
+          customerIdHash: proof.publicInputs.rootHash,
+          balance: proof.publicInputs.liabilitiesTotal,
           path: [],
-          index: 0,
         });
       } catch {
         // A chain read failure surfaces as verifiedOnChain: false rather than
