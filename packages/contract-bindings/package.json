@@ -16,13 +16,15 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup",
+    "build": "tsc -p src/generated && tsup",
+    "build:generated": "tsc -p src/generated",
     "dev": "tsup --watch",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -p src/generated && tsc --noEmit"
   },
   "dependencies": {
-    "@solva/shared-types": "workspace:*"
+    "@solva/shared-types": "workspace:*",
+    "buffer": "^6.0.3"
   },
   "peerDependencies": {
     "@stellar/stellar-sdk": "^16.0.0"
