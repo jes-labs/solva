@@ -52,9 +52,10 @@ vendor/
 *.log
 npm-debug.log*
 
-# The proof-registry bindings are committed (src + built dist) so the wrapper
-# builds without the Stellar CLI or network. Regenerate with `just gen-bindings`,
-# then rebuild dist. Only the sub-package's installed deps are ignored.
+# The generated proof-registry bindings: the source is committed so the wrapper
+# builds without the Stellar CLI or network; its dist is a build artifact that
+# the contract-bindings build/typecheck regenerates (and so stays ignored).
+# Regenerate the source with `just gen-bindings`.
 packages/contract-bindings/src/generated/node_modules/
 
 # Stellar
