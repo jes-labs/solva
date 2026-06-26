@@ -15,6 +15,7 @@ import (
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/config"
 	controllerhttp "github.com/jes-labs/solva/services/orchestrator/internal/controller/http"
+	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/scheduler"
 	"github.com/jes-labs/solva/services/orchestrator/internal/usecase"
 )
 
@@ -59,6 +60,17 @@ func run(cfg config.Config, log zerolog.Logger) error {
 
 	handler := controllerhttp.NewHandler(cycle, query, log)
 	router := controllerhttp.Router(handler, log)
+
+	// Start the per-tenant cron scheduler if enabled via config flag. The
+	// scheduler runs in a background goroutine and is cancelled with the
+	// top-level context on shutdown.
+	if cfg.SchedulerEnabled {
+		sched := scheduler.New(cycle, deps.postgres, log)
+		go sched.Run(ctx)
+		log.Info().Msg("per-tenant cron scheduler started (ORCH_SCHEDULER_ENABLED=true)")
+	} else {
+		log.Info().Msg("cron scheduler disabled (set ORCH_SCHEDULER_ENABLED=true to enable)")
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

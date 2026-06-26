@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
@@ -264,8 +265,35 @@ func proofFromRow(row Proof) (entity.Proof, error) {
 	}, nil
 }
 
+// ListTenants returns every tenant row for the scheduler. The orchestrator does
+// not own tenant lifecycle, but must read the plan field to know each tenant's
+// cycle cadence.
+func (p *Postgres) ListTenants(ctx context.Context) ([]entity.Tenant, error) {
+	const q = `SELECT id, name, plan, created_at FROM tenants ORDER BY created_at`
+	rows, err := p.pool.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list tenants: %w", err)
+	}
+	defer rows.Close()
+
+	var out []entity.Tenant
+	for rows.Next() {
+		var t entity.Tenant
+		var pgID pgtype.UUID
+		var pgCreated pgtype.Timestamptz
+		if err := rows.Scan(&pgID, &t.Name, &t.Plan, &pgCreated); err != nil {
+			return nil, fmt.Errorf("scan tenant row: %w", err)
+		}
+		t.ID = fromUUID(pgID)
+		t.CreatedAt = pgCreated.Time
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // Ensure Postgres satisfies the repo ports.
 var (
 	_ usecase.ProofRepo   = (*Postgres)(nil)
 	_ usecase.ReserveRepo = (*Postgres)(nil)
+	_ usecase.TenantRepo  = (*Postgres)(nil)
 )
