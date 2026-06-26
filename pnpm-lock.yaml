@@ -393,6 +393,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@3.25.76)
+      '@solva/contract-bindings':
+        specifier: workspace:*
+        version: link:../../packages/contract-bindings
       '@solva/sdk-ts':
         specifier: workspace:*
         version: link:../../packages/sdk-ts
