@@ -52,8 +52,10 @@ vendor/
 *.log
 npm-debug.log*
 
-# Generated code (regenerated via Just targets, not committed unless noted)
-packages/contract-bindings/src/generated/
+# The proof-registry bindings are committed (src + built dist) so the wrapper
+# builds without the Stellar CLI or network. Regenerate with `just gen-bindings`,
+# then rebuild dist. Only the sub-package's installed deps are ignored.
+packages/contract-bindings/src/generated/node_modules/
 
 # Stellar
 .stellar/

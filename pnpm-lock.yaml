@@ -87,6 +87,9 @@ importers:
       '@solva/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@solva/contract-bindings':
+        specifier: workspace:*
+        version: link:../../packages/contract-bindings
       '@solva/sdk-ts':
         specifier: workspace:*
         version: link:../../packages/sdk-ts
@@ -282,6 +285,9 @@ importers:
       '@solva/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
     devDependencies:
       '@solva/config':
         specifier: workspace:*

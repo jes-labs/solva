@@ -61,9 +61,14 @@ deploy-contract network="testnet" owner="solva-spike":
       --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin \
       | tail -1 | tee contracts/proof-registry/.contract_id
 
-# Regenerate the TypeScript contract bindings after a contract change.
-gen-bindings:
-    stellar contract bindings typescript --output-dir packages/contract-bindings/src/generated --overwrite
+# Regenerate the TypeScript contract bindings from the deployed contract. The
+# CLI fetches the interface from the network using the id in .contract_id.
+gen-bindings network="testnet":
+    stellar contract bindings typescript \
+      --network {{network}} \
+      --id "$(cat contracts/proof-registry/.contract_id)" \
+      --output-dir packages/contract-bindings/src/generated \
+      --overwrite
 
 # Regenerate the sqlc database layer after changing query/ or migrations/.
 sqlc:
