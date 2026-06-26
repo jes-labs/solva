@@ -63,7 +63,7 @@ function makeProof(
   };
 }
 
-const SOLVENT_RESULT: SolvencyResult = {
+const _SOLVENT_RESULT: SolvencyResult = {
   status: SolvencyStatus.Solvent,
   solvent: true,
   reservesTotal: "1000",
