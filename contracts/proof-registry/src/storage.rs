@@ -6,7 +6,10 @@ pub enum DataKey {
     Owner,
     Vk,
     LatestId,
-    Proofs,
+    // One entry per proof id. Keeping proofs under separate keys keeps publish at
+    // O(1): a single small write, rather than reading and rewriting one growing
+    // map every cycle (which crossed the per-tx resource budget around proof 4).
+    Proof(u64),
 }
 
 #[contracttype]
