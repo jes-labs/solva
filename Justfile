@@ -27,6 +27,27 @@ build-circuits:
     cd circuits/solvency && nargo compile
     cd circuits/merkle && nargo compile
 
+# Assemble the prover's runtime artifacts into ./artifacts:
+#   solva.json  the compiled solvency circuit (renamed from nargo's output)
+#   g1.dat g2.dat  the BN254 CRS that bb downloads to ~/.bb-crs
+# Requires the pinned nargo and bb (see circuits/README.md). bb write_vk needs
+# no witness; it is the witness-free way to trigger the CRS download.
+build-artifacts:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # nargo and bb install outside the default PATH; add them so this runs from
+    # just, CI, or any non-interactive shell, not only an interactive one.
+    export PATH="$HOME/.bb:$HOME/.nargo/bin:$PATH"
+    ( cd circuits/solvency && nargo compile )
+    ( cd circuits/solvency && bb write_vk --scheme ultra_honk --oracle_hash keccak \
+        --bytecode_path target/solva_solvency.json \
+        --output_path target --output_format bytes_and_fields )
+    mkdir -p artifacts
+    cp circuits/solvency/target/solva_solvency.json artifacts/solva.json
+    cp "$HOME/.bb-crs/bn254_g1.dat" artifacts/g1.dat
+    cp "$HOME/.bb-crs/bn254_g2.dat" artifacts/g2.dat
+    echo "artifacts assembled: artifacts/{solva.json,g1.dat,g2.dat}"
+
 # Run the Rust prover service.
 dev-prover:
     cargo run -p solva-prover
@@ -38,10 +59,6 @@ dev-orchestrator:
 # Run the mock Open Banking sandbox.
 dev-sandbox:
     cd services/sandbox && go run ./cmd/app
-
-# Generate gRPC stubs for Go and Rust from proto/prover.proto.
-proto:
-    buf generate
 
 # Build the Soroban contract to wasm.
 build-contract:
@@ -93,6 +110,13 @@ lint:
 # Tear down local infrastructure.
 down:
     docker compose -f infra/docker-compose.yml down
+
+# End-to-end test: sandbox -> orchestrator -> prover -> contract on Testnet,
+# across the solvent / near-breach / insolvent scenarios. Needs a funded
+# Testnet identity that owns the contract: export E2E_STELLAR_SIGNER_SECRET.
+# See scripts/e2e.sh for the full prerequisites.
+e2e:
+    bash scripts/e2e.sh
 
 # Run `just parity-check` to execute all three parity gate tests.
 # Runs the full Poseidon2 parity gate across all three layers.
