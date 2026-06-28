@@ -90,6 +90,100 @@ fn poseidon2_two(env: &Env, a: U256, b: U256) -> BytesN<32> {
     BytesN::from_array(env, &result.to_be_bytes().try_into().unwrap_or([0u8; 32]))
 }
 
+#[allow(deprecated)]
+fn poseidon2_four(env: &Env, a: &U256, b: &U256, c: &U256, d: &U256) -> U256 {
+    let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
+    let inputs = soroban_sdk::vec![env, a.clone(), b.clone(), c.clone(), d.clone()];
+    let result = sponge.compute_hash(&inputs);
+    let bytes: [u8; 32] = result.to_be_bytes().try_into().unwrap_or([0u8; 32]);
+    U256::from_be_bytes(env, &BytesN::from_array(env, &bytes).into())
+}
+
+// Computes the canonical hash4-with-sums root for the demo leaf set (ids 1..8,
+// balances 10..80) using the native on-chain Poseidon2. This is the ground
+// truth the circuit and prover must reproduce. The scheme, per the whitepaper:
+//   leaf = poseidon2([id_hash, balance, 0, 0]), sum = balance
+//   node = poseidon2([left.hash, left.sum, right.hash, right.sum]), sum = left+right
+// Run: cargo test -p proof-registry canonical_root -- --nocapture
+#[test]
+fn canonical_root() {
+    let env = Env::default();
+    let zero = U256::from_u32(&env, 0);
+
+    let ids = [1u32, 2, 3, 4, 5, 6, 7, 8];
+    let bals = [10u32, 20, 30, 40, 50, 60, 70, 80];
+
+    let mut hashes: alloc::vec::Vec<U256> = alloc::vec::Vec::new();
+    let mut sums: alloc::vec::Vec<U256> = alloc::vec::Vec::new();
+    for i in 0..8 {
+        let id = U256::from_u32(&env, ids[i]);
+        let bal = U256::from_u32(&env, bals[i]);
+        hashes.push(poseidon2_four(&env, &id, &bal, &zero, &zero));
+        sums.push(bal);
+    }
+
+    while hashes.len() > 1 {
+        let mut next_hashes: alloc::vec::Vec<U256> = alloc::vec::Vec::new();
+        let mut next_sums: alloc::vec::Vec<U256> = alloc::vec::Vec::new();
+        let mut j = 0;
+        while j < hashes.len() {
+            next_hashes.push(poseidon2_four(&env, &hashes[j], &sums[j], &hashes[j + 1], &sums[j + 1]));
+            next_sums.push(sums[j].add(&sums[j + 1]));
+            j += 2;
+        }
+        hashes = next_hashes;
+        sums = next_sums;
+    }
+
+    let root: [u8; 32] = hashes[0].to_be_bytes().try_into().unwrap_or([0u8; 32]);
+    let hexs: std::string::String = root.iter().map(|b| format!("{:02x}", b)).collect();
+    std::eprintln!("CANONICAL_ROOT_HASH=0x{}", hexs);
+}
+
+const CANONICAL_ROOT: &str =
+    "0x0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f";
+
+fn small_id(env: &Env, n: u32) -> BytesN<32> {
+    let mut buf = [0u8; 32];
+    buf[28..32].copy_from_slice(&n.to_be_bytes());
+    BytesN::from_array(env, &buf)
+}
+
+// The production inclusion helpers must build the same root as the native sponge
+// (canonical_root). This is the contract side of the cross-layer parity gate.
+#[test]
+fn inclusion_helpers_match_canonical() {
+    let env = Env::default();
+    let ids = [1u32, 2, 3, 4, 5, 6, 7, 8];
+    let bals = [10u128, 20, 30, 40, 50, 60, 70, 80];
+
+    let mut hashes: alloc::vec::Vec<BytesN<32>> = alloc::vec::Vec::new();
+    let mut sums: alloc::vec::Vec<u128> = alloc::vec::Vec::new();
+    for i in 0..8 {
+        hashes.push(crate::poseidon2_leaf(&env, &small_id(&env, ids[i]), bals[i]));
+        sums.push(bals[i]);
+    }
+
+    while hashes.len() > 1 {
+        let mut next_hashes: alloc::vec::Vec<BytesN<32>> = alloc::vec::Vec::new();
+        let mut next_sums: alloc::vec::Vec<u128> = alloc::vec::Vec::new();
+        let mut j = 0;
+        while j < hashes.len() {
+            next_hashes.push(crate::poseidon2_node(&env, &hashes[j], sums[j], &hashes[j + 1], sums[j + 1]));
+            next_sums.push(sums[j] + sums[j + 1]);
+            j += 2;
+        }
+        hashes = next_hashes;
+        sums = next_sums;
+    }
+
+    assert_eq!(
+        hashes[0],
+        hex_to_bytes32(&env, CANONICAL_ROOT),
+        "contract inclusion helpers do not match the canonical root"
+    );
+}
+
 #[test]
 fn poseidon2_parity_v0_zero_zero() {
     let env = Env::default();

@@ -106,6 +106,19 @@ fn test_solvent_passes() {
     main(r, root_h, l, 400, ids, bals, paths, reserves);
 }
 
+#[test]
+// The circuit root must equal the contract's native Poseidon2 hash4-with-sums
+// root (proof-registry canonical_root test). Locks circuit-contract parity.
+fn parity_root_matches_contract() {
+    let ids: [Field; N] = [1, 2, 3, 4, 5, 6, 7, 8];
+    let bals: [Field; N] = [10, 20, 30, 40, 50, 60, 70, 80];
+    let (root_h, _l) = expected_root(ids, bals);
+    assert(
+        root_h == 0x0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f,
+        "circuit root does not match the contract canonical root",
+    );
+}
+
 #[test(should_fail_with = "insolvent: reserves below liabilities")]
 // Insolvent case: R < L must fail the solvency assertion.
 fn test_insolvent_fails() {

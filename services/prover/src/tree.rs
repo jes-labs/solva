@@ -111,6 +111,67 @@ pub fn poseidon2_hash_two(a: FieldElem, b: FieldElem) -> FieldElem {
     fr_to_bytes(state[0])
 }
 
+// poseidon2_hash_four: Poseidon2 over four inputs, matching
+// Poseidon2::hash([a, b, c, d], 4) in the circuit. Four inputs exceed the rate
+// of 3, so the sponge runs two permutations: absorb [a, b, c], then [d].
+pub fn poseidon2_hash_four(a: FieldElem, b: FieldElem, c: FieldElem, d: FieldElem) -> FieldElem {
+    fr_to_bytes(poseidon2_perm4(
+        Fr::from_be_bytes_mod_order(&a),
+        Fr::from_be_bytes_mod_order(&b),
+        Fr::from_be_bytes_mod_order(&c),
+        Fr::from_be_bytes_mod_order(&d),
+    ))
+}
+
+fn poseidon2_perm4(a: Fr, b: Fr, c: Fr, d: Fr) -> Fr {
+    // IV = message_length(4) * 2^64 in the capacity slot.
+    let iv = Fr::from(4u64) * Fr::from(18446744073709551616u128);
+    let mut state = [a, b, c, iv];
+    permutation(&mut state);
+    state[0] += d;
+    permutation(&mut state);
+    state[0]
+}
+
+#[cfg(test)]
+mod hash4_parity {
+    use super::{fr_to_bytes, poseidon2_perm4};
+    use ark_bn254::Fr;
+    use ark_ff::Zero;
+
+    // The prover's hash4-with-sums tree must build the same root as the circuit
+    // and the contract (proof-registry canonical_root). This is the prover side
+    // of the cross-layer parity gate.
+    #[test]
+    fn root_matches_canonical() {
+        let ids = [1u64, 2, 3, 4, 5, 6, 7, 8];
+        let bals = [10u64, 20, 30, 40, 50, 60, 70, 80];
+
+        let mut hashes: Vec<Fr> = (0..8)
+            .map(|i| poseidon2_perm4(Fr::from(ids[i]), Fr::from(bals[i]), Fr::zero(), Fr::zero()))
+            .collect();
+        let mut sums: Vec<Fr> = (0..8).map(|i| Fr::from(bals[i])).collect();
+
+        while hashes.len() > 1 {
+            let mut next_hashes = Vec::new();
+            let mut next_sums = Vec::new();
+            let mut j = 0;
+            while j < hashes.len() {
+                next_hashes.push(poseidon2_perm4(hashes[j], sums[j], hashes[j + 1], sums[j + 1]));
+                next_sums.push(sums[j] + sums[j + 1]);
+                j += 2;
+            }
+            hashes = next_hashes;
+            sums = next_sums;
+        }
+
+        let got = fr_to_bytes(hashes[0]);
+        let want =
+            hex::decode("0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f").unwrap();
+        assert_eq!(&got[..], want.as_slice(), "prover hash4 root does not match the canonical root");
+    }
+}
+
 // Poseidon2 permutation (t=4, R_F=8, R_P=56, x^5, BN254)
 // Ported from noir-lang/noir v1.0.0-beta.9
 // acvm-repo/bn254_blackbox_solver/src/poseidon2.rs
