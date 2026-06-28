@@ -30,6 +30,18 @@ pub struct Node {
     pub sum: u128,
 }
 
+impl Node {
+    // A customer leaf: hash4([id_hash, balance, 0, 0]), sum = balance, matching
+    // the circuit's leaf encoding.
+    pub fn leaf(id_hash: FieldElem, balance: u128) -> Node {
+        let zero = u128_to_field(0);
+        Node {
+            hash: poseidon2_hash_four(id_hash, u128_to_field(balance), zero, zero),
+            sum: balance,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PathStep {
     pub sibling: Node,
@@ -83,12 +95,22 @@ impl MerkleSumTree {
     }
 }
 
-// hash_pair: combines two child nodes into their parent.
-// Only the two child hashes are fed into Poseidon2 -- sums are not hashed.
-// This matches the Noir circuit's MerkleSumNode::combine exactly.
+// u128_to_field: a balance or sum as a BN254 field element.
+fn u128_to_field(v: u128) -> FieldElem {
+    fr_to_bytes(Fr::from(v))
+}
+
+// hash_pair: combines two child nodes into their parent, matching the circuit's
+// MerkleSumNode::combine: hash4([left.hash, left.sum, right.hash, right.sum]).
+// Binding the sums into the hash stops a subtree from lying about its total.
 fn hash_pair(left: &Node, right: &Node) -> Node {
     Node {
-        hash: poseidon2_hash_two(left.hash, right.hash),
+        hash: poseidon2_hash_four(
+            left.hash,
+            u128_to_field(left.sum),
+            right.hash,
+            u128_to_field(right.sum),
+        ),
         sum: left.sum.saturating_add(right.sum),
     }
 }
@@ -135,40 +157,25 @@ fn poseidon2_perm4(a: Fr, b: Fr, c: Fr, d: Fr) -> Fr {
 
 #[cfg(test)]
 mod hash4_parity {
-    use super::{fr_to_bytes, poseidon2_perm4};
-    use ark_bn254::Fr;
-    use ark_ff::Zero;
+    use super::{u128_to_field, MerkleSumTree, Node};
 
-    // The prover's hash4-with-sums tree must build the same root as the circuit
-    // and the contract (proof-registry canonical_root). This is the prover side
-    // of the cross-layer parity gate.
+    // The production tree (Node::leaf + MerkleSumTree) must build the canonical
+    // root the circuit and contract produce (proof-registry canonical_root).
+    // This is the prover side of the cross-layer parity gate.
     #[test]
     fn root_matches_canonical() {
-        let ids = [1u64, 2, 3, 4, 5, 6, 7, 8];
-        let bals = [10u64, 20, 30, 40, 50, 60, 70, 80];
+        let ids = [1u128, 2, 3, 4, 5, 6, 7, 8];
+        let bals = [10u128, 20, 30, 40, 50, 60, 70, 80];
 
-        let mut hashes: Vec<Fr> = (0..8)
-            .map(|i| poseidon2_perm4(Fr::from(ids[i]), Fr::from(bals[i]), Fr::zero(), Fr::zero()))
+        let leaves: Vec<Node> = (0..8)
+            .map(|i| Node::leaf(u128_to_field(ids[i]), bals[i]))
             .collect();
-        let mut sums: Vec<Fr> = (0..8).map(|i| Fr::from(bals[i])).collect();
+        let root = MerkleSumTree::build(leaves).root();
 
-        while hashes.len() > 1 {
-            let mut next_hashes = Vec::new();
-            let mut next_sums = Vec::new();
-            let mut j = 0;
-            while j < hashes.len() {
-                next_hashes.push(poseidon2_perm4(hashes[j], sums[j], hashes[j + 1], sums[j + 1]));
-                next_sums.push(sums[j] + sums[j + 1]);
-                j += 2;
-            }
-            hashes = next_hashes;
-            sums = next_sums;
-        }
-
-        let got = fr_to_bytes(hashes[0]);
         let want =
             hex::decode("0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f").unwrap();
-        assert_eq!(&got[..], want.as_slice(), "prover hash4 root does not match the canonical root");
+        assert_eq!(&root.hash[..], want.as_slice(), "prover tree root does not match the canonical root");
+        assert_eq!(root.sum, 360, "root sum must equal L = 360");
     }
 }
 
