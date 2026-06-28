@@ -118,28 +118,28 @@ down:
 e2e:
     bash scripts/e2e.sh
 
-# Run `just parity-check` to execute all three parity gate tests.
-# Runs the full Poseidon2 parity gate across all three layers.
-# Step 0 is manual: run `just parity-print` first, populate the JSON, then run this.
-parity-check: parity-circuit parity-prover parity-contract
-    @echo "✓ All three Poseidon2 parity layers passed."
+# Cross-layer parity gate: the circuit, prover, and contract must each build the
+# canonical Poseidon2 hash4-with-sums root for the sample leaves. The contract is
+# the source of truth (native on-chain Poseidon2); the other layers must match.
+parity-check: parity-contract parity-circuit parity-prover
+    @echo "✓ Circuit, prover, and contract all build the canonical root."
 
-# Step 0 (manual, run once): print the ground-truth hash values from the Noir circuit.
-# Copy the output into test-vectors/poseidon2_parity.json before running parity-check.
+# Print the canonical root from the contract's native Poseidon2 (CANONICAL_ROOT_HASH).
+# This is the value the circuit and prover parity tests assert against.
 parity-print:
-    cd circuits/lib && nargo test --show-output poseidon2_parity_print
+    cargo test -p proof-registry canonical_root -- --nocapture
 
-# Layer 1 — Noir circuit
+# Layer 1 — Noir circuit: root matches the contract canonical root.
 parity-circuit:
-    cd circuits/lib && nargo test --package solva_lib poseidon2_parity
+    cd circuits/solvency && nargo test parity_root_matches_contract
 
-# Layer 2 — Rust prover
+# Layer 2 — Rust prover: production tree builds the canonical root.
 parity-prover:
-    cargo test -p solva-prover poseidon2_parity -- --nocapture
+    cargo test -p solva-prover root_matches_canonical
 
-# Layer 3 — Stellar contract
+# Layer 3 — Stellar contract: inclusion helpers build the canonical root.
 parity-contract:
-    cargo test -p proof-registry poseidon2_parity -- --nocapture
+    cargo test -p proof-registry inclusion_helpers_match_canonical
 
 # Install the Go protoc plugins required by buf.gen.yaml.
 _install-proto-plugins:

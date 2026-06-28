@@ -12,23 +12,9 @@ tracing-subscriber = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 zeroize = { version = "1", features = ["derive"] }
-eyre = "0.6"
-sha3 = "0.10"
 ark-bn254 = "0.5"
 ark-ff    = "0.5"
-num-bigint = "0.4"
-light-poseidon = "0.2.0"
 hex = "0.4.3"
-
-acir          = { version = "1.0.0-beta.20", git = "https://github.com/noir-lang/noir/", tag = "v1.0.0-beta.20", package = "acir" }
-noirc-abi     = { version = "1.0.0-beta.20", git = "https://github.com/noir-lang/noir/", tag = "v1.0.0-beta.20", package = "noirc_abi" }
-noirc-artifacts = { version = "1.0.0-beta.20", git = "https://github.com/noir-lang/noir/", tag = "v1.0.0-beta.20", package = "noirc_artifacts" }
-
-co-builder     = { git = "https://github.com/TaceoLabs/co-snarks", branch = "main", package = "co-builder" }
-co-noir        = { git = "https://github.com/TaceoLabs/co-snarks", branch = "main", package = "co-noir" }
-co-noir-common = { git = "https://github.com/TaceoLabs/co-snarks", branch = "main", package = "co-noir-common" }
-co-acvm        = { git = "https://github.com/TaceoLabs/co-snarks", branch = "main", package = "co-acvm" }
-noir-types     = { git = "https://github.com/TaceoLabs/co-snarks", branch = "main", package = "noir-types" }
 
 [build-dependencies]
 tonic-build = "0.12"

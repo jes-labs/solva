@@ -6,7 +6,7 @@
 
 # Public inputs (declared order in main: R, root_h, L, R_prev).
 R = "400"
-root_h = "0x1a3ca29c3724320ab2fe855f698969f7c9e18486ad39434345a05c0cf716db1d"
+root_h = "0x0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f"
 L = "360"
 R_prev = "400"
 

@@ -31,7 +31,7 @@ const (
 	testnetContractID = "CAYWB2IMDG753S3YF7DKVNLD7WBROYSP3JP5HEJET77W53UBWRD7ZX3Z"
 	// The public inputs the bundled sample proof commits to (R = 400, L = 360,
 	// R_prev = 400, and the Poseidon2 sum-tree root for the sample leaves).
-	sampleRootHash = "1a3ca29c3724320ab2fe855f698969f7c9e18486ad39434345a05c0cf716db1d"
+	sampleRootHash = "0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f"
 )
 
 func TestPublishProofTestnet(t *testing.T) {
