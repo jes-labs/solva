@@ -127,7 +127,13 @@ fn canonical_root() {
         let mut next_sums: alloc::vec::Vec<U256> = alloc::vec::Vec::new();
         let mut j = 0;
         while j < hashes.len() {
-            next_hashes.push(poseidon2_four(&env, &hashes[j], &sums[j], &hashes[j + 1], &sums[j + 1]));
+            next_hashes.push(poseidon2_four(
+                &env,
+                &hashes[j],
+                &sums[j],
+                &hashes[j + 1],
+                &sums[j + 1],
+            ));
             next_sums.push(sums[j].add(&sums[j + 1]));
             j += 2;
         }
@@ -140,8 +146,7 @@ fn canonical_root() {
     std::eprintln!("CANONICAL_ROOT_HASH=0x{}", hexs);
 }
 
-const CANONICAL_ROOT: &str =
-    "0x0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f";
+const CANONICAL_ROOT: &str = "0x0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f";
 
 fn small_id(env: &Env, n: u32) -> BytesN<32> {
     let mut buf = [0u8; 32];
@@ -160,7 +165,11 @@ fn inclusion_helpers_match_canonical() {
     let mut hashes: alloc::vec::Vec<BytesN<32>> = alloc::vec::Vec::new();
     let mut sums: alloc::vec::Vec<u128> = alloc::vec::Vec::new();
     for i in 0..8 {
-        hashes.push(crate::poseidon2_leaf(&env, &small_id(&env, ids[i]), bals[i]));
+        hashes.push(crate::poseidon2_leaf(
+            &env,
+            &small_id(&env, ids[i]),
+            bals[i],
+        ));
         sums.push(bals[i]);
     }
 
@@ -169,7 +178,13 @@ fn inclusion_helpers_match_canonical() {
         let mut next_sums: alloc::vec::Vec<u128> = alloc::vec::Vec::new();
         let mut j = 0;
         while j < hashes.len() {
-            next_hashes.push(crate::poseidon2_node(&env, &hashes[j], sums[j], &hashes[j + 1], sums[j + 1]));
+            next_hashes.push(crate::poseidon2_node(
+                &env,
+                &hashes[j],
+                sums[j],
+                &hashes[j + 1],
+                sums[j + 1],
+            ));
             next_sums.push(sums[j] + sums[j + 1]);
             j += 2;
         }

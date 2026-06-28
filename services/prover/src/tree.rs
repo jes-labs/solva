@@ -653,9 +653,8 @@ mod hash4_parity {
             .collect();
         let root = MerkleSumTree::build(leaves).root();
 
-        let want =
-            hex::decode("0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f")
-                .unwrap();
+        let want = hex::decode("0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f")
+            .unwrap();
         assert_eq!(
             &root.hash[..],
             want.as_slice(),
