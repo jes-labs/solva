@@ -58,6 +58,10 @@ npm-debug.log*
 # Regenerate the source with `just gen-bindings`.
 packages/contract-bindings/src/generated/node_modules/
 
+# Prover runtime artifacts: the compiled circuit and the BN254 CRS, assembled
+# by `just build-artifacts`. Generated and large (CRS), never committed.
+/artifacts/
+
 # Stellar
 .stellar/
 
