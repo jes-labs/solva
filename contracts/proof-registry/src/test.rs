@@ -78,6 +78,12 @@ fn real_proof_verifies_and_is_recorded() {
     // Publishing the same valid proof again bumps the monotonic id.
     let id2 = client.publish_proof(&proof, &inputs);
     assert_eq!(id2, 2);
+
+    // Per-id storage: both proofs stay independently retrievable, and each
+    // publish writes only its own entry (no growing map to read and rewrite).
+    assert_eq!(client.get_proof(&1).r, 400);
+    assert_eq!(client.get_proof(&2).r, 400);
+    assert_eq!(client.get_latest_proof().r, 400);
 }
 
 #[test]

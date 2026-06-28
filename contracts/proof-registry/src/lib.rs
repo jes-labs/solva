@@ -8,7 +8,7 @@
 
 use soroban_poseidon::Poseidon2Sponge;
 use soroban_sdk::crypto::bn254::Bn254Fr;
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Map, Vec, U256};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec, U256};
 use ultrahonk_soroban_verifier::{UltraHonkVerifier, PROOF_BYTES};
 
 use crate::storage::{DataKey, Error, PathNode, ProofMeta, ProofPublishedEvent, PubInputs};
@@ -25,8 +25,6 @@ impl ProofRegistry {
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage().instance().set(&DataKey::Vk, &vk);
         env.storage().instance().set(&DataKey::LatestId, &0u64);
-        let proofs: Map<u64, ProofMeta> = Map::new(&env);
-        env.storage().persistent().set(&DataKey::Proofs, &proofs);
         Ok(())
     }
 
@@ -69,13 +67,7 @@ impl ProofRegistry {
             timestamp: ts,
         };
 
-        let mut proofs: Map<u64, ProofMeta> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::Proofs)
-            .unwrap_or_else(|| Map::new(&env));
-        proofs.set(id, meta);
-        env.storage().persistent().set(&DataKey::Proofs, &proofs);
+        env.storage().persistent().set(&DataKey::Proof(id), &meta);
         env.storage().instance().set(&DataKey::LatestId, &id);
 
         ProofPublishedEvent {
@@ -98,12 +90,10 @@ impl ProofRegistry {
     }
 
     pub fn get_proof(env: Env, id: u64) -> Result<ProofMeta, Error> {
-        let proofs: Map<u64, ProofMeta> = env
-            .storage()
+        env.storage()
             .persistent()
-            .get(&DataKey::Proofs)
-            .ok_or(Error::NotInitialized)?;
-        proofs.get(id).ok_or(Error::ProofNotFound)
+            .get(&DataKey::Proof(id))
+            .ok_or(Error::ProofNotFound)
     }
 
     pub fn verify_inclusion(
