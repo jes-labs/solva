@@ -5,14 +5,16 @@
 // circuit can prove L without revealing any single balance.
 //
 // Hashing
-// poseidon2_hash_two(a, b) matches Poseidon2::hash([a, b], 2) in the Noir
-// stdlib (circuits/lib/src/lib.nr hash2 / hash_leaf). The sponge uses:
-//   state = [a, b, 0, IV]  where IV = 2 * 2^64 (two-input domain separator)
+// poseidon2_hash_four(a, b, c, d) matches Poseidon2::hash([a, b, c, d], 4) in
+// the Noir stdlib (circuits/lib/src/lib.nr hash4). Four inputs exceed the rate
+// of 3, so the sponge absorbs [a, b, c], permutes, adds d, then permutes again.
 //   t=4, R_F=8, R_P=56, S-box x^5, Barretenberg round constants
-//   output = state[0] after one permutation
+//   IV = 4 * 2^64 (four-input domain separator), output = state[0]
 //
-// hash_pair feeds only the two child hashes -- not the sums -- matching
-// MerkleSumNode::combine in the circuit exactly. Sums ride in Node::sum.
+// Node::leaf is hash4([id_hash, balance, 0, 0]); hash_pair is
+// hash4([left.hash, left.sum, right.hash, right.sum]), matching
+// MerkleSumNode::combine in the circuit. Binding the sums into the hash stops a
+// subtree from lying about its total.
 //
 // Permutation source: noir-lang/noir v1.0.0-beta.9
 //   acvm-repo/bn254_blackbox_solver/src/poseidon2.rs
@@ -28,6 +30,18 @@ pub type FieldElem = [u8; 32];
 pub struct Node {
     pub hash: FieldElem,
     pub sum: u128,
+}
+
+impl Node {
+    // A customer leaf: hash4([id_hash, balance, 0, 0]), sum = balance, matching
+    // the circuit's leaf encoding.
+    pub fn leaf(id_hash: FieldElem, balance: u128) -> Node {
+        let zero = u128_to_field(0);
+        Node {
+            hash: poseidon2_hash_four(id_hash, u128_to_field(balance), zero, zero),
+            sum: balance,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -83,32 +97,46 @@ impl MerkleSumTree {
     }
 }
 
-// hash_pair: combines two child nodes into their parent.
-// Only the two child hashes are fed into Poseidon2 -- sums are not hashed.
-// This matches the Noir circuit's MerkleSumNode::combine exactly.
+// u128_to_field: a balance or sum as a BN254 field element.
+fn u128_to_field(v: u128) -> FieldElem {
+    fr_to_bytes(Fr::from(v))
+}
+
+// hash_pair: combines two child nodes into their parent, matching the circuit's
+// MerkleSumNode::combine: hash4([left.hash, left.sum, right.hash, right.sum]).
+// Binding the sums into the hash stops a subtree from lying about its total.
 fn hash_pair(left: &Node, right: &Node) -> Node {
     Node {
-        hash: poseidon2_hash_two(left.hash, right.hash),
+        hash: poseidon2_hash_four(
+            left.hash,
+            u128_to_field(left.sum),
+            right.hash,
+            u128_to_field(right.sum),
+        ),
         sum: left.sum.saturating_add(right.sum),
     }
 }
 
-// poseidon2_hash_two: the canonical two-field-element hash.
-// Matches Poseidon2::hash([a, b], 2) in the Noir circuit.
-pub fn poseidon2_hash_two(a: FieldElem, b: FieldElem) -> FieldElem {
-    let fa = Fr::from_be_bytes_mod_order(&a);
-    let fb = Fr::from_be_bytes_mod_order(&b);
+// poseidon2_hash_four: Poseidon2 over four inputs, matching
+// Poseidon2::hash([a, b, c, d], 4) in the circuit. Four inputs exceed the rate
+// of 3, so the sponge runs two permutations: absorb [a, b, c], then [d].
+pub fn poseidon2_hash_four(a: FieldElem, b: FieldElem, c: FieldElem, d: FieldElem) -> FieldElem {
+    fr_to_bytes(poseidon2_perm4(
+        Fr::from_be_bytes_mod_order(&a),
+        Fr::from_be_bytes_mod_order(&b),
+        Fr::from_be_bytes_mod_order(&c),
+        Fr::from_be_bytes_mod_order(&d),
+    ))
+}
 
-    // IV = message_length * 2^64 = 2 * 2^64, in the capacity slot state[3].
-    let iv = Fr::from(2u64) * Fr::from(18446744073709551616u128);
-
-    // Initial state: [input[0], input[1], 0, IV]
-    let mut state = [fa, fb, Fr::zero(), iv];
-
-    // Two inputs < rate(3), so no intermediate permutation; go straight to final.
+fn poseidon2_perm4(a: Fr, b: Fr, c: Fr, d: Fr) -> Fr {
+    // IV = message_length(4) * 2^64 in the capacity slot.
+    let iv = Fr::from(4u64) * Fr::from(18446744073709551616u128);
+    let mut state = [a, b, c, iv];
     permutation(&mut state);
-
-    fr_to_bytes(state[0])
+    state[0] += d;
+    permutation(&mut state);
+    state[0]
 }
 
 // Poseidon2 permutation (t=4, R_F=8, R_P=56, x^5, BN254)
@@ -607,3 +635,31 @@ static RC: LazyLock<[[Fr; 4]; 64]> = LazyLock::new(|| {
         ],
     ]
 });
+
+#[cfg(test)]
+mod hash4_parity {
+    use super::{u128_to_field, MerkleSumTree, Node};
+
+    // The production tree (Node::leaf + MerkleSumTree) must build the canonical
+    // root the circuit and contract produce (proof-registry canonical_root).
+    // This is the prover side of the cross-layer parity gate.
+    #[test]
+    fn root_matches_canonical() {
+        let ids = [1u128, 2, 3, 4, 5, 6, 7, 8];
+        let bals = [10u128, 20, 30, 40, 50, 60, 70, 80];
+
+        let leaves: Vec<Node> = (0..8)
+            .map(|i| Node::leaf(u128_to_field(ids[i]), bals[i]))
+            .collect();
+        let root = MerkleSumTree::build(leaves).root();
+
+        let want = hex::decode("0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f")
+            .unwrap();
+        assert_eq!(
+            &root.hash[..],
+            want.as_slice(),
+            "prover tree root does not match the canonical root"
+        );
+        assert_eq!(root.sum, 360, "root sum must equal L = 360");
+    }
+}

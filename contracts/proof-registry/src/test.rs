@@ -23,11 +23,11 @@ use crate::{Error, PathNode, ProofRegistry, ProofRegistryClient, PubInputs};
 static SOLVENCY_VK: &[u8] = include_bytes!("testdata/solvency_vk.bin");
 static SOLVENCY_PROOF: &[u8] = include_bytes!("testdata/solvency_proof.bin");
 
-// Poseidon2 sum-tree root for the sample leaves (ids 1..8, balances 10..80).
-// This is the `root_h` public input the proof commits to.
+// Poseidon2 hash4-with-sums root for the sample leaves (ids 1..8, balances
+// 10..80). This is the `root_h` public input the proof commits to.
 const SAMPLE_ROOT_H: [u8; 32] = [
-    0x1a, 0x3c, 0xa2, 0x9c, 0x37, 0x24, 0x32, 0x0a, 0xb2, 0xfe, 0x85, 0x5f, 0x69, 0x89, 0x69, 0xf7,
-    0xc9, 0xe1, 0x84, 0x86, 0xad, 0x39, 0x43, 0x43, 0x45, 0xa0, 0x5c, 0x0c, 0xf7, 0x16, 0xdb, 0x1d,
+    0x0e, 0x36, 0x88, 0x8d, 0x7c, 0xad, 0xe7, 0xe7, 0x93, 0x09, 0xcd, 0x7e, 0x58, 0x10, 0x96, 0x11,
+    0x10, 0x4c, 0x22, 0x5f, 0x2f, 0xcd, 0x5a, 0x15, 0x8c, 0x66, 0x2d, 0xeb, 0xb1, 0x73, 0x57, 0x2f,
 ];
 
 // Deploys the contract with the real solvency verifying key.
@@ -130,12 +130,21 @@ fn b32_to_u256(env: &Env, b: &BytesN<32>) -> U256 {
 
 // Build the 8-leaf Poseidon2 sum tree for the sample leaves (ids 1..8,
 // balances 10..80) and return the levels bottom-up. Each node is (hash, sum).
-// Mirrors the prover fold in services/prover/src/tree.rs.
+// Mirrors the prover fold in services/prover/src/tree.rs: leaf is
+// hash4([id, balance, 0, 0]), node is hash4([left.hash, left.sum, right.hash,
+// right.sum]).
 fn build_sample_levels(env: &Env) -> std::vec::Vec<std::vec::Vec<(BytesN<32>, u128)>> {
+    let zero = U256::from_u32(env, 0);
     let mut leaves: std::vec::Vec<(BytesN<32>, u128)> = std::vec::Vec::new();
     for i in 1u128..=8 {
         let bal = 10 * i;
-        let hash = poseidon2_two(env, U256::from_u128(env, i), U256::from_u128(env, bal));
+        let hash = poseidon2_four(
+            env,
+            U256::from_u128(env, i),
+            U256::from_u128(env, bal),
+            zero.clone(),
+            zero.clone(),
+        );
         leaves.push((hash, bal));
     }
 
@@ -152,7 +161,13 @@ fn build_sample_levels(env: &Env) -> std::vec::Vec<std::vec::Vec<(BytesN<32>, u1
             } else {
                 &cur[k]
             };
-            let hash = poseidon2_two(env, b32_to_u256(env, lh), b32_to_u256(env, rh));
+            let hash = poseidon2_four(
+                env,
+                b32_to_u256(env, lh),
+                U256::from_u128(env, *ls),
+                b32_to_u256(env, rh),
+                U256::from_u128(env, *rs),
+            );
             parents.push((hash, ls.saturating_add(*rs)));
             k += 2;
         }
@@ -274,6 +289,14 @@ fn json_expected_hex(id: &str) -> BytesN<32> {
 fn poseidon2_two(env: &Env, a: U256, b: U256) -> BytesN<32> {
     let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
     let inputs = soroban_sdk::vec![env, a, b];
+    let result = sponge.compute_hash(&inputs);
+    let arr: [u8; 32] = result.to_be_bytes().try_into().unwrap_or([0u8; 32]);
+    BytesN::from_array(env, &arr)
+}
+
+fn poseidon2_four(env: &Env, a: U256, b: U256, c: U256, d: U256) -> BytesN<32> {
+    let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
+    let inputs = soroban_sdk::vec![env, a, b, c, d];
     let result = sponge.compute_hash(&inputs);
     let arr: [u8; 32] = result.to_be_bytes().try_into().unwrap_or([0u8; 32]);
     BytesN::from_array(env, &arr)

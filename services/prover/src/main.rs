@@ -18,9 +18,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "0.0.0.0:50051".to_string())
         .parse()?;
 
-    let artifacts_dir =
-        std::env::var("CIRCUIT_ARTIFACTS_DIR").unwrap_or_else(|_| "artifacts".to_string());
-    let svc = ProverService::new(&artifacts_dir)?;
+    let circuit_dir =
+        std::env::var("SOLVA_CIRCUIT_DIR").unwrap_or_else(|_| "circuits/solvency".to_string());
+    let svc = ProverService::new(circuit_dir);
 
     tracing::info!(%addr, "starting solva prover gRPC server");
 

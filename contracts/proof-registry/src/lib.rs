@@ -119,14 +119,14 @@ impl ProofRegistry {
         let mut node_sum = balance;
 
         for step in path.iter() {
-            let (left_hash, right_hash) = if step.sibling_is_left {
-                (step.hash.clone(), node_hash.clone())
+            // Order this node and its sibling, carrying each one's sum, so the
+            // node hash binds both hashes and both sums.
+            let (left_hash, left_sum, right_hash, right_sum) = if step.sibling_is_left {
+                (step.hash.clone(), step.sum, node_hash.clone(), node_sum)
             } else {
-                (node_hash.clone(), step.hash.clone())
+                (node_hash.clone(), node_sum, step.hash.clone(), step.sum)
             };
-            // Only the two child hashes are fed into the hash -- not the sums.
-            // This matches the Noir circuit's hash2(left.hash, right.hash).
-            node_hash = poseidon2_node(&env, &left_hash, &right_hash);
+            node_hash = poseidon2_node(&env, &left_hash, left_sum, &right_hash, right_sum);
             node_sum = node_sum.saturating_add(step.sum);
         }
 
@@ -158,24 +158,37 @@ fn u256_to_bytes32(env: &Env, v: U256) -> BytesN<32> {
     BytesN::from_array(env, &arr)
 }
 
-/// Poseidon2([id_hash, balance], 2) -- matches hash_leaf in the Noir circuit.
+// Leaf hash, matching the circuit: hash4([id_hash, balance, 0, 0]).
 fn poseidon2_leaf(env: &Env, id_hash: &BytesN<32>, balance: u128) -> BytesN<32> {
     let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
+    let zero = U256::from_u32(env, 0);
     let inputs = soroban_sdk::vec![
         env,
         bytes32_to_u256(env, id_hash),
         U256::from_u128(env, balance),
+        zero.clone(),
+        zero,
     ];
     u256_to_bytes32(env, sponge.compute_hash(&inputs))
 }
 
-/// Poseidon2([left_hash, right_hash], 2) -- matches hash2 in the Noir circuit.
-fn poseidon2_node(env: &Env, left_hash: &BytesN<32>, right_hash: &BytesN<32>) -> BytesN<32> {
+// Internal node, matching the circuit: hash4([left.hash, left.sum, right.hash,
+// right.sum]). Binding the sums into the hash stops a subtree from lying about
+// its total.
+fn poseidon2_node(
+    env: &Env,
+    left_hash: &BytesN<32>,
+    left_sum: u128,
+    right_hash: &BytesN<32>,
+    right_sum: u128,
+) -> BytesN<32> {
     let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
     let inputs = soroban_sdk::vec![
         env,
         bytes32_to_u256(env, left_hash),
+        U256::from_u128(env, left_sum),
         bytes32_to_u256(env, right_hash),
+        U256::from_u128(env, right_sum),
     ];
     u256_to_bytes32(env, sponge.compute_hash(&inputs))
 }

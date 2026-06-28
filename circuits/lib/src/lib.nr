@@ -11,12 +11,12 @@ pub fn assert_u64(val: Field) -> u64 {
     val_u64
 }
 
-// Wraps the native Noir Poseidon implementation for a 4-element inputs array.
-// This matches the structural requirements for a 2-child Merkle Sum Tree node.
-use dep::poseidon::poseidon::bn254;
+// Poseidon2, not Poseidon v1: the circuit's commitment must match the contract's
+// native on-chain Poseidon2. message_size is 4, the full input array.
+use dep::poseidon::poseidon2::Poseidon2;
 
 pub fn hash4(inputs: [Field; 4]) -> Field {
-    bn254::hash_4(inputs)
+    Poseidon2::hash(inputs, 4)
 }
 
 // Represents a single node in the Merkle Sum Tree.

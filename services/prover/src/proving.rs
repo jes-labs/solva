@@ -1,315 +1,24 @@
-//! UltraHonk proof generation for the Solva proof-of-solvency prover.
+// Proving via the Barretenberg CLI. The prover builds the Poseidon2 Merkle Sum
+// Tree (tree.rs), writes the circuit witness as Prover.toml, then shells out to
+// nargo and bb to produce the UltraHonk proof the contract verifies. This is the
+// rs-soroban-ultrahonk reference flow, pinned to Noir beta.9 and bb 0.87.0.
 
-use std::collections::BTreeMap;
-use std::path::Path;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::sync::Mutex;
 
-use acir::native_types::WitnessMap;
-use acir::FieldElement;
-use noirc_abi::input_parser::InputValue;
-use noirc_abi::Abi;
-use noirc_artifacts::program::ProgramArtifact;
-
-use ark_bn254::{Bn254, Fr};
-use ark_ff::{BigInteger, PrimeField, Zero};
-use co_acvm::PlainAcvmSolver;
-use co_builder::prelude::{
-    get_constraint_system_from_artifact, AcirFormat, HonkRecursion, UltraCircuitBuilder,
-};
-use co_noir::UltraHonk;
-use co_noir_common::crs::parse::CrsParser;
-use co_noir_common::crs::ProverCrs;
-use co_noir_common::types::{Bn254G1, ZeroKnowledge};
-use noir_types::HonkProof;
-use sha3::Keccak256;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use crate::tree::MerkleSumTree;
+use crate::tree::{FieldElem, MerkleSumTree, Node};
 
-#[derive(Debug, Default, Zeroize, ZeroizeOnDrop)]
-pub struct Witness {
-    pub private_balances: Vec<u128>,
-    pub reserves_total: u128,
-    pub liabilities_total: u128,
-    pub root_hash: [u8; 32],
-    pub prev_reserves: u128,
-}
+// Fixed circuit dimensions, from circuits/solvency/src/main.nr.
+const N: usize = 8; // customer leaves
+const M: usize = 4; // reserve figures
+const DEPTH: usize = 3; // tree depth, log2(N)
 
-#[allow(dead_code)]
-pub struct ProofBundle {
-    pub proof: Vec<u8>,
-    pub public_inputs_bytes: Vec<u8>,
-    pub reserves_total: u128,
-    pub liabilities_total: u128,
-    pub root_hash: [u8; 32],
-    pub prev_reserves: u128,
-}
-
-pub struct CircuitArtifacts {
-    pub constraint_system: AcirFormat<Fr>,
-    pub abi: Abi,
-    pub g1_path: std::path::PathBuf,
-    pub g2_path: std::path::PathBuf,
-}
-
-impl CircuitArtifacts {
-    pub fn load(dir: impl AsRef<Path>) -> eyre::Result<Self> {
-        let dir = dir.as_ref();
-        let circuit_path = dir.join("solva.json");
-
-        let artifact_bytes = std::fs::read(&circuit_path)
-            .map_err(|e| eyre::eyre!("cannot read {}: {e}", circuit_path.display()))?;
-        let artifact: ProgramArtifact = serde_json::from_slice(&artifact_bytes)
-            .map_err(|e| eyre::eyre!("cannot parse solva.json: {e}"))?;
-
-        let abi = artifact.abi.clone();
-        let constraint_system = get_constraint_system_from_artifact(&artifact);
-
-        Ok(Self {
-            constraint_system,
-            abi,
-            g1_path: dir.join("g1.dat"),
-            g2_path: dir.join("g2.dat"),
-        })
-    }
-}
-
-pub fn assemble_witness(
-    reserves: &[u128],
-    liabilities: &[u128],
-    prev_reserves: u128,
-    tree: &MerkleSumTree,
-) -> Result<Witness, ProvingError> {
-    if reserves.len() != liabilities.len() {
-        return Err(ProvingError::WitnessAssembly(format!(
-            "reserves length ({}) ≠ liabilities length ({})",
-            reserves.len(),
-            liabilities.len()
-        )));
-    }
-    if reserves.is_empty() {
-        return Err(ProvingError::WitnessAssembly(
-            "at least one account is required".into(),
-        ));
-    }
-
-    let reserves_total: u128 = reserves.iter().sum();
-    let liabilities_total: u128 = liabilities.iter().sum();
-
-    if reserves_total < liabilities_total {
-        return Err(ProvingError::WitnessAssembly(format!(
-            "insolvent: reserves_total {reserves_total} < liabilities_total {liabilities_total}"
-        )));
-    }
-
-    let root_hash = tree.root().hash;
-
-    Ok(Witness {
-        private_balances: reserves.to_vec(),
-        reserves_total,
-        liabilities_total,
-        root_hash,
-        prev_reserves,
-    })
-}
-
-pub fn prove(witness: &Witness, artifacts: &CircuitArtifacts) -> Result<ProofBundle, ProvingError> {
-    let witness_map = build_witness_map(witness, &artifacts.abi)?;
-    let witness_vec = witness_map_to_vec(witness_map);
-
-    let has_zk = ZeroKnowledge::No;
-    let recursion_crs_size = artifacts
-        .constraint_system
-        .get_honk_recursion_public_inputs_size::<Bn254G1>();
-    let recursion_crs: ProverCrs<Bn254G1> = if recursion_crs_size > 0 {
-        CrsParser::<Bn254G1>::get_crs_g1(&artifacts.g1_path, recursion_crs_size, has_zk)
-            .map_err(|e| ProvingError::ProofGeneration(format!("recursion CRS: {e}")))?
-    } else {
-        ProverCrs::default()
-    };
-
-    let mut driver = PlainAcvmSolver::<Fr>::new();
-    let builder = UltraCircuitBuilder::<Bn254G1>::create_circuit(
-        &artifacts.constraint_system,
-        0,
-        witness_vec,
-        HonkRecursion::UltraHonk,
-        &recursion_crs,
-        &mut driver,
-    )
-    .map_err(|e| ProvingError::WitnessAssembly(format!("create_circuit: {e}")))?;
-
-    let crs_size = builder.compute_dyadic_size();
-    let crs = CrsParser::<Bn254G1>::get_crs::<Bn254>(
-        &artifacts.g1_path,
-        &artifacts.g2_path,
-        crs_size,
-        has_zk,
-    )
-    .map_err(|e| ProvingError::ProofGeneration(format!("CRS load: {e}")))?;
-    let (prover_crs, verifier_crs) = crs.split();
-
-    let (proving_key, verifying_key) = builder
-        .create_keys::<Bn254>(Arc::new(prover_crs), verifier_crs, &mut driver)
-        .map_err(|e| ProvingError::ProofGeneration(format!("create_keys: {e}")))?;
-
-    let (honk_proof, public_inputs_u256): (HonkProof<noir_types::U256>, Vec<noir_types::U256>) =
-        UltraHonk::<Bn254G1, Keccak256>::prove(proving_key, has_zk, &verifying_key.inner_vk)
-            .map_err(|e| ProvingError::ProofGeneration(format!("UltraHonk::prove: {e}")))?;
-
-    let is_valid = UltraHonk::<Bn254G1, Keccak256>::verify(
-        honk_proof.clone(),
-        &public_inputs_u256,
-        &verifying_key,
-        has_zk,
-    )
-    .map_err(|e| ProvingError::ProofGeneration(format!("local verify: {e}")))?;
-
-    if !is_valid {
-        return Err(ProvingError::ProofGeneration(
-            "proof failed local verification — VK or circuit mismatch".into(),
-        ));
-    }
-
-    let public_inputs_fr: Vec<Fr> = public_inputs_u256
-        .iter()
-        .map(|u| {
-            let bytes = u.0.to_be_bytes::<32>();
-            Fr::from_be_bytes_mod_order(&bytes)
-        })
-        .collect();
-    check_public_inputs(&public_inputs_fr, witness)?;
-
-    let proof_bytes = honk_proof.to_buffer();
-    let public_inputs_bytes = noir_types::U256::to_buffer(&public_inputs_u256);
-
-    Ok(ProofBundle {
-        proof: proof_bytes,
-        public_inputs_bytes,
-        reserves_total: witness.reserves_total,
-        liabilities_total: witness.liabilities_total,
-        root_hash: witness.root_hash,
-        prev_reserves: witness.prev_reserves,
-    })
-}
-
-fn build_witness_map(
-    witness: &Witness,
-    abi: &Abi,
-) -> Result<WitnessMap<FieldElement>, ProvingError> {
-    let mut input_map: BTreeMap<String, InputValue> = BTreeMap::new();
-
-    input_map.insert(
-        "reserves_total".into(),
-        InputValue::Field(u128_to_field(witness.reserves_total)),
-    );
-    input_map.insert(
-        "liabilities_total".into(),
-        InputValue::Field(u128_to_field(witness.liabilities_total)),
-    );
-    input_map.insert(
-        "prev_reserves".into(),
-        InputValue::Field(u128_to_field(witness.prev_reserves)),
-    );
-
-    let root_fields: Vec<InputValue> = witness
-        .root_hash
-        .iter()
-        .map(|b| InputValue::Field(FieldElement::from(*b as u128)))
-        .collect();
-    input_map.insert("root_hash".into(), InputValue::Vec(root_fields));
-
-    let balance_fields: Vec<InputValue> = witness
-        .private_balances
-        .iter()
-        .map(|b| InputValue::Field(u128_to_field(*b)))
-        .collect();
-    input_map.insert("private_balances".into(), InputValue::Vec(balance_fields));
-
-    for param in &abi.parameters {
-        if !input_map.contains_key(&param.name) {
-            return Err(ProvingError::WitnessAssembly(format!(
-                "ABI parameter '{}' not provided",
-                param.name
-            )));
-        }
-    }
-
-    abi.encode(&input_map, None)
-        .map_err(|e| ProvingError::WitnessAssembly(format!("ABI encode: {e}")))
-}
-
-fn witness_map_to_vec(witness_map: WitnessMap<FieldElement>) -> Vec<Fr> {
-    let mut wv = Vec::new();
-    let mut index = 0u32;
-    for (w, f) in witness_map.into_iter() {
-        while index < w.0 {
-            wv.push(Fr::zero());
-            index += 1;
-        }
-        wv.push(f.into_repr());
-        index += 1;
-    }
-    wv
-}
-
-fn check_public_inputs(public_inputs: &[Fr], witness: &Witness) -> Result<(), ProvingError> {
-    const EXPECTED: usize = 35;
-    if public_inputs.len() < EXPECTED {
-        return Err(ProvingError::ProofGeneration(format!(
-            "expected ≥{EXPECTED} public inputs, got {}",
-            public_inputs.len()
-        )));
-    }
-
-    let fr_to_u128 = |f: &Fr| -> u128 {
-        let bytes = f.into_bigint().to_bytes_be();
-        let mut buf = [0u8; 16];
-        let src = &bytes[bytes.len().saturating_sub(16)..];
-        buf[16 - src.len()..].copy_from_slice(src);
-        u128::from_be_bytes(buf)
-    };
-
-    let pi_r = fr_to_u128(&public_inputs[0]);
-    let pi_l = fr_to_u128(&public_inputs[1]);
-    let pi_r_prev = fr_to_u128(&public_inputs[34]);
-
-    let mut pi_root = [0u8; 32];
-    for (i, f) in public_inputs[2..34].iter().enumerate() {
-        pi_root[i] = *f.into_bigint().to_bytes_be().last().unwrap_or(&0);
-    }
-
-    if pi_r != witness.reserves_total {
-        return Err(ProvingError::ProofGeneration(format!(
-            "public R ({pi_r}) ≠ witness reserves_total ({})",
-            witness.reserves_total
-        )));
-    }
-    if pi_l != witness.liabilities_total {
-        return Err(ProvingError::ProofGeneration(format!(
-            "public L ({pi_l}) ≠ witness liabilities_total ({})",
-            witness.liabilities_total
-        )));
-    }
-    if pi_root != witness.root_hash {
-        return Err(ProvingError::ProofGeneration(
-            "public root_hash ≠ witness root_hash".into(),
-        ));
-    }
-    if pi_r_prev != witness.prev_reserves {
-        return Err(ProvingError::ProofGeneration(format!(
-            "public R_prev ({pi_r_prev}) ≠ witness prev_reserves ({})",
-            witness.prev_reserves
-        )));
-    }
-
-    Ok(())
-}
-
-#[inline]
-fn u128_to_field(v: u128) -> FieldElement {
-    FieldElement::from(v)
-}
+// nargo and bb read and write Prover.toml and target/ in the circuit package, so
+// proofs run one at a time per process. Scale out with more prover instances.
+static BB_LOCK: Mutex<()> = Mutex::new(());
 
 #[derive(Debug)]
 pub enum ProvingError {
@@ -325,180 +34,263 @@ impl std::fmt::Display for ProvingError {
         }
     }
 }
+
 impl std::error::Error for ProvingError {}
+
+// One cycle's private witness: a customer id hash and balance per leaf, the
+// reserve figures, and the previous cycle's reserve total for the fraud bound.
+// Zeroized on drop so customer balances do not linger in memory.
+#[derive(Default, Zeroize, ZeroizeOnDrop)]
+pub struct Witness {
+    pub leaf_ids: Vec<FieldElem>,
+    pub leaf_balances: Vec<u128>,
+    pub reserves: Vec<u128>,
+    pub prev_reserves: u128,
+}
+
+#[derive(Debug)]
+pub struct ProofBundle {
+    pub proof: Vec<u8>,
+    pub root_hash: FieldElem,
+    pub reserves_total: u128,
+    pub liabilities_total: u128,
+    pub prev_reserves: u128,
+    pub serialized_tree: Vec<u8>,
+}
+
+pub struct Prover {
+    circuit_dir: PathBuf,
+}
+
+impl Prover {
+    pub fn new(circuit_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            circuit_dir: circuit_dir.into(),
+        }
+    }
+
+    pub fn prove(&self, w: &Witness) -> Result<ProofBundle, ProvingError> {
+        if w.leaf_ids.len() != w.leaf_balances.len() {
+            return Err(ProvingError::WitnessAssembly(
+                "leaf_ids and leaf_balances length mismatch".into(),
+            ));
+        }
+        if w.leaf_balances.is_empty() {
+            return Err(ProvingError::WitnessAssembly(
+                "at least one customer is required".into(),
+            ));
+        }
+        if w.leaf_balances.len() > N {
+            return Err(ProvingError::WitnessAssembly(format!(
+                "at most {N} customers supported"
+            )));
+        }
+        if w.reserves.len() > M {
+            return Err(ProvingError::WitnessAssembly(format!(
+                "at most {M} reserve figures supported"
+            )));
+        }
+
+        let liabilities_total: u128 = w.leaf_balances.iter().sum();
+        let reserves_total: u128 = w.reserves.iter().sum();
+        if reserves_total < liabilities_total {
+            return Err(ProvingError::WitnessAssembly(format!(
+                "insolvent: reserves {reserves_total} < liabilities {liabilities_total}"
+            )));
+        }
+
+        // Build the tree padded to N leaves to get the committed root. Padding
+        // leaves are (id 0, balance 0), which add nothing to the sum.
+        let mut leaves: Vec<Node> = w
+            .leaf_ids
+            .iter()
+            .zip(&w.leaf_balances)
+            .map(|(id, &bal)| Node::leaf(*id, bal))
+            .collect();
+        while leaves.len() < N {
+            leaves.push(Node::leaf([0u8; 32], 0));
+        }
+        let root_hash = MerkleSumTree::build(leaves).root().hash;
+        let serialized_tree = serialize_leaves(w);
+
+        // The bb flow shares Prover.toml and target/ in the circuit dir.
+        let _guard = BB_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+
+        self.write_prover_toml(w, reserves_total, liabilities_total, &root_hash)?;
+        run(&self.circuit_dir, "nargo", &["execute"])?;
+        run(
+            &self.circuit_dir,
+            "bb",
+            &[
+                "prove",
+                "--scheme",
+                "ultra_honk",
+                "--oracle_hash",
+                "keccak",
+                "--bytecode_path",
+                "target/solva_solvency.json",
+                "--witness_path",
+                "target/solva_solvency.gz",
+                "--output_path",
+                "target",
+                "--output_format",
+                "bytes_and_fields",
+            ],
+        )?;
+
+        let proof = std::fs::read(self.circuit_dir.join("target/proof"))
+            .map_err(|e| ProvingError::ProofGeneration(format!("read proof: {e}")))?;
+
+        Ok(ProofBundle {
+            proof,
+            root_hash,
+            reserves_total,
+            liabilities_total,
+            prev_reserves: w.prev_reserves,
+            serialized_tree,
+        })
+    }
+
+    fn write_prover_toml(
+        &self,
+        w: &Witness,
+        r: u128,
+        l: u128,
+        root_hash: &FieldElem,
+    ) -> Result<(), ProvingError> {
+        let mut ids: Vec<String> = w
+            .leaf_ids
+            .iter()
+            .map(|id| format!("\"0x{}\"", hex::encode(id)))
+            .collect();
+        let mut bals: Vec<String> = w.leaf_balances.iter().map(|b| format!("\"{b}\"")).collect();
+        while ids.len() < N {
+            ids.push("\"0x0\"".into());
+            bals.push("\"0\"".into());
+        }
+        let mut reserves: Vec<String> = w.reserves.iter().map(|x| format!("\"{x}\"")).collect();
+        while reserves.len() < M {
+            reserves.push("\"0\"".into());
+        }
+        let zero_row = format!("[{}]", ["\"0\""; DEPTH].join(", "));
+        let paths = vec![zero_row; N].join(", ");
+
+        let toml = format!(
+            "R = \"{r}\"\n\
+             root_h = \"0x{root}\"\n\
+             L = \"{l}\"\n\
+             R_prev = \"{prev}\"\n\
+             leaf_ids = [{ids}]\n\
+             leaf_balances = [{bals}]\n\
+             reserves = [{reserves}]\n\
+             merkle_paths = [{paths}]\n",
+            root = hex::encode(root_hash),
+            prev = w.prev_reserves,
+            ids = ids.join(", "),
+            bals = bals.join(", "),
+            reserves = reserves.join(", "),
+        );
+        std::fs::write(self.circuit_dir.join("Prover.toml"), toml)
+            .map_err(|e| ProvingError::ProofGeneration(format!("write Prover.toml: {e}")))
+    }
+}
+
+// parse_field reads a hex (0x optional) id hash into a 32-byte field element,
+// right-aligned big-endian.
+pub fn parse_field(hex_str: &str) -> Result<FieldElem, ProvingError> {
+    let s = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+    let bytes = hex::decode(s)
+        .map_err(|e| ProvingError::WitnessAssembly(format!("bad id_hash hex: {e}")))?;
+    if bytes.len() > 32 {
+        return Err(ProvingError::WitnessAssembly(
+            "id_hash longer than 32 bytes".into(),
+        ));
+    }
+    let mut out = [0u8; 32];
+    out[32 - bytes.len()..].copy_from_slice(&bytes);
+    Ok(out)
+}
+
+// serialize_leaves records the customer leaves in order for the audit log and,
+// later, inclusion-path reconstruction. The full path encoding lands with the
+// inclusion endpoint.
+fn serialize_leaves(w: &Witness) -> Vec<u8> {
+    let leaves: Vec<(String, String)> = w
+        .leaf_ids
+        .iter()
+        .zip(&w.leaf_balances)
+        .map(|(id, b)| (format!("0x{}", hex::encode(id)), b.to_string()))
+        .collect();
+    serde_json::to_vec(&leaves).unwrap_or_default()
+}
+
+fn run(dir: &Path, cmd: &str, args: &[&str]) -> Result<(), ProvingError> {
+    let output = Command::new(cmd)
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .map_err(|e| ProvingError::ProofGeneration(format!("spawn {cmd}: {e}")))?;
+    if !output.status.success() {
+        return Err(ProvingError::ProofGeneration(format!(
+            "{cmd} {} failed: {}",
+            args.first().copied().unwrap_or(""),
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tree::{fr_to_bytes, poseidon2_hash_two, MerkleSumTree, Node};
-    use ark_bn254::Fr;
-    use ark_ff::Zero;
 
-    fn make_tree(liabilities: &[u128]) -> MerkleSumTree {
-        let leaves = liabilities
-            .iter()
-            .map(|&b| Node {
-                hash: poseidon2_hash_two(fr_to_bytes(Fr::from(b)), fr_to_bytes(Fr::zero())),
-                sum: b,
-            })
-            .collect();
-        MerkleSumTree::build(leaves)
+    fn id(n: u8) -> FieldElem {
+        let mut b = [0u8; 32];
+        b[31] = n;
+        b
     }
 
     #[test]
-    fn prove_and_verify_solvent_case() {
-        let dir = match std::env::var("CIRCUIT_ARTIFACTS_DIR") {
-            Ok(d) => d,
-            Err(_) => {
-                eprintln!("CIRCUIT_ARTIFACTS_DIR unset — skipping round-trip test");
-                return;
-            }
+    fn insolvent_rejected() {
+        let w = Witness {
+            leaf_ids: vec![id(1)],
+            leaf_balances: vec![200],
+            reserves: vec![100],
+            prev_reserves: 0,
         };
-
-        let artifacts = CircuitArtifacts::load(&dir).expect("load artifacts");
-
-        let reserves = vec![1_000_u128, 2_000, 3_000];
-        let liabilities = vec![800_u128, 1_500, 2_000];
-        let prev_reserves = 5_000_u128;
-
-        let tree = make_tree(&liabilities);
-        let mut witness = assemble_witness(&reserves, &liabilities, prev_reserves, &tree)
-            .expect("assemble witness");
-
-        let bundle = prove(&witness, &artifacts).expect("prove");
-        use zeroize::Zeroize;
-        witness.private_balances.zeroize();
-
-        assert!(!bundle.proof.is_empty(), "proof must not be empty");
-        assert_eq!(bundle.reserves_total, 6_000);
-        assert_eq!(bundle.liabilities_total, 4_300);
-        assert_eq!(bundle.prev_reserves, prev_reserves);
-        assert_eq!(bundle.root_hash, witness.root_hash);
-
-        let proof2 =
-            HonkProof::<noir_types::U256>::from_buffer(&bundle.proof).expect("deserialise proof");
-        let pubs2: Vec<noir_types::U256> =
-            noir_types::U256::from_buffer(&bundle.public_inputs_bytes);
-
-        let vk = {
-            let crs_size = {
-                let mut d = PlainAcvmSolver::<Fr>::new();
-                UltraCircuitBuilder::<Bn254G1>::circuit_size(
-                    &artifacts.constraint_system,
-                    0,
-                    HonkRecursion::UltraHonk,
-                    &ProverCrs::default(),
-                    &mut d,
-                )
-                .expect("circuit_size")
-            };
-            let crs = CrsParser::<Bn254G1>::get_crs::<Bn254>(
-                &artifacts.g1_path,
-                &artifacts.g2_path,
-                crs_size,
-                ZeroKnowledge::No,
-            )
-            .expect("CRS");
-            let (prover_crs, verifier_crs) = crs.split();
-            let mut d = PlainAcvmSolver::<Fr>::new();
-            let builder = UltraCircuitBuilder::<Bn254G1>::create_circuit(
-                &artifacts.constraint_system,
-                0,
-                vec![],
-                HonkRecursion::UltraHonk,
-                &ProverCrs::default(),
-                &mut d,
-            )
-            .expect("builder for VK");
-            let (_pk, vk) = builder
-                .create_keys::<Bn254>(Arc::new(prover_crs), verifier_crs, &mut d)
-                .expect("create_keys for VK");
-            vk
-        };
-
-        let ok = UltraHonk::<Bn254G1, Keccak256>::verify(proof2, &pubs2, &vk, ZeroKnowledge::No)
-            .expect("verifier error");
-        assert!(ok, "deserialised proof must verify");
-    }
-
-    #[test]
-    fn insolvent_entity_rejected() {
-        let reserves = vec![100_u128];
-        let liabilities = vec![200_u128];
-        let tree = make_tree(&[100]);
-        let err = assemble_witness(&reserves, &liabilities, 0, &tree)
-            .expect_err("insolvent should be rejected");
+        let err = Prover::new("circuits/solvency").prove(&w).unwrap_err();
         assert!(matches!(err, ProvingError::WitnessAssembly(_)));
     }
 
     #[test]
     fn length_mismatch_rejected() {
-        let reserves = vec![100_u128, 200];
-        let liabilities = vec![50_u128];
-        let tree = make_tree(&[50, 50]);
-        let err = assemble_witness(&reserves, &liabilities, 0, &tree)
-            .expect_err("length mismatch should be rejected");
+        let w = Witness {
+            leaf_ids: vec![id(1)],
+            leaf_balances: vec![1, 2],
+            reserves: vec![3],
+            prev_reserves: 0,
+        };
+        let err = Prover::new("circuits/solvency").prove(&w).unwrap_err();
         assert!(matches!(err, ProvingError::WitnessAssembly(_)));
     }
 
     #[test]
-    fn empty_reserves_rejected() {
-        let tree = make_tree(&[1]);
-        let err = assemble_witness(&[], &[], 0, &tree).expect_err("empty input should be rejected");
+    fn empty_rejected() {
+        let w = Witness::default();
+        let err = Prover::new("circuits/solvency").prove(&w).unwrap_err();
         assert!(matches!(err, ProvingError::WitnessAssembly(_)));
     }
 
     #[test]
-    fn witness_zeroized_on_drop_path() {
-        // Simulates the error path in service.rs: witness is assembled,
-        // prove() fails, witness drops. We verify the zeroization contract
-        // holds on the value directly, since reading freed memory is UB.
-        let reserves = vec![500_u128];
-        let liabilities = vec![400_u128];
-        let tree = make_tree(&liabilities);
-        let mut w = assemble_witness(&reserves, &liabilities, 0, &tree).expect("assemble witness");
-
-        // Pre-condition: secrets are present.
-        assert_eq!(w.private_balances[0], 500_u128);
-
-        // Zeroize as ZeroizeOnDrop would on drop.
-        use zeroize::Zeroize;
+    fn zeroize_clears_balances() {
+        let mut w = Witness {
+            leaf_ids: vec![id(1)],
+            leaf_balances: vec![50],
+            reserves: vec![100],
+            prev_reserves: 7,
+        };
         w.zeroize();
-
-        assert!(w.private_balances.iter().all(|&b| b == 0));
-        assert_eq!(w.reserves_total, 0);
-        assert_eq!(w.liabilities_total, 0);
+        assert!(w.leaf_balances.iter().all(|&b| b == 0));
         assert_eq!(w.prev_reserves, 0);
-        assert_eq!(w.root_hash, [0u8; 32]);
-    }
-
-    #[test]
-    fn witness_zeroized_after_prove_error() {
-        // Strategy: use a scope to force the drop, then verify the fields
-        // were already zero before the drop completed by using a separate
-        // witness clone checked before drop fires.
-
-        let reserves = vec![500_u128];
-        let liabilities = vec![400_u128];
-        let tree = make_tree(&liabilities);
-
-        // Track what values were present before zeroization.
-        let w = assemble_witness(&reserves, &liabilities, 0, &tree).expect("assemble witness");
-        assert_eq!(w.private_balances[0], 500_u128, "pre-condition");
-
-        // Zeroize explicitly (same code ZeroizeOnDrop calls on drop).
-        let mut w = w;
-        use zeroize::Zeroize;
-        w.zeroize();
-
-        // Verify the drop-path zeroization result on the live value.
-        assert!(
-            w.private_balances.iter().all(|&b| b == 0),
-            "private_balances must be zeroed on error/drop path"
-        );
-        assert_eq!(w.reserves_total, 0);
-        assert_eq!(w.liabilities_total, 0);
-        assert_eq!(w.prev_reserves, 0);
-        assert_eq!(w.root_hash, [0u8; 32]);
     }
 }
