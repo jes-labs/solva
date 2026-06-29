@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -120,7 +121,13 @@ func (h *Handler) GetProof(w http.ResponseWriter, r *http.Request) {
 
 // GetInclusion returns a customer inclusion proof for a reference.
 func (h *Handler) GetInclusion(w http.ResponseWriter, r *http.Request) {
-	ref := chi.URLParam(r, "ref")
+	// chi returns the raw path segment, so the ref's "<id>:<hash>" arrives with
+	// the colon still percent-encoded. Decode it before parsing.
+	ref, err := url.PathUnescape(chi.URLParam(r, "ref"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid inclusion ref encoding")
+		return
+	}
 	inc, err := h.query.GetInclusion(r.Context(), ref)
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
