@@ -8,6 +8,15 @@
 import type { Proof, InclusionRef } from "@solva/shared-types";
 import { OrchestratorError } from "./errors.js";
 
+// The inclusion endpoint's JSON shape, matching the orchestrator's DTO.
+interface InclusionRefDTO {
+  proof_id: string;
+  customer_id_hash: string;
+  balance: string;
+  root_hash: string;
+  path: { hash: string; sum: string; sibling_is_left: boolean }[];
+}
+
 /** Source configuration the dashboard passes to connect a reserve source. */
 export interface BankSourceConfig {
   /** "openbanking" for a signed bank balance, "onchain" for a wallet holding. */
@@ -49,10 +58,22 @@ export class OrchestratorClient {
 
   /** Fetch the inclusion reference for a customer reference string. */
   async getInclusionRef(ref: string): Promise<InclusionRef> {
-    return this.request<InclusionRef>(
+    const dto = await this.request<InclusionRefDTO>(
       "GET",
       `/v1/proofs/inclusion/${encodeURIComponent(ref)}`,
     );
+    // The API speaks snake_case and marks a sibling with a boolean. The shared
+    // type uses camelCase and a left/right position, so map across here.
+    return {
+      proofId: dto.proof_id,
+      customerIdHash: dto.customer_id_hash,
+      balance: dto.balance,
+      path: dto.path.map((node) => ({
+        hash: node.hash,
+        sum: node.sum,
+        position: node.sibling_is_left ? "left" : "right",
+      })),
+    };
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {

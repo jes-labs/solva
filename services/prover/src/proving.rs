@@ -110,8 +110,11 @@ impl Prover {
         while leaves.len() < N {
             leaves.push(Node::leaf([0u8; 32], 0));
         }
-        let root_hash = MerkleSumTree::build(leaves).root().hash;
-        let serialized_tree = serialize_leaves(w);
+        let tree = MerkleSumTree::build(leaves);
+        let root_hash = tree.root().hash;
+        // Each real customer's inclusion path, so a customer can later call the
+        // contract's verify_inclusion without anyone rebuilding the tree.
+        let serialized_tree = serialize_tree(&tree, w, &root_hash);
 
         // The bb flow shares Prover.toml and target/ in the circuit dir.
         let _guard = BB_LOCK.lock().unwrap_or_else(|p| p.into_inner());
@@ -214,14 +217,59 @@ pub fn parse_field(hex_str: &str) -> Result<FieldElem, ProvingError> {
 // serialize_leaves records the customer leaves in order for the audit log and,
 // later, inclusion-path reconstruction. The full path encoding lands with the
 // inclusion endpoint.
-fn serialize_leaves(w: &Witness) -> Vec<u8> {
-    let leaves: Vec<(String, String)> = w
-        .leaf_ids
-        .iter()
-        .zip(&w.leaf_balances)
-        .map(|(id, b)| (format!("0x{}", hex::encode(id)), b.to_string()))
+// One sibling step on a customer's inclusion path. sibling_is_left matches the
+// contract's PathNode: when true, the sibling is the left child and this node is
+// the right. sum is the sibling subtree's total, bound into the parent hash.
+#[derive(serde::Serialize)]
+struct SerializedPathNode {
+    hash: String,
+    sum: String,
+    sibling_is_left: bool,
+}
+
+// One customer leaf plus the path that proves it is in the committed root.
+#[derive(serde::Serialize)]
+struct SerializedLeaf {
+    id_hash: String,
+    balance: String,
+    path: Vec<SerializedPathNode>,
+}
+
+#[derive(serde::Serialize)]
+struct SerializedTree {
+    root_hash: String,
+    leaves: Vec<SerializedLeaf>,
+}
+
+// serialize_tree records each real customer's leaf and inclusion path. The
+// orchestrator persists this; the web/SDK read a customer's path and hand it to
+// the contract's verify_inclusion. Hashing stays only in Rust (build) and the
+// contract (verify), so there is no second hash implementation to keep in sync.
+fn serialize_tree(tree: &MerkleSumTree, w: &Witness, root_hash: &FieldElem) -> Vec<u8> {
+    let leaves: Vec<SerializedLeaf> = (0..w.leaf_balances.len())
+        .map(|i| {
+            let path = tree
+                .inclusion_path(i)
+                .into_iter()
+                .map(|step| SerializedPathNode {
+                    hash: format!("0x{}", hex::encode(step.sibling.hash)),
+                    sum: step.sibling.sum.to_string(),
+                    sibling_is_left: step.sibling_is_left,
+                })
+                .collect();
+            SerializedLeaf {
+                id_hash: format!("0x{}", hex::encode(w.leaf_ids[i])),
+                balance: w.leaf_balances[i].to_string(),
+                path,
+            }
+        })
         .collect();
-    serde_json::to_vec(&leaves).unwrap_or_default()
+
+    serde_json::to_vec(&SerializedTree {
+        root_hash: format!("0x{}", hex::encode(root_hash)),
+        leaves,
+    })
+    .unwrap_or_default()
 }
 
 fn run(dir: &Path, cmd: &str, args: &[&str]) -> Result<(), ProvingError> {

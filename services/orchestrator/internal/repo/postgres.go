@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,9 +23,6 @@ import (
 // ErrNotFound is returned when a lookup matches no row. Callers check it with
 // errors.Is rather than reaching for the pgx-specific sentinel.
 var ErrNotFound = errors.New("repo: not found")
-
-// errNotImplemented marks a method that still waits on an upstream contract.
-var errNotImplemented = errors.New("repo: not implemented")
 
 // Postgres implements ProofRepo and ReserveRepo over a pgx pool.
 type Postgres struct {
@@ -85,9 +84,9 @@ func (p *Postgres) SaveProof(ctx context.Context, proof entity.Proof, serialized
 		return fmt.Errorf("insert proof: %w", err)
 	}
 
-	// depth is carried inside the serialized tree the prover produces. The
-	// orchestrator stores that blob opaquely, so depth stays 0 until the
-	// serialized-tree schema is defined (same dependency as GetInclusion).
+	// The serialized tree carries its own structure (paths per leaf), so the
+	// orchestrator stores the blob opaquely and leaves depth at 0; GetInclusion
+	// reads the blob directly rather than relying on this column.
 	if err := qtx.CreateMerkleTree(ctx, CreateMerkleTreeParams{
 		ProofID:    id,
 		Depth:      0,
@@ -134,15 +133,53 @@ func (p *Postgres) GetLatestProof(ctx context.Context, tenantID string) (entity.
 	return proofFromRow(row)
 }
 
-// GetInclusion builds an inclusion reference from the stored serialized tree.
+// GetInclusion resolves a customer's inclusion path. ref is "<proof-id>:<id-hash>"
+// where proof-id is the orchestrator's internal proof id. It loads the prover's
+// serialized tree for that proof, finds the customer's leaf, and returns the
+// path plus the chain proof id the contract's verify_inclusion expects.
 func (p *Postgres) GetInclusion(ctx context.Context, ref string) (entity.InclusionRef, error) {
-	_ = ctx
-	_ = ref
-	// Building an inclusion reference means decoding the prover's serialized
-	// Merkle Sum Tree (merkle_trees.serialized) into sibling path nodes. That
-	// format is owned by the prover and is not finalized, so this stays a stub
-	// until the serialized-tree schema lands.
-	return entity.InclusionRef{}, errNotImplemented
+	proofID, idHash, ok := strings.Cut(ref, ":")
+	if !ok || proofID == "" || idHash == "" {
+		return entity.InclusionRef{}, fmt.Errorf("%w: ref must be \"<proof-id>:<id-hash>\"", ErrNotFound)
+	}
+
+	proof, err := p.GetProof(ctx, proofID)
+	if err != nil {
+		return entity.InclusionRef{}, err
+	}
+
+	pid, err := toUUID(proofID)
+	if err != nil {
+		return entity.InclusionRef{}, err
+	}
+	row, err := p.q.GetMerkleTreeByProof(ctx, pid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.InclusionRef{}, ErrNotFound
+		}
+		return entity.InclusionRef{}, fmt.Errorf("get merkle tree: %w", err)
+	}
+
+	var tree serializedTree
+	if err := json.Unmarshal(row.Serialized, &tree); err != nil {
+		return entity.InclusionRef{}, fmt.Errorf("decode serialized tree: %w", err)
+	}
+	leaf, ok := tree.findLeaf(idHash)
+	if !ok {
+		return entity.InclusionRef{}, ErrNotFound
+	}
+
+	path := make([]entity.PathNode, len(leaf.Path))
+	for i, n := range leaf.Path {
+		path[i] = entity.PathNode{Hash: n.Hash, Sum: n.Sum, Left: n.SiblingIsLeft}
+	}
+	return entity.InclusionRef{
+		ProofID:        strconv.FormatUint(proof.ChainProofID, 10),
+		CustomerIDHash: leaf.IDHash,
+		Balance:        leaf.Balance,
+		Path:           path,
+		RootHash:       tree.RootHash,
+	}, nil
 }
 
 // LoadLiabilities loads a tenant's current customer balances for witnessing.
