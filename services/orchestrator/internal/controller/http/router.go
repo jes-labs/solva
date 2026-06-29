@@ -25,6 +25,7 @@ func Router(h *Handler, log zerolog.Logger) http.Handler {
 		r.Get("/proofs/latest", h.GetLatestProof)
 		r.Get("/proofs/{id}", h.GetProof)
 		r.Get("/proofs/inclusion/{ref}", h.GetInclusion)
+		r.Get("/tenants/{id}/contract", h.GetTenantContract)
 	})
 
 	r.Get("/health", h.Health)

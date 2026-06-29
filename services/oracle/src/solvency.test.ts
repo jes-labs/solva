@@ -38,7 +38,7 @@ function makeDeps(
     async getLatestProof(_tenant: string): Promise<Proof> {
       return proof;
     },
-    async verifyOnChain(_proof: Proof): Promise<boolean> {
+    async verifyOnChain(_tenant: string, _proof: Proof): Promise<boolean> {
       if (opts.throwOnChain) throw new Error("rpc timeout");
       return onChainResult;
     },
@@ -56,9 +56,10 @@ test("getSolvency calls verifyOnChain and surfaces the result", async () => {
     async getLatestProof() {
       return proof;
     },
-    async verifyOnChain(p) {
+    async verifyOnChain(tenant, p) {
       chainCallCount++;
-      // Assert the proof passed through unmodified.
+      // Assert the tenant and proof passed through unmodified.
+      assert.equal(tenant, "tenant-a");
       assert.equal(p.id, proof.id);
       assert.equal(p.publicInputs.rootHash, proof.publicInputs.rootHash);
       return true;
@@ -174,7 +175,7 @@ test("verifyOnChain receives the exact proof returned by getLatestProof", async 
     async getLatestProof() {
       return proof;
     },
-    async verifyOnChain(p) {
+    async verifyOnChain(_tenant, p) {
       receivedProof = p;
       return true;
     },
@@ -186,27 +187,13 @@ test("verifyOnChain receives the exact proof returned by getLatestProof", async 
   assert.deepEqual(receivedProof, proof);
 });
 
-test("chainSolvencyDeps: verifyOnChain returns false (not throws) when registry throws", async () => {
-  // Import here to keep fixture setup at top level.
+test("chainSolvencyDeps: verifyOnChain returns false (not throws) when the chain read fails", async () => {
   const { chainSolvencyDeps } = await import("./solvency.js");
 
-  const throwingRegistry = {
-    async getLatestProof() {
-      throw new Error("unreachable");
-    },
-    async getProof() {
-      throw new Error("unreachable");
-    },
-    async verifyInclusion() {
-      throw new Error("rpc timeout");
-    },
-  };
-
-  const deps = chainSolvencyDeps(throwingRegistry, "local", "tenant-x");
-  const proof = makeProof();
-
-  // Should resolve to false, not reject.
-  const result = await deps.verifyOnChain(proof);
+  // "local" points at an unreachable RPC in the test environment, so the
+  // on-chain read fails. verifyOnChain must surface that as false, not reject.
+  const deps = chainSolvencyDeps("local");
+  const result = await deps.verifyOnChain("tenant-x", makeProof());
   assert.equal(
     result,
     false,

@@ -3,7 +3,7 @@
 
 export { createServer, buildDeps } from "./server.js";
 export { registerOracleTools, type OracleDeps } from "./tools.js";
-export { getSolvency, sdkSolvencyDeps, type SolvencyDeps } from "./solvency.js";
+export { getSolvency, chainSolvencyDeps, type SolvencyDeps } from "./solvency.js";
 export {
   detectAnomalies,
   reserveDrift,
