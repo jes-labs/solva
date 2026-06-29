@@ -39,10 +39,12 @@ type Querier interface {
 	GetLatestReservesTotal(ctx context.Context, tenantID pgtype.UUID) (pgtype.Numeric, error)
 	GetMerkleTreeByProof(ctx context.Context, proofID pgtype.UUID) (MerkleTree, error)
 	GetProof(ctx context.Context, id pgtype.UUID) (Proof, error)
+	GetTenantContract(ctx context.Context, id pgtype.UUID) (GetTenantContractRow, error)
 	ListAuditLog(ctx context.Context, arg ListAuditLogParams) ([]AuditLog, error)
 	// The tenant's current customer balances, joined to the customer id_hash the
 	// prover witnesses into the Merkle Sum Tree.
 	ListLiabilities(ctx context.Context, tenantID pgtype.UUID) ([]ListLiabilitiesRow, error)
+	SetTenantContract(ctx context.Context, arg SetTenantContractParams) error
 }
 
 var _ Querier = (*Queries)(nil)

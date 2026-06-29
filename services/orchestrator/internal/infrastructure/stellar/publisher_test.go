@@ -113,7 +113,6 @@ func newTestPublisher(t *testing.T, rpc sorobanRPC) *Publisher {
 	}
 	return &Publisher{
 		cfg: Config{
-			ContractID:        testContractID(t),
 			NetworkPassphrase: network.TestNetworkPassphrase,
 		},
 		signer:       signer,
@@ -123,6 +122,11 @@ func newTestPublisher(t *testing.T, rpc sorobanRPC) *Publisher {
 		pollInterval: time.Millisecond,
 		pollTimeout:  time.Second,
 	}
+}
+
+// sampleTarget is the tenant contract the publish is aimed at in tests.
+func sampleTarget(t *testing.T) entity.TenantContract {
+	return entity.TenantContract{ContractID: testContractID(t), Network: "testnet"}
 }
 
 func samplePublicInputs() entity.PublicInputs {
@@ -150,7 +154,7 @@ func TestPublishProofSuccess(t *testing.T) {
 	pub := newTestPublisher(t, fake)
 	fake.account = &txnbuild.SimpleAccount{AccountID: pub.signer.Address(), Sequence: 100}
 
-	id, err := pub.PublishProof(context.Background(), []byte{0x01, 0x02}, samplePublicInputs())
+	id, err := pub.PublishProof(context.Background(), sampleTarget(t), []byte{0x01, 0x02}, samplePublicInputs())
 	if err != nil {
 		t.Fatalf("PublishProof: %v", err)
 	}
@@ -175,7 +179,7 @@ func TestPublishProofRetriesTransient(t *testing.T) {
 		return protocol.SendTransactionResponse{Status: "PENDING"}, nil
 	}
 
-	id, err := pub.PublishProof(context.Background(), []byte{0x01}, samplePublicInputs())
+	id, err := pub.PublishProof(context.Background(), sampleTarget(t), []byte{0x01}, samplePublicInputs())
 	if err != nil {
 		t.Fatalf("PublishProof: %v", err)
 	}
@@ -199,7 +203,7 @@ func TestPublishProofRetriesTryAgainLater(t *testing.T) {
 		return protocol.SendTransactionResponse{Status: "PENDING"}, nil
 	}
 
-	id, err := pub.PublishProof(context.Background(), []byte{0x01}, samplePublicInputs())
+	id, err := pub.PublishProof(context.Background(), sampleTarget(t), []byte{0x01}, samplePublicInputs())
 	if err != nil {
 		t.Fatalf("PublishProof: %v", err)
 	}
@@ -217,7 +221,7 @@ func TestPublishProofSimulationErrorIsPermanent(t *testing.T) {
 	pub := newTestPublisher(t, fake)
 	fake.account = &txnbuild.SimpleAccount{AccountID: pub.signer.Address(), Sequence: 100}
 
-	_, err := pub.PublishProof(context.Background(), []byte{0x01}, samplePublicInputs())
+	_, err := pub.PublishProof(context.Background(), sampleTarget(t), []byte{0x01}, samplePublicInputs())
 	if err == nil {
 		t.Fatal("expected error on simulation rejection")
 	}
@@ -235,7 +239,7 @@ func TestPublishProofFailedOnChainIsPermanent(t *testing.T) {
 	pub := newTestPublisher(t, fake)
 	fake.account = &txnbuild.SimpleAccount{AccountID: pub.signer.Address(), Sequence: 100}
 
-	_, err := pub.PublishProof(context.Background(), []byte{0x01}, samplePublicInputs())
+	_, err := pub.PublishProof(context.Background(), sampleTarget(t), []byte{0x01}, samplePublicInputs())
 	if err == nil {
 		t.Fatal("expected error on failed transaction")
 	}
@@ -257,7 +261,7 @@ func TestPublishProofPollsUntilLanded(t *testing.T) {
 		return protocol.GetTransactionResponse{TransactionDetails: protocol.TransactionDetails{Status: protocol.TransactionStatusSuccess, ResultMetaXDR: metaWithProofID(t, 5)}}, nil
 	}
 
-	id, err := pub.PublishProof(context.Background(), []byte{0x01}, samplePublicInputs())
+	id, err := pub.PublishProof(context.Background(), sampleTarget(t), []byte{0x01}, samplePublicInputs())
 	if err != nil {
 		t.Fatalf("PublishProof: %v", err)
 	}
@@ -274,7 +278,7 @@ func TestPublishProofNotConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPublisher: %v", err)
 	}
-	_, err = p.PublishProof(context.Background(), []byte{0x01}, samplePublicInputs())
+	_, err = p.PublishProof(context.Background(), sampleTarget(t), []byte{0x01}, samplePublicInputs())
 	if !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}

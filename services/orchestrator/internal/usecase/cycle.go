@@ -107,7 +107,14 @@ func (uc *Cycle) Run(ctx context.Context, tenantID, requestKey string) error {
 		return fmt.Errorf("prove: %w", err)
 	}
 
-	chainID, err := uc.stellar.PublishProof(ctx, res.Proof, res.PublicInputs)
+	// Publish to the tenant's own contract, not a global one. An unprovisioned
+	// tenant fails the cycle clearly rather than publishing somewhere wrong.
+	contract, err := uc.proofs.ResolveTenantContract(ctx, tenantID)
+	if err != nil {
+		return fmt.Errorf("resolve tenant contract: %w", err)
+	}
+
+	chainID, err := uc.stellar.PublishProof(ctx, contract, res.Proof, res.PublicInputs)
 	if err != nil {
 		return fmt.Errorf("publish proof: %w", err)
 	}

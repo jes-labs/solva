@@ -48,7 +48,6 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 
 	publisher, err := stellar.NewPublisher(stellar.Config{
 		RPCURL:            cfg.StellarRPCURL,
-		ContractID:        cfg.StellarContractID,
 		NetworkPassphrase: cfg.StellarNetworkPassphrase,
 		SignerSecret:      cfg.StellarSignerSecret,
 	})

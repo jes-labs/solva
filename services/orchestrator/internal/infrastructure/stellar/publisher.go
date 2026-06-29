@@ -46,9 +46,9 @@ const (
 )
 
 var (
-	// ErrNotConfigured means the publisher was built without the signer secret
-	// or contract id it needs to invoke the contract.
-	ErrNotConfigured = errors.New("stellar: publisher not configured (missing signer secret or contract id)")
+	// ErrNotConfigured means the publisher cannot invoke the contract: it has no
+	// signer or RPC client, or the target contract id is empty.
+	ErrNotConfigured = errors.New("stellar: publisher not configured (missing signer, rpc, or target contract id)")
 	// ErrUnexpectedReturn means the contract result was not the u64 proof id the
 	// registry is documented to return.
 	ErrUnexpectedReturn = errors.New("stellar: publish_proof did not return a u64 proof id")
@@ -72,12 +72,11 @@ type sorobanRPC interface {
 }
 
 // Config holds what the publisher needs to reach Soroban and sign as the proof
-// owner.
+// owner. The target contract is not here: it is per tenant and passed to
+// PublishProof on each call.
 type Config struct {
 	// RPCURL is the Soroban RPC endpoint.
 	RPCURL string
-	// ContractID is the deployed proof-registry contract address (C... strkey).
-	ContractID string
 	// NetworkPassphrase selects testnet or mainnet.
 	NetworkPassphrase string
 	// SignerSecret is the publisher key. In production this comes from KMS,
@@ -133,8 +132,10 @@ func NewPublisher(cfg Config) (*Publisher, error) {
 // then assemble, sign as the owner, submit, and poll for the result. Transient
 // network failures are retried with exponential backoff; an invalid proof or an
 // insolvent bound is a permanent failure and is returned immediately.
-func (p *Publisher) PublishProof(ctx context.Context, proof []byte, pub entity.PublicInputs) (uint64, error) {
-	if p.signer == nil || p.rpc == nil || p.cfg.ContractID == "" {
+func (p *Publisher) PublishProof(ctx context.Context, target entity.TenantContract, proof []byte, pub entity.PublicInputs) (uint64, error) {
+	// The signer (current global owner) and RPC are publisher-wide; the contract
+	// is per tenant. Per-tenant owner signing via the passkey smart wallet is #128.
+	if p.signer == nil || p.rpc == nil || target.ContractID == "" {
 		return 0, ErrNotConfigured
 	}
 
@@ -143,7 +144,7 @@ func (p *Publisher) PublishProof(ctx context.Context, proof []byte, pub entity.P
 		return 0, fmt.Errorf("encode contract args: %w", err)
 	}
 
-	contractAddr, err := contractAddress(p.cfg.ContractID)
+	contractAddr, err := contractAddress(target.ContractID)
 	if err != nil {
 		return 0, fmt.Errorf("decode contract id: %w", err)
 	}

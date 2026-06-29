@@ -22,6 +22,13 @@ type fakeDeps struct {
 
 	auditEvent   string
 	auditPayload []byte
+
+	// tenantContract is what ResolveTenantContract returns; publishedContract
+	// records the contract id PublishProof was actually called with. resolveErr,
+	// when set, makes ResolveTenantContract fail (an unprovisioned tenant).
+	tenantContract    entity.TenantContract
+	publishedContract string
+	resolveErr        error
 }
 
 func (f *fakeDeps) record(name string) { f.calls = append(f.calls, name) }
@@ -58,8 +65,9 @@ func (f *fakeDeps) Prove(_ context.Context, _ []entity.Reserve, _ []Liability, _
 }
 
 // --- StellarPublisher ---
-func (f *fakeDeps) PublishProof(_ context.Context, _ []byte, _ entity.PublicInputs) (uint64, error) {
+func (f *fakeDeps) PublishProof(_ context.Context, target entity.TenantContract, _ []byte, _ entity.PublicInputs) (uint64, error) {
 	f.record("PublishProof")
+	f.publishedContract = target.ContractID
 	return 42, nil
 }
 
@@ -91,6 +99,16 @@ func (f *fakeDeps) GetLatestProof(context.Context, string) (entity.Proof, error)
 func (f *fakeDeps) GetInclusion(context.Context, string) (entity.InclusionRef, error) {
 	return entity.InclusionRef{}, nil
 }
+func (f *fakeDeps) ResolveTenantContract(context.Context, string) (entity.TenantContract, error) {
+	f.record("ResolveTenantContract")
+	if f.resolveErr != nil {
+		return entity.TenantContract{}, f.resolveErr
+	}
+	if f.tenantContract.ContractID == "" {
+		return entity.TenantContract{ContractID: "CDEFAULTCONTRACT", Network: "testnet"}, nil
+	}
+	return f.tenantContract, nil
+}
 
 // --- Cache ---
 func (f *fakeDeps) AcquireCycleLock(_ context.Context, _ string) (bool, error) {
@@ -121,8 +139,8 @@ func TestRunHappyPathCallOrder(t *testing.T) {
 
 	want := []string{
 		"AcquireCycleLock", "ClaimCycle", "FetchSigned", "SaveSnapshot",
-		"LoadLiabilities", "LatestReserves", "Prove", "PublishProof",
-		"SaveProof", "SetLatest", "AppendAudit", "ReleaseCycleLock",
+		"LoadLiabilities", "LatestReserves", "Prove", "ResolveTenantContract",
+		"PublishProof", "SaveProof", "SetLatest", "AppendAudit", "ReleaseCycleLock",
 	}
 	if !reflect.DeepEqual(f.calls, want) {
 		t.Errorf("call order:\n got %v\nwant %v", f.calls, want)
@@ -132,6 +150,40 @@ func TestRunHappyPathCallOrder(t *testing.T) {
 	}
 	if len(f.auditPayload) == 0 {
 		t.Error("audit payload is empty")
+	}
+}
+
+// A cycle publishes to the tenant's own contract, the one ResolveTenantContract
+// returned, not a global default.
+func TestRunPublishesToTenantContract(t *testing.T) {
+	f := &fakeDeps{
+		lockAcquired:   true,
+		claimOK:        true,
+		tenantContract: entity.TenantContract{ContractID: "CTENANTAONCHAIN", Network: "testnet"},
+	}
+	if err := newCycleWith(f).Run(context.Background(), "tenant-a", "key-a"); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if f.publishedContract != "CTENANTAONCHAIN" {
+		t.Errorf("published to %q, want the tenant's contract CTENANTAONCHAIN", f.publishedContract)
+	}
+}
+
+// An unprovisioned tenant fails the cycle clearly instead of publishing. The
+// repo decides which error means "not provisioned"; the cycle just propagates it
+// and stops before publishing.
+var errNotProvisioned = errors.New("tenant has no contract")
+
+func TestRunUnprovisionedTenantFails(t *testing.T) {
+	f := &fakeDeps{lockAcquired: true, claimOK: true, resolveErr: errNotProvisioned}
+	err := newCycleWith(f).Run(context.Background(), "tenant-x", "key-x")
+	if !errors.Is(err, errNotProvisioned) {
+		t.Fatalf("err = %v, want errNotProvisioned", err)
+	}
+	for _, c := range f.calls {
+		if c == "PublishProof" {
+			t.Fatal("must not publish when the tenant has no contract")
+		}
 	}
 }
 
