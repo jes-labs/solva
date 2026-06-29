@@ -10,8 +10,8 @@
 #   near-breach   9,500,000     R > L (thin)     proof generated + published
 #   insolvent     4,500,000     R < L            cycle FAILS to prove (expected)
 #
-# Phase A covers proof generation + Testnet publication. The inclusion check
-# (verify_inclusion) lands in Phase B once the serialized tree is exposed.
+# Phase A: proof generation + Testnet publication. Phase B: a customer verifies
+# their balance is in the published tree via verify_inclusion, on-chain.
 #
 # ---------------------------------------------------------------------------
 # Prerequisites (your machine):
@@ -38,6 +38,8 @@ PROVER_HOSTPORT="${E2E_PROVER_HOSTPORT:-localhost:50051}"
 TENANT_ID="${E2E_TENANT_ID:-11111111-1111-1111-1111-111111111111}"
 CONTRACT_ID="${E2E_CONTRACT_ID:-}"
 [ -n "$CONTRACT_ID" ] || CONTRACT_ID=$(cat contracts/proof-registry/.contract_id)
+RPC_URL="${E2E_RPC_URL:-https://soroban-testnet.stellar.org}"
+NETWORK_PASSPHRASE="${E2E_NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}"
 
 : "${E2E_STELLAR_SIGNER_SECRET:?set it to the contract owner Testnet secret seed (publish is owner-gated)}"
 
@@ -90,7 +92,7 @@ trap cleanup EXIT
 
 # ---- 0. prerequisites ---------------------------------------------------------
 log "checking prerequisites"
-for t in docker psql curl jq stellar; do need "$t"; done
+for t in docker psql curl jq stellar node pnpm; do need "$t"; done
 ok "all tools present"
 
 # Fail loudly if a previous run left a service on one of our ports. Silently
@@ -238,8 +240,39 @@ assert_insolvent() { # scenario-name
   esac
 }
 
+# Phase B: a customer verifies their balance is in the latest proof, on-chain,
+# through the SDK. Runs after a proof has been published. cust-001 was seeded
+# with id_hash ...0001. The SDK package and its deps must be built first.
+assert_inclusion() {
+  local id_hash="0000000000000000000000000000000000000000000000000000000000000001"
+  log "inclusion: verify cust-001 in the latest proof, on-chain"
+
+  local proof_uuid
+  proof_uuid=$(curl -fsS "$ORCH_URL/v1/proofs/latest?tenant_id=${TENANT_ID}" | jq -r '.id // empty')
+  [ -n "$proof_uuid" ] || fail "no latest proof id to check inclusion against"
+
+  log "building the SDK and its deps for the inclusion check"
+  pnpm exec turbo run build --filter=@solva/sdk-ts >/tmp/solva-e2e-sdk-build.log 2>&1 \
+    || fail "SDK build failed; see /tmp/solva-e2e-sdk-build.log"
+
+  # Run from the sdk-ts package: it self-references @solva/sdk-ts via exports and
+  # carries the matching stellar-sdk. Config goes through env, since the network
+  # passphrase has spaces and a semicolon.
+  SOLVA_ORCH_URL="$ORCH_URL" \
+  SOLVA_RPC_URL="$RPC_URL" \
+  SOLVA_CONTRACT_ID="$CONTRACT_ID" \
+  SOLVA_NETWORK_PASSPHRASE="$NETWORK_PASSPHRASE" \
+  SOLVA_TENANT="$TENANT_ID" \
+  SOLVA_PROOF_UUID="$proof_uuid" \
+  SOLVA_ID_HASH="$id_hash" \
+    pnpm --filter @solva/sdk-ts exec node scripts/check-inclusion.mjs \
+    || fail "inclusion check failed"
+  ok "inclusion verified on-chain (real leaf accepted, tampered balance rejected)"
+}
+
 # ---- 6. run the scenarios -----------------------------------------------------
 assert_solvent solvent
+assert_inclusion
 assert_solvent near-breach
 assert_insolvent insolvent
 
