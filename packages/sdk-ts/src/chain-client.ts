@@ -2,7 +2,11 @@
 // the chain, not through the orchestrator, so a customer can verify it against
 // the public ledger without trusting the institution's API.
 
-import { createProofRegistryClient } from "@solva/contract-bindings";
+import {
+  createProofRegistryClient,
+  type ProofMeta,
+  type ProofRegistryClient,
+} from "@solva/contract-bindings";
 import type { InclusionRef, InclusionResult } from "@solva/shared-types";
 import { ChainError } from "./errors.js";
 
@@ -13,7 +17,18 @@ export interface ChainClientOptions {
 }
 
 export class ChainClient {
-  constructor(private readonly options: ChainClientOptions) {}
+  private readonly registry: ProofRegistryClient;
+
+  constructor(options: ChainClientOptions) {
+    if (!options.contractId) {
+      throw new ChainError("no contractId configured for chain reads");
+    }
+    this.registry = createProofRegistryClient({
+      contractId: options.contractId,
+      rpcUrl: options.rpcUrl,
+      networkPassphrase: options.networkPassphrase,
+    });
+  }
 
   /**
    * Verify a customer's inclusion in the committed Merkle Sum Tree by calling
@@ -22,19 +37,20 @@ export class ChainClient {
    * true result is a ledger-backed fact, not the institution's word.
    */
   async verifyInclusion(ref: InclusionRef): Promise<InclusionResult> {
-    if (!this.options.contractId) {
-      throw new ChainError("no contractId configured for inclusion check");
-    }
-    const registry = createProofRegistryClient({
-      contractId: this.options.contractId,
-      rpcUrl: this.options.rpcUrl,
-      networkPassphrase: this.options.networkPassphrase,
-    });
     try {
-      const included = await registry.verifyInclusion(ref);
+      const included = await this.registry.verifyInclusion(ref);
       return { included, proofId: ref.proofId };
     } catch (cause) {
       throw new ChainError("verify_inclusion call failed", { cause });
+    }
+  }
+
+  /** Read the latest proof recorded on the contract (an on-chain read). */
+  async getLatestProof(): Promise<ProofMeta> {
+    try {
+      return await this.registry.getLatestProof();
+    } catch (cause) {
+      throw new ChainError("get_latest_proof call failed", { cause });
     }
   }
 }

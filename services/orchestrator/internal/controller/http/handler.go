@@ -27,6 +27,7 @@ type queryService interface {
 	GetLatestProof(ctx context.Context, tenantID string) (entity.Proof, error)
 	GetProof(ctx context.Context, id string) (entity.Proof, error)
 	GetInclusion(ctx context.Context, ref string) (entity.InclusionRef, error)
+	ResolveTenantContract(ctx context.Context, tenantID string) (entity.TenantContract, error)
 }
 
 // Handler holds the use cases the routes call.
@@ -139,6 +140,29 @@ func (h *Handler) GetInclusion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, toInclusionDTO(inc))
+}
+
+// GetTenantContract returns the tenant's deployed contract and network so the
+// SDK and oracle read from the tenant's own contract. An unknown tenant or one
+// with no contract yet is a 404.
+func (h *Handler) GetTenantContract(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	tc, err := h.query.ResolveTenantContract(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) || errors.Is(err, repo.ErrTenantNotProvisioned) {
+			writeError(w, http.StatusNotFound, "no contract for that tenant")
+			return
+		}
+		h.log.Error().Err(err).Str("tenant", id).Msg("resolve tenant contract")
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, tenantContractDTO{ContractID: tc.ContractID, Network: tc.Network})
+}
+
+type tenantContractDTO struct {
+	ContractID string `json:"contract_id"`
+	Network    string `json:"network"`
 }
 
 // Health reports liveness.

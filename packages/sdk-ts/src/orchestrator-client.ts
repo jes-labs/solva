@@ -56,6 +56,15 @@ export class OrchestratorClient {
     return this.request<Proof>("GET", `/v1/proofs/${encodeURIComponent(id)}`);
   }
 
+  /** Resolve this tenant's deployed contract and network for on-chain reads. */
+  async getTenantContract(): Promise<{ contractId: string; network: string }> {
+    const dto = await this.request<{ contract_id: string; network: string }>(
+      "GET",
+      `/v1/tenants/${encodeURIComponent(this.tenant)}/contract`,
+    );
+    return { contractId: dto.contract_id, network: dto.network };
+  }
+
   /** Fetch the inclusion reference for a customer reference string. */
   async getInclusionRef(ref: string): Promise<InclusionRef> {
     const dto = await this.request<InclusionRefDTO>(
