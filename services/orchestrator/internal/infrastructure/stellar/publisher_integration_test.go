@@ -51,7 +51,6 @@ func TestPublishProofTestnet(t *testing.T) {
 
 	pub, err := NewPublisher(Config{
 		RPCURL:            rpcURL,
-		ContractID:        contractID,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SignerSecret:      secret,
 	})
@@ -64,7 +63,8 @@ func TestPublishProofTestnet(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
-	id, err := pub.PublishProof(ctx, proof, entity.PublicInputs{
+	target := entity.TenantContract{ContractID: contractID, Network: "testnet"}
+	id, err := pub.PublishProof(ctx, target, proof, entity.PublicInputs{
 		ReservesTotal:    "400",
 		LiabilitiesTotal: "360",
 		PrevReserves:     "400",

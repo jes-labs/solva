@@ -64,8 +64,10 @@ type ReserveSource struct {
 }
 
 type Tenant struct {
-	ID        pgtype.UUID        `json:"id"`
-	Name      string             `json:"name"`
-	Plan      string             `json:"plan"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID         pgtype.UUID        `json:"id"`
+	Name       string             `json:"name"`
+	Plan       string             `json:"plan"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ContractID pgtype.Text        `json:"contract_id"`
+	Network    string             `json:"network"`
 }

@@ -23,8 +23,6 @@ type Config struct {
 	ProverAddr string
 	// StellarRPCURL is the Soroban RPC endpoint used to publish proofs.
 	StellarRPCURL string
-	// StellarContractID is the deployed proof-registry contract address.
-	StellarContractID string
 	// StellarNetworkPassphrase selects the network proofs are published to.
 	StellarNetworkPassphrase string
 	// StellarSignerSecret is the publisher key that signs publish_proof
@@ -61,7 +59,6 @@ func Load() (Config, error) {
 		RedisURL:                 env("ORCH_REDIS_URL", "redis://localhost:6379/0"),
 		ProverAddr:               env("ORCH_PROVER_ADDR", "localhost:50051"),
 		StellarRPCURL:            env("ORCH_STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
-		StellarContractID:        env("ORCH_STELLAR_CONTRACT_ID", "CAYWB2IMDG753S3YF7DKVNLD7WBROYSP3JP5HEJET77W53UBWRD7ZX3Z"),
 		StellarNetworkPassphrase: env("ORCH_STELLAR_NETWORK_PASSPHRASE", network.TestNetworkPassphrase),
 		StellarSignerSecret:      env("ORCH_STELLAR_SIGNER_SECRET", ""),
 		BankBaseURL:              env("ORCH_BANK_BASE_URL", "http://localhost:8090"),
