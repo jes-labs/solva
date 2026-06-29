@@ -78,6 +78,30 @@ deploy-contract network="testnet" owner="solva-spike":
       --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin \
       | tail -1 | tee contracts/proof-registry/.contract_id
 
+# Provision a tenant: deploy a dedicated proof-registry, embed the shared
+# solvency VK, and record the contract id on the tenant row. Each tenant gets its
+# own contract, so their proofs are isolated on-chain (multi-tenancy, #125).
+# `owner` is the account allowed to publish; until the passkey smart wallet is
+# wired (#128) this is the orchestrator's signer, so it can authorize cycles.
+# This is the operator/dev path; the control plane (#131) provisions in product.
+# DB connection comes from the standard PG env vars (defaults match infra/).
+provision-tenant tenant_id owner="signor" network="testnet": build-contract
+    #!/usr/bin/env bash
+    set -euo pipefail
+    id=$(stellar contract deploy \
+      --wasm target/wasm32v1-none/release/proof_registry.wasm \
+      --source {{owner}} \
+      --network {{network}} \
+      -- \
+      --owner {{owner}} \
+      --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin | tail -1)
+    echo "deployed registry for tenant {{tenant_id}}: $id"
+    rows=$(PGPASSWORD="${PGPASSWORD:-solva}" psql -h "${PGHOST:-localhost}" \
+      -U "${PGUSER:-solva}" -d "${PGDATABASE:-solva}" -v ON_ERROR_STOP=1 -qtA -c \
+      "UPDATE tenants SET contract_id='$id', network='{{network}}' WHERE id='{{tenant_id}}' RETURNING id;")
+    [ -n "$rows" ] || { echo "no tenant {{tenant_id}} to record the contract on" >&2; exit 1; }
+    echo "recorded contract_id on tenant {{tenant_id}}"
+
 # Regenerate the TypeScript contract bindings from the deployed contract. The
 # CLI fetches the interface from the network using the id in .contract_id.
 gen-bindings network="testnet":
