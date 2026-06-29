@@ -24,6 +24,11 @@ import (
 // errors.Is rather than reaching for the pgx-specific sentinel.
 var ErrNotFound = errors.New("repo: not found")
 
+// ErrTenantNotProvisioned is returned when a tenant exists but has no contract
+// yet. It is a distinct, expected state, not a failure: the tenant is known but
+// not yet wired to an on-chain proof-registry.
+var ErrTenantNotProvisioned = errors.New("repo: tenant has no contract")
+
 // Postgres implements ProofRepo and ReserveRepo over a pgx pool.
 type Postgres struct {
 	pool *pgxpool.Pool
@@ -180,6 +185,42 @@ func (p *Postgres) GetInclusion(ctx context.Context, ref string) (entity.Inclusi
 		Path:           path,
 		RootHash:       tree.RootHash,
 	}, nil
+}
+
+// ResolveTenantContract returns the tenant's deployed contract and network. A
+// known tenant with no contract yet returns ErrTenantNotProvisioned; an unknown
+// tenant returns ErrNotFound.
+func (p *Postgres) ResolveTenantContract(ctx context.Context, tenantID string) (entity.TenantContract, error) {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return entity.TenantContract{}, err
+	}
+	row, err := p.q.GetTenantContract(ctx, tid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.TenantContract{}, ErrNotFound
+		}
+		return entity.TenantContract{}, fmt.Errorf("get tenant contract: %w", err)
+	}
+	if !row.ContractID.Valid || row.ContractID.String == "" {
+		return entity.TenantContract{}, ErrTenantNotProvisioned
+	}
+	return entity.TenantContract{ContractID: row.ContractID.String, Network: row.Network}, nil
+}
+
+// SetTenantContract records the contract a tenant publishes to. Provisioning
+// (who calls this, and when) is the control plane's job (#131); this is the
+// data-model write it builds on.
+func (p *Postgres) SetTenantContract(ctx context.Context, tenantID, contractID, network string) error {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return err
+	}
+	return p.q.SetTenantContract(ctx, SetTenantContractParams{
+		ID:         tid,
+		ContractID: pgtype.Text{String: contractID, Valid: true},
+		Network:    network,
+	})
 }
 
 // LoadLiabilities loads a tenant's current customer balances for witnessing.
