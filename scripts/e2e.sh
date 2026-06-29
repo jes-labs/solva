@@ -146,12 +146,9 @@ FROM c JOIN (VALUES
   ('cust-003', 2000000::numeric)
 ) AS v(ref, bal) ON c.external_ref = v.ref;
 
--- Prior proof so the fraud bound (10*R <= 11*R_prev) has a non-zero baseline.
--- Without it the first cycle's R_prev is 0 and any positive R is rejected.
--- R_prev = 15,000,000 admits solvent (16M) and near-breach (9.5M); insolvent
--- (4.5M) still fails on R < L, not on the fraud bound.
-INSERT INTO proofs (tenant_id, chain_proof_id, root_h, r, l, proof_blob)
-VALUES ('${TENANT_ID}', 0, 'genesis-baseline', 15000000, 9000000, decode('00','hex'));
+-- No seeded baseline proof: the first solvent cycle is a real genesis cycle.
+-- The orchestrator sets R_prev = R for it (#136), so the fraud bound holds
+-- without a fake prior. near-breach then bounds against the solvent proof.
 SQL
 seeded_l=$(psql_solva -c "SELECT COALESCE(SUM(balance),0) FROM liabilities WHERE tenant_id='${TENANT_ID}';")
 [ "$seeded_l" = "9000000" ] || fail "seeded liabilities = $seeded_l, want 9000000"

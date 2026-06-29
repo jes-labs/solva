@@ -29,6 +29,11 @@ type fakeDeps struct {
 	tenantContract    entity.TenantContract
 	publishedContract string
 	resolveErr        error
+
+	// latestReserves overrides the previous reserve total ("0" simulates a
+	// genesis cycle). provedPrev records the prev_reserves passed to Prove.
+	latestReserves string
+	provedPrev     string
 }
 
 func (f *fakeDeps) record(name string) { f.calls = append(f.calls, name) }
@@ -49,12 +54,16 @@ func (f *fakeDeps) SaveSnapshot(_ context.Context, _ entity.ReserveSnapshot) err
 }
 func (f *fakeDeps) LatestReserves(_ context.Context, _ string) (string, error) {
 	f.record("LatestReserves")
+	if f.latestReserves != "" {
+		return f.latestReserves, nil
+	}
 	return "950", nil
 }
 
 // --- ProverClient ---
-func (f *fakeDeps) Prove(_ context.Context, _ []entity.Reserve, _ []Liability, _ string) (ProveResult, error) {
+func (f *fakeDeps) Prove(_ context.Context, _ []entity.Reserve, _ []Liability, prev string) (ProveResult, error) {
 	f.record("Prove")
+	f.provedPrev = prev
 	return ProveResult{
 		Proof: []byte("proof"),
 		PublicInputs: entity.PublicInputs{
@@ -150,6 +159,30 @@ func TestRunHappyPathCallOrder(t *testing.T) {
 	}
 	if len(f.auditPayload) == 0 {
 		t.Error("audit payload is empty")
+	}
+}
+
+// The genesis cycle (no prior proof, LatestReserves "0") proves against
+// R_prev = R, not 0, so the fraud bound does not reject the first cycle.
+// FetchSigned returns one reserve of 1000, so R = 1000.
+func TestRunGenesisCycleUsesReservesAsPrev(t *testing.T) {
+	f := &fakeDeps{lockAcquired: true, claimOK: true, latestReserves: "0"}
+	if err := newCycleWith(f).Run(context.Background(), "tenant-1", "key-1"); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if f.provedPrev != "1000" {
+		t.Errorf("genesis prev_reserves = %q, want 1000 (R)", f.provedPrev)
+	}
+}
+
+// A later cycle bounds against the real previous total, not R.
+func TestRunLaterCycleUsesPreviousReserves(t *testing.T) {
+	f := &fakeDeps{lockAcquired: true, claimOK: true, latestReserves: "5000"}
+	if err := newCycleWith(f).Run(context.Background(), "tenant-1", "key-1"); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if f.provedPrev != "5000" {
+		t.Errorf("prev_reserves = %q, want the previous total 5000", f.provedPrev)
 	}
 }
 

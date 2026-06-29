@@ -5,11 +5,33 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/rs/zerolog"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
 )
+
+// isGenesisReserves reports whether there is no usable previous reserve total,
+// so this is the tenant's first cycle. A published proof always has r > 0, so
+// "0" (and the empty default) means no prior proof.
+func isGenesisReserves(prev string) bool {
+	return prev == "" || prev == "0"
+}
+
+// sumReserves totals the reserve balances as an integer in minor units. Used to
+// set R_prev = R on the genesis cycle.
+func sumReserves(reserves []entity.Reserve) (string, error) {
+	total := new(big.Int)
+	for _, r := range reserves {
+		v, ok := new(big.Int).SetString(r.Balance, 10)
+		if !ok {
+			return "", fmt.Errorf("reserve %q has a non-integer balance %q", r.SourceID, r.Balance)
+		}
+		total.Add(total, v)
+	}
+	return total.String(), nil
+}
 
 // ErrCycleInProgress means a cycle for the tenant already holds the Redis lock.
 // The caller should treat the trigger as a no-op, not a failure.
@@ -100,6 +122,17 @@ func (uc *Cycle) Run(ctx context.Context, tenantID, requestKey string) error {
 	prev, err := uc.reserves.LatestReserves(ctx, tenantID)
 	if err != nil {
 		return fmt.Errorf("load previous reserves: %w", err)
+	}
+
+	// Genesis cycle: with no prior proof the previous total is 0, which would
+	// fail the fraud bound 10R <= 11*R_prev for any positive R. Treat the first
+	// cycle as zero growth by setting R_prev = R, so it can run; every later
+	// cycle bounds against the real previous total.
+	if isGenesisReserves(prev) {
+		prev, err = sumReserves(snap.Reserves)
+		if err != nil {
+			return fmt.Errorf("genesis reserves total: %w", err)
+		}
 	}
 
 	res, err := uc.prover.Prove(ctx, snap.Reserves, liabilities, prev)
