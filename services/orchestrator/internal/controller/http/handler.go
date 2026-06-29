@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
+	"github.com/jes-labs/solva/services/orchestrator/internal/repo"
 	"github.com/jes-labs/solva/services/orchestrator/internal/usecase"
 )
 
@@ -122,10 +123,15 @@ func (h *Handler) GetInclusion(w http.ResponseWriter, r *http.Request) {
 	ref := chi.URLParam(r, "ref")
 	inc, err := h.query.GetInclusion(r.Context(), ref)
 	if err != nil {
-		writeError(w, http.StatusNotImplemented, "inclusion lookup not implemented")
+		if errors.Is(err, repo.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "no inclusion path for that proof and customer")
+			return
+		}
+		h.log.Error().Err(err).Str("ref", ref).Msg("get inclusion")
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	writeJSON(w, http.StatusOK, inc)
+	writeJSON(w, http.StatusOK, toInclusionDTO(inc))
 }
 
 // Health reports liveness.
@@ -151,6 +157,37 @@ func toProofDTO(p entity.Proof) proofDTO {
 		RootHash:         p.RootHash,
 		ReservesTotal:    p.ReservesTotal,
 		LiabilitiesTotal: p.LiabilitiesTotal,
+	}
+}
+
+// pathNodeDTO and inclusionDTO are the JSON surface for the inclusion endpoint.
+// sibling_is_left matches the contract's PathNode so the SDK maps it straight
+// into verify_inclusion. proof_id is the chain proof id verify_inclusion takes.
+type pathNodeDTO struct {
+	Hash          string `json:"hash"`
+	Sum           string `json:"sum"`
+	SiblingIsLeft bool   `json:"sibling_is_left"`
+}
+
+type inclusionDTO struct {
+	ProofID        string        `json:"proof_id"`
+	CustomerIDHash string        `json:"customer_id_hash"`
+	Balance        string        `json:"balance"`
+	RootHash       string        `json:"root_hash"`
+	Path           []pathNodeDTO `json:"path"`
+}
+
+func toInclusionDTO(inc entity.InclusionRef) inclusionDTO {
+	path := make([]pathNodeDTO, len(inc.Path))
+	for i, n := range inc.Path {
+		path[i] = pathNodeDTO{Hash: n.Hash, Sum: n.Sum, SiblingIsLeft: n.Left}
+	}
+	return inclusionDTO{
+		ProofID:        inc.ProofID,
+		CustomerIDHash: inc.CustomerIDHash,
+		Balance:        inc.Balance,
+		RootHash:       inc.RootHash,
+		Path:           path,
 	}
 }
 
