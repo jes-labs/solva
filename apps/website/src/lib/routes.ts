@@ -18,6 +18,7 @@ export const routes = {
   verify: `${appUrl}/verify`,
   inclusion: `${appUrl}/inclusion`,
   demo: "/request-a-demo",
+  sandbox: "/sandbox",
   contact: "/contact",
   legal: "/legal",
   status: "/status",

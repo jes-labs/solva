@@ -10,6 +10,7 @@ export interface NavItem {
 export const leadNavItem: NavItem = { label: "Product", href: routes.howItWorks };
 
 export const navItems: NavItem[] = [
+  { label: "Sandbox", href: routes.sandbox },
   { label: "Developers", href: routes.developers },
   { label: "Security", href: routes.security },
   { label: "Pricing", href: routes.pricing },
