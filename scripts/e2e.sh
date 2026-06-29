@@ -68,10 +68,20 @@ wait_tcp() { # host port name
   fail "$name not listening on $host:$port"
 }
 
+# kill_tree kills a pid and all its descendants. `go run` and `cargo run` exec a
+# child binary that holds the port; killing only the parent leaves that child
+# running, so the next run finds the port taken and silently talks to a stale
+# service. Walk the tree so teardown is complete.
+kill_tree() {
+  local pid="$1" child
+  for child in $(pgrep -P "$pid" 2>/dev/null); do kill_tree "$child"; done
+  kill "$pid" 2>/dev/null || true
+}
+
 PIDS=()
 cleanup() {
   log "tearing down"
-  for pid in "${PIDS[@]:-}"; do kill "$pid" 2>/dev/null || true; done
+  for pid in "${PIDS[@]:-}"; do kill_tree "$pid"; done
   if [ "${E2E_DOWN:-0}" = "1" ]; then
     docker compose -f infra/docker-compose.yml down || true
   fi
@@ -82,6 +92,17 @@ trap cleanup EXIT
 log "checking prerequisites"
 for t in docker psql curl jq stellar; do need "$t"; done
 ok "all tools present"
+
+# Fail loudly if a previous run left a service on one of our ports. Silently
+# reusing it makes the run lie (stale code, wrong contract), as we learned.
+if [ "${E2E_SERVICES_RUNNING:-0}" != "1" ]; then
+  for port in 8080 8090 50051; do
+    if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+      fail "port $port is already in use (stale service from a previous run). Kill it, then re-run."
+    fi
+  done
+  ok "service ports free"
+fi
 
 # ---- 1. infrastructure --------------------------------------------------------
 log "starting Postgres + Redis"
@@ -191,12 +212,16 @@ assert_solvent() { # scenario-name
     *)  fail "$name cycle returned HTTP $code, want 2xx; see /tmp/solva-e2e-orch.log" ;;
   esac
 
-  local proof r l
+  # The cycle runs synchronously, so the proof is persisted by the time the
+  # trigger returns. The orchestrator emits snake_case fields.
+  local proof r l root
   proof=$(curl -fsS "$ORCH_URL/v1/proofs/latest?tenant_id=${TENANT_ID}")
-  r=$(printf '%s' "$proof" | jq -r '.reservesTotal // .r // .R')
-  l=$(printf '%s' "$proof" | jq -r '.liabilitiesTotal // .l // .L')
-  [ -n "$r" ] && [ "$r" != "null" ] || fail "no proof persisted for $name"
-  ok "$name proof: R=$r L=$l, published + verified on Testnet"
+  r=$(printf '%s' "$proof" | jq -r '.reserves_total // empty')
+  l=$(printf '%s' "$proof" | jq -r '.liabilities_total // empty')
+  root=$(printf '%s' "$proof" | jq -r '.root_hash // empty')
+  [ -n "$r" ] || fail "no proof persisted for $name"
+  [ "$root" != "genesis-baseline" ] || fail "$name: latest proof is still the genesis baseline, no new proof published"
+  ok "$name proof: R=$r L=$l root=$root, published + verified on Testnet"
 }
 
 assert_insolvent() { # scenario-name
