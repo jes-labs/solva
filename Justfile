@@ -52,6 +52,11 @@ build-artifacts:
 dev-prover:
     cargo run -p solva-prover
 
+# Build the reproducible prover image: the gRPC server plus the pinned toolchain
+# (Noir beta.9, bb 0.87.0) and the CRS baked in, so it runs with no host setup.
+prover-image:
+    docker build -f services/prover/Dockerfile -t solva-prover .
+
 # Run the Go orchestrator.
 dev-orchestrator:
     cd services/orchestrator && go run ./cmd/app
