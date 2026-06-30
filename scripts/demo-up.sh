@@ -32,7 +32,7 @@ SANDBOX_URL="http://localhost:8090"
 ORCH_URL="http://localhost:8080"
 TENANT_A="11111111-1111-1111-1111-111111111111" # Meridian Bank
 TENANT_B="22222222-2222-2222-2222-222222222222" # Solstice Exchange
-CONTRACT_A="${DEMO_CONTRACT_A:-CB56V5BNNNP5SFFW2D4ZIDVHZUFEJVBNOSKWBXFGVDMHXCM7LK3OCRYV}"
+CONTRACT_A="${DEMO_CONTRACT_A:-}"
 CONTRACT_B="${DEMO_CONTRACT_B:-}"
 DEPLOY_OWNER="${DEMO_DEPLOY_OWNER:-signor}"
 
@@ -87,19 +87,30 @@ for port in 8080 8090 50051; do
 done
 ok "tools present and ports free"
 
-# Each institution needs its own contract. Meridian uses CONTRACT_A; Solstice
-# uses CONTRACT_B, deploying a fresh registry when one is not supplied so the two
-# are genuinely distinct. Set DEMO_CONTRACT_B to reuse it across runs.
-if [ -z "$CONTRACT_B" ]; then
-  log "deploying a dedicated registry for Solstice Exchange (set DEMO_CONTRACT_B to reuse)"
-  stellar contract build >/dev/null 2>&1
-  CONTRACT_B=$(stellar contract deploy \
+# Each institution gets its own dedicated registry. A fresh one is deployed for
+# any that is not supplied, so the two are genuinely distinct and clean. Set
+# DEMO_CONTRACT_A / DEMO_CONTRACT_B to reuse them across runs.
+deploy_registry() {
+  stellar contract deploy \
     --wasm target/wasm32v1-none/release/proof_registry.wasm \
     --source "$DEPLOY_OWNER" --network testnet -- \
     --owner "$DEPLOY_OWNER" \
-    --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin | tail -1)
-  [ -n "$CONTRACT_B" ] || fail "could not deploy Solstice's registry"
-  ok "deployed Solstice registry $CONTRACT_B"
+    --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin | tail -1
+}
+
+if [ -z "$CONTRACT_A" ] || [ -z "$CONTRACT_B" ]; then
+  log "building the proof-registry contract"
+  stellar contract build >/dev/null 2>&1
+fi
+if [ -z "$CONTRACT_A" ]; then
+  log "deploying Meridian Bank's registry (set DEMO_CONTRACT_A to reuse)"
+  CONTRACT_A=$(deploy_registry); [ -n "$CONTRACT_A" ] || fail "could not deploy Meridian's registry"
+  ok "Meridian registry $CONTRACT_A"
+fi
+if [ -z "$CONTRACT_B" ]; then
+  log "deploying Solstice Exchange's registry (set DEMO_CONTRACT_B to reuse)"
+  CONTRACT_B=$(deploy_registry); [ -n "$CONTRACT_B" ] || fail "could not deploy Solstice's registry"
+  ok "Solstice registry $CONTRACT_B"
 fi
 [ "$CONTRACT_A" != "$CONTRACT_B" ] || fail "the two institutions must have distinct contracts"
 

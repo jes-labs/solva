@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Reveal } from "@/components/motion";
 import { Eyebrow } from "@/components/ui";
+import { PipelineExplainer } from "./pipeline-explainer";
 import { SandboxClient } from "./sandbox-client";
 
 export const metadata: Metadata = {
@@ -33,8 +34,29 @@ export default function SandboxPage() {
         </Reveal>
       </header>
 
-      <section className={`${sectionX} pb-24`}>
-        <SandboxClient />
+      <section className={`${sectionX} py-10`}>
+        <Reveal>
+          <h2 className="h2 max-w-[560px]">How a proof is made, under the hood.</h2>
+          <p className="mt-4 max-w-[600px] text-base leading-relaxed text-sec">
+            Five steps, end to end. Watch it play, or step through each operation yourself.
+          </p>
+        </Reveal>
+        <div className="mt-8">
+          <PipelineExplainer />
+        </div>
+      </section>
+
+      <section className={`${sectionX} pb-24 pt-10`}>
+        <Reveal>
+          <h2 className="h2 max-w-[560px]">Now run it for real.</h2>
+          <p className="mt-4 max-w-[600px] text-base leading-relaxed text-sec">
+            Drive the live pipeline against a running stack: each step makes a real call, with
+            the real artifact it returns.
+          </p>
+        </Reveal>
+        <div className="mt-8">
+          <SandboxClient />
+        </div>
       </section>
     </main>
   );
