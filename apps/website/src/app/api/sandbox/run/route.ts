@@ -1,11 +1,5 @@
 import { NextResponse } from "next/server";
-
-// Server-side proxy for the sandbox playground. The browser talks to this
-// same-origin route; the route reaches the Solva backend, so there is no CORS
-// dance and the backend URLs stay server-side. Point these at a local stack
-// during a demo, or a hosted one once the prover image lands (#135).
-const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL ?? "http://localhost:8080";
-const SANDBOX_URL = process.env.SANDBOX_URL ?? "http://localhost:8090";
+import { ORCHESTRATOR_URL, SANDBOX_URL } from "@/lib/sandbox-backend";
 
 export const dynamic = "force-dynamic";
 
