@@ -142,6 +142,13 @@ down:
 e2e:
     bash scripts/e2e.sh
 
+# Bring up the demo stack for the /sandbox playground and keep it running: seed
+# two institutions, start sandbox + prover + orchestrator. Needs a funded Testnet
+# identity that owns the demo contracts: export ORCH_STELLAR_SIGNER_SECRET.
+# See scripts/demo-up.sh for the full prerequisites.
+demo:
+    bash scripts/demo-up.sh
+
 # Cross-layer parity gate: the circuit, prover, and contract must each build the
 # canonical Poseidon2 hash4-with-sums root for the sample leaves. The contract is
 # the source of truth (native on-chain Poseidon2); the other layers must match.

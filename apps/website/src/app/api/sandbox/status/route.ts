@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-
-const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL ?? "http://localhost:8080";
+import { ORCHESTRATOR_URL } from "@/lib/sandbox-backend";
 
 export const dynamic = "force-dynamic";
 

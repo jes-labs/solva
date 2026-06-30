@@ -24,10 +24,11 @@ export default function SandboxPage() {
             <span className="font-serif italic text-acc-text">Stellar</span>.
           </h1>
           <p className="mt-6 max-w-[620px] text-lg leading-relaxed text-sec">
-            This runs the real Solva pipeline against a mock open-banking bank: fetch a
-            signed balance, prove reserves cover liabilities without revealing a single
-            customer, and publish the proof on-chain. The insolvent case is meant to
-            fail. That is the point: Solva will not prove a lie.
+            Step through the real Solva pipeline against a mock open-banking bank: connect
+            the bank, read a signed balance, prove reserves cover liabilities without
+            revealing a single customer, publish the proof on-chain, and verify it. Each
+            institution proves to its own contract. The insolvent case is meant to fail.
+            That is the point: Solva will not prove a lie.
           </p>
         </Reveal>
       </header>
