@@ -27,5 +27,19 @@ services:
       timeout: 3s
       retries: 5
 
+  # The prover with its pinned toolchain baked in (Noir beta.9, bb 0.87.0, CRS).
+  # Opt-in, since building the image is slow: docker compose up -d prover, or
+  # docker compose --profile prover up -d. The e2e can use this instead of a
+  # host cargo run.
+  prover:
+    build:
+      context: ..
+      dockerfile: services/prover/Dockerfile
+    image: solva-prover
+    container_name: solva-prover
+    profiles: ["prover"]
+    ports:
+      - "50051:50051"
+
 volumes:
   solva-pgdata:
