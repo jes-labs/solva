@@ -4,8 +4,33 @@ description: Where the proof-registry contract is deployed.
 ---
 
 The proof-registry contract holds the registry, the embedded verifying key, the
-UltraHonk verification, and the Poseidon2 inclusion check. The address below is
-filled in after each deploy.
+UltraHonk proof verification, and the Poseidon2 inclusion check.
+
+Each institution has its own proof-registry contract. There is no shared
+registry. The address below is a reference deployment. To read a specific
+institution's proofs, resolve its own contract from its institution id.
+
+## Entrypoints
+
+- `publish_proof(proof, public_inputs)`. Verifies a proof and stores the root and
+  totals. Only the institution's owner can call it.
+- `get_latest_proof()`. Returns the latest reserves total, liabilities total,
+  root, and timestamp.
+- `get_proof(id)`. Returns one proof by id.
+- `verify_inclusion(id, id_hash, balance, path)`. Recomputes the tree root from a
+  customer leaf and path and checks it against the stored proof.
+
+The read entrypoints need no account. Publishing is authenticated.
+
+## Resolving an institution's contract
+
+The SDK resolves the contract for you from the institution id, then reads that
+contract. You do not need to know the address to read a proof.
+
+```ts
+const solva = new Solva({ network: "testnet", tenant: "my-institution" });
+const latest = await solva.getOnChainLatestProof();
+```
 
 ## Testnet
 
@@ -23,5 +48,5 @@ filled in after each deploy.
 | Contract | _not yet deployed_ |
 | RPC | https://soroban.stellar.org |
 
-The SDK reads these from its network defaults. Override them with the
-`endpoints` option when you point at a different deployment.
+The SDK reads these from its network defaults. Override them with the `endpoints`
+option when you point at a different deployment.

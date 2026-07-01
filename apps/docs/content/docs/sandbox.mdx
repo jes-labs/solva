@@ -3,29 +3,52 @@ title: Sandbox guide
 description: Run Solva against the mock Open Banking sandbox.
 ---
 
-The sandbox is a mock Open Banking service. It lets you run full proof cycles
-without a real bank connection, with deterministic scenarios for demos.
+The sandbox is a mock open banking service. It lets you run full proof cycles
+without a real bank connection. Its balances are deterministic, so demos and
+tests give the same result every time.
+
+The sandbox stands in for a real bank. In production an institution connects real
+accounts. In the sandbox the same code path talks to a fake bank that you
+control.
 
 ## What it provides
 
-- An OAuth 2.0 consent flow, authorize then token.
-- A balance endpoint that returns ECDSA-signed payloads, the cryptographic
-  substitute for a real bank's attestation.
-- Two or three mock banks with configurable balances.
-- An admin endpoint to seed scenarios: solvent, near-breach, and insolvent.
+- An OAuth 2.0 consent flow. You call authorize to get a code, then token to get
+  an access token. This is the same shape a real bank uses.
+- A balance endpoint that returns ECDSA-signed payloads. The signature is the
+  stand-in for a real bank's attestation. The orchestrator verifies it the same
+  way it would verify a real one.
+- A set of mock banks with configurable balances.
+- An admin endpoint to seed scenarios.
+
+## Scenarios
+
+Each scenario sets the mock balances to a known state:
+
+- **solvent.** Reserves are comfortably above liabilities. A cycle proves and
+  publishes.
+- **near-breach.** Reserves are just above liabilities. The proof still passes,
+  but the anomaly agent flags the drift. Use it to show an early warning before a
+  real breach.
+- **insolvent.** Reserves are below liabilities. The circuit cannot prove
+  solvency, so the cycle is rejected. This shows that the system will not prove a
+  false statement.
 
 ## Seeding a scenario
 
-Point a reserve source at a sandbox bank, seed the scenario you want, then run a
-cycle. The near-breach scenario is useful for exercising the anomaly agent,
-which flags drift before the circuit ever proves a breach.
+Point a reserve source at a sandbox bank, choose a scenario, then run a cycle.
 
 ```ts
 const solva = new Solva({ network: "local", tenant: "demo-institution" });
+
 await solva.connectSource({
   type: "openbanking",
   label: "Sandbox Bank A",
   settings: { bank: "a", scenario: "near-breach" },
 });
+
 await solva.runProofCycle();
 ```
+
+Switch the `scenario` to `solvent` or `insolvent` to see the other outcomes. The
+insolvent run rejects the cycle instead of publishing.

@@ -3,7 +3,19 @@ title: Quickstart
 description: Install the SDK and run your first proof cycle.
 ---
 
-This guide assumes you have an institution tenant and an orchestrator endpoint.
+This guide runs one proof cycle with the SDK, then checks a customer's inclusion.
+It assumes you have an institution tenant and an orchestrator endpoint. If you do
+not have those yet, start with the sandbox guide.
+
+## Before you start
+
+You need three things:
+
+- An institution id, called the tenant. Every call is scoped to it.
+- An orchestrator endpoint for your network. The SDK picks a default per network,
+  or you set your own with the `endpoints` option.
+- An API token, if the orchestrator you target is gated. Pass it as `apiKey`.
+  Keep it on the server. Never put it in browser code.
 
 ## Install
 
@@ -11,29 +23,62 @@ This guide assumes you have an institution tenant and an orchestrator endpoint.
 pnpm add @solva/sdk-ts
 ```
 
-## Run a cycle
+## Configure the client
 
 ```ts
 import { Solva } from "@solva/sdk-ts";
 
-const solva = new Solva({ network: "testnet", tenant: "my-institution" });
+const solva = new Solva({
+  network: "testnet",
+  tenant: "my-institution",
+  apiKey: process.env.ORCH_API_TOKEN, // only if the orchestrator is gated
+});
+```
 
-await solva.connectSource({
+`network` selects the default endpoints. `tenant` scopes every call to your
+institution.
+
+## Connect a reserve source
+
+A source is an account whose balance counts toward reserves. Register it once.
+The call returns a source id.
+
+```ts
+const sourceId = await solva.connectSource({
   type: "openbanking",
   label: "Main bank",
   settings: { accountId: "acct_123" },
 });
+```
 
+## Run a cycle
+
+`runProofCycle` triggers the full flow: fetch signed reserves, load liabilities,
+prove, and publish. It returns the published proof id. The call waits until the
+proof is published or the cycle is rejected.
+
+```ts
 const proofId = await solva.runProofCycle();
-const latest = await solva.getLatestProof();
+```
 
+A cycle is rejected if reserves are below liabilities, or if the growth bound
+fails. The system will not prove a false statement.
+
+## Read the latest proof
+
+```ts
+const latest = await solva.getLatestProof();
 console.log(latest.publicInputs.reservesTotal, latest.publicInputs.liabilitiesTotal);
 ```
 
+To read straight from the chain instead of the orchestrator, use
+`getOnChainLatestProof`. It returns the same totals and the root from the
+institution's own contract.
+
 ## Check inclusion
 
-A customer verifies that their balance is in the committed tree by passing the
-reference their institution gave them.
+A customer confirms their balance is in the committed tree by passing the
+reference their institution gave them. The result says whether they are included.
 
 ```ts
 const result = await solva.verifyInclusion("customer-reference");
