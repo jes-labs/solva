@@ -156,6 +156,51 @@ fn growth_baseline_binds_to_previous_reserves() {
     );
 }
 
+// Publishing bumps the proof entry and the instance TTL back to ~30 days, and a
+// later read re-extends the proof, so proofs stay queryable (#143).
+#[test]
+fn ttl_is_extended_on_write_and_read() {
+    use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
+
+    let (env, client, _owner) = setup();
+    env.mock_all_auths();
+    env.ledger().set_sequence_number(1000);
+    env.ledger().set_max_entry_ttl(40 * 17_280); // above the 30-day bump
+
+    let proof = Bytes::from_slice(&env, SOLVENCY_PROOF);
+    let id = client.publish_proof(&proof, &solvent_inputs(&env));
+
+    let (proof_ttl, instance_ttl) = env.as_contract(&client.address, || {
+        (
+            env.storage()
+                .persistent()
+                .get_ttl(&crate::storage::DataKey::Proof(id)),
+            env.storage().instance().get_ttl(),
+        )
+    });
+    assert!(
+        proof_ttl >= 29 * 17_280,
+        "proof ttl not extended: {proof_ttl}"
+    );
+    assert!(
+        instance_ttl >= 29 * 17_280,
+        "instance ttl not extended: {instance_ttl}"
+    );
+
+    // Advance most of the window; a read must re-extend the proof.
+    env.ledger().set_sequence_number(1000 + 25 * 17_280);
+    client.get_proof(&id);
+    let after_read = env.as_contract(&client.address, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&crate::storage::DataKey::Proof(id))
+    });
+    assert!(
+        after_read >= 29 * 17_280,
+        "read did not re-extend ttl: {after_read}"
+    );
+}
+
 // Native Poseidon2 inclusion check.
 
 // Convert a 32-byte big-endian node hash back into a field element, matching
