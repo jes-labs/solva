@@ -46,6 +46,19 @@ impl ProverRpc for ProverService {
                 "at least one liability is required",
             ));
         }
+        // Reject oversized input before parsing or shelling out to nargo.
+        if req.liabilities.len() > proving::N {
+            return Err(Status::invalid_argument(format!(
+                "too many liabilities: max {}",
+                proving::N
+            )));
+        }
+        if req.reserves.len() > proving::M {
+            return Err(Status::invalid_argument(format!(
+                "too many reserves: max {}",
+                proving::M
+            )));
+        }
 
         let leaf_ids = req
             .liabilities
@@ -54,29 +67,33 @@ impl ProverRpc for ProverService {
             .collect::<Result<Vec<_>, _>>()
             .map_err(proving_error_to_status)?;
 
-        let leaf_balances = req
-            .liabilities
-            .iter()
-            .map(|l| {
-                l.balance
-                    .parse::<u128>()
-                    .map_err(|e| Status::invalid_argument(format!("bad liability balance: {e}")))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        // Balances are u64 in the circuit; parse as u64 so an out-of-range value
+        // is rejected here, not deep in nargo.
+        let leaf_balances =
+            req.liabilities
+                .iter()
+                .map(|l| {
+                    l.balance.parse::<u64>().map(u128::from).map_err(|e| {
+                        Status::invalid_argument(format!("bad liability balance: {e}"))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
         let reserves = req
             .reserves
             .iter()
             .map(|r| {
                 r.balance
-                    .parse::<u128>()
+                    .parse::<u64>()
+                    .map(u128::from)
                     .map_err(|e| Status::invalid_argument(format!("bad reserve balance: {e}")))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let prev_reserves: u128 = req
+        let prev_reserves = req
             .prev_reserves
-            .parse()
+            .parse::<u64>()
+            .map(u128::from)
             .map_err(|e| Status::invalid_argument(format!("bad prev_reserves: {e}")))?;
 
         let mut witness = Witness {
@@ -107,5 +124,51 @@ fn proving_error_to_status(e: ProvingError) -> Status {
     match &e {
         ProvingError::WitnessAssembly(_) => Status::invalid_argument(e.to_string()),
         ProvingError::ProofGeneration(_) => Status::internal(e.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pb::{Liability, Reserve};
+
+    fn reserve(balance: &str) -> Reserve {
+        Reserve {
+            source_id: "r".into(),
+            balance: balance.into(),
+        }
+    }
+
+    fn liability(i: u64) -> Liability {
+        Liability {
+            customer_id_hash: i.to_string(),
+            balance: "1".into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_too_many_liabilities() {
+        let svc = ProverService::new("circuits/solvency");
+        let req = ProveRequest {
+            liabilities: (0..=(proving::N as u64)).map(liability).collect(),
+            reserves: vec![reserve("10")],
+            prev_reserves: "10".into(),
+            tree_depth: 3,
+        };
+        let err = svc.prove(Request::new(req)).await.unwrap_err();
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+    }
+
+    #[tokio::test]
+    async fn rejects_balance_above_u64() {
+        let svc = ProverService::new("circuits/solvency");
+        let req = ProveRequest {
+            liabilities: vec![liability(1)],
+            reserves: vec![reserve(&(u128::from(u64::MAX) + 1).to_string())],
+            prev_reserves: "10".into(),
+            tree_depth: 3,
+        };
+        let err = svc.prove(Request::new(req)).await.unwrap_err();
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
     }
 }

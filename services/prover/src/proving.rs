@@ -12,8 +12,8 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::tree::{FieldElem, MerkleSumTree, Node};
 
 // Fixed circuit dimensions, from circuits/solvency/src/main.nr.
-const N: usize = 8; // customer leaves
-const M: usize = 4; // reserve figures
+pub const N: usize = 8; // customer leaves
+pub const M: usize = 4; // reserve figures
 const DEPTH: usize = 3; // tree depth, log2(N)
 
 // nargo and bb read and write Prover.toml and target/ in the circuit package, so

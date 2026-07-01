@@ -120,10 +120,16 @@ The container reads `PORT` (Cloud Run injects it) and serves gRPC over HTTP/2.
 `--min-instances 0` keeps it free when idle (first call after idle cold-starts in
 a few seconds since the CRS is baked into the image).
 
+`PROVER_API_TOKEN` gates the gRPC service; the orchestrator sends the same value
+as `ORCH_PROVER_TOKEN`.
+
 ```bash
+export PROVER_API_TOKEN="$(openssl rand -hex 32)"   # reused as ORCH_PROVER_TOKEN below
+
 gcloud run deploy solva-prover \
   --image "$REPO/prover" --region "$REGION" \
   --use-http2 --port 8080 \
+  --set-env-vars "PROVER_API_TOKEN=$PROVER_API_TOKEN" \
   --memory 2Gi --cpu 1 --concurrency 1 --timeout 300 \
   --min-instances 0 --max-instances 1 \
   --allow-unauthenticated
@@ -133,10 +139,8 @@ export PROVER_HOST="$(gcloud run services describe solva-prover --region "$REGIO
 echo "prover gRPC target: $PROVER_HOST:443"
 ```
 
-`--allow-unauthenticated` keeps the deploy simple for a hackathon: the URL is
-unguessable, the only RPC needs a well-formed witness, and it is testnet. To
-harden it later, deploy with `--no-allow-unauthenticated` and have the
-orchestrator attach an ID token (audience = the prover URL) on each call.
+`--allow-unauthenticated` keeps the Cloud Run ingress simple; the app-level
+`PROVER_API_TOKEN` is what actually gates calls. Only the orchestrator holds it.
 
 ## 6. Deploy the sandbox
 
@@ -172,6 +176,7 @@ ORCH_POSTGRES_URL: "$PG"
 ORCH_REDIS_URL: "rediss://…"
 ORCH_PROVER_ADDR: "$PROVER_HOST:443"
 ORCH_PROVER_TLS: "true"
+ORCH_PROVER_TOKEN: "$PROVER_API_TOKEN"
 ORCH_BANK_BASE_URL: "$SANDBOX_URL"
 ORCH_STELLAR_SIGNER_SECRET: "$(stellar keys show signor)"
 ORCH_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org"

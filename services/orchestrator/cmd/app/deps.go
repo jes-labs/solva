@@ -51,6 +51,9 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		proverOpts = append(proverOpts,
 			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	}
+	if cfg.ProverToken != "" {
+		proverOpts = append(proverOpts, grpc.WithPerRPCCredentials(bearerToken{cfg.ProverToken}))
+	}
 	prover, err := grpcprover.NewProverClient(cfg.ProverAddr, proverOpts...)
 	if err != nil {
 		_ = cache.Close()
@@ -100,3 +103,13 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		banks:    bankAdapter,
 	}, cleanup, nil
 }
+
+// bearerToken sends the prover API token as gRPC per-RPC metadata. It permits
+// plaintext transport since a local prover runs without TLS.
+type bearerToken struct{ token string }
+
+func (b bearerToken) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{"authorization": "Bearer " + b.token}, nil
+}
+
+func (bearerToken) RequireTransportSecurity() bool { return false }
