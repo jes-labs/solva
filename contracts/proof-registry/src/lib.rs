@@ -52,12 +52,30 @@ impl ProofRegistry {
             return Err(Error::InsolventBound);
         }
 
-        let id: u64 = env
+        // Anchor the growth bound to on-chain history. The circuit enforces
+        // 10*R <= 11*R_prev, but R_prev is a prover-chosen public input, so the
+        // bound only constrains anything if R_prev is tied to what was actually
+        // published last. At genesis there is no prior proof, so require zero
+        // growth (prev == reserves) instead of an arbitrary baseline the prover
+        // could inflate against next cycle.
+        let latest_id: u64 = env
             .storage()
             .instance()
             .get(&DataKey::LatestId)
-            .unwrap_or(0)
-            + 1;
+            .unwrap_or(0);
+        let previous_reserves = if latest_id == 0 {
+            0
+        } else {
+            Self::get_proof(env.clone(), latest_id)?.r
+        };
+        enforce_growth_baseline(
+            latest_id,
+            previous_reserves,
+            pub_inputs.prev_reserves,
+            pub_inputs.reserves_total,
+        )?;
+
+        let id: u64 = latest_id + 1;
 
         let ts = env.ledger().timestamp();
         let meta = ProofMeta {
@@ -216,6 +234,29 @@ fn encode_public_inputs(env: &Env, pi: &PubInputs) -> Bytes {
     append_u128_field(&mut out, pi.liabilities_total); // L
     append_u128_field(&mut out, pi.prev_reserves); // R_prev
     out
+}
+
+// Require the prover-declared prev_reserves to match on-chain history, so the
+// in-circuit 10R <= 11*R_prev growth bound cannot be gamed with a fabricated
+// baseline. Non-genesis publishes must declare the previous proof's reserves;
+// the genesis publish (no prior proof) must declare zero growth so there is no
+// arbitrary baseline to inflate against later. Pure integer logic, unit-tested
+// directly since a full-proof path can only reach it with matching inputs.
+fn enforce_growth_baseline(
+    latest_id: u64,
+    previous_reserves: u128,
+    declared_prev_reserves: u128,
+    reserves_total: u128,
+) -> Result<(), Error> {
+    let expected = if latest_id == 0 {
+        reserves_total
+    } else {
+        previous_reserves
+    };
+    if declared_prev_reserves != expected {
+        return Err(Error::PrevReservesMismatch);
+    }
+    Ok(())
 }
 
 // Append a u128 as a 32-byte big-endian field element (16 zero bytes, then the

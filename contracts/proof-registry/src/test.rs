@@ -126,6 +126,36 @@ fn publish_requires_owner_auth() {
     assert!(result.is_err());
 }
 
+// Growth-baseline binding. The reject branches cannot be reached through a full
+// proof (only inputs the proof commits to survive verification, and those are
+// self-consistent), so the pure baseline check is unit-tested directly. The
+// accept path is exercised end to end by real_proof_verifies_and_is_recorded,
+// which publishes a genesis proof (prev == reserves) and then a second proof
+// bound to the first proof's reserves.
+
+#[test]
+fn growth_baseline_genesis_requires_zero_growth() {
+    // Genesis (no prior proof): the only accepted baseline is prev == reserves.
+    assert_eq!(crate::enforce_growth_baseline(0, 0, 400, 400), Ok(()));
+    // A first proof that declares a low baseline to grow against is rejected.
+    assert_eq!(
+        crate::enforce_growth_baseline(0, 0, 360, 400),
+        Err(Error::PrevReservesMismatch)
+    );
+}
+
+#[test]
+fn growth_baseline_binds_to_previous_reserves() {
+    // Non-genesis: the declared baseline must equal the previous proof reserves.
+    assert_eq!(crate::enforce_growth_baseline(1, 400, 400, 440), Ok(()));
+    // Declaring a baseline the chain never recorded is rejected. This is what
+    // stops an inflated jump (e.g. prev=500 to justify R=440) from verifying.
+    assert_eq!(
+        crate::enforce_growth_baseline(1, 400, 500, 440),
+        Err(Error::PrevReservesMismatch)
+    );
+}
+
 // Native Poseidon2 inclusion check.
 
 // Convert a 32-byte big-endian node hash back into a field element, matching
