@@ -23,7 +23,11 @@ COPY services/prover ./services/prover
 RUN cargo build -p solva-prover --release
 
 # ---- runtime: nargo + bb + CRS + compiled circuit + the binary --------------
-FROM debian:bookworm-slim AS runtime
+# Trixie (Debian 13), not bookworm: the bb 0.87.0 binary is linked against
+# glibc 2.38+ and libstdc++ GLIBCXX_3.4.32 (gcc 13/14). Bookworm ships glibc
+# 2.36 / GLIBCXX_3.4.30, so bb fails to load there. The Rust binary built in the
+# bookworm builder still runs here (glibc is backward compatible).
+FROM debian:trixie-slim AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 # bb is a C++ binary (libstdc++, OpenMP); git lets nargo fetch circuit deps.
 RUN apt-get update && apt-get install -y --no-install-recommends \
