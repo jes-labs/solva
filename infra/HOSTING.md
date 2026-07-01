@@ -38,13 +38,72 @@ while you stay inside the always-free allowance, and a scale-to-zero demo does.
 New Google Cloud accounts also get a $300 / 90-day trial credit as a buffer. Set
 a $1 budget alert (below) so there are no surprises.
 
-## Prerequisites
+## Before you start: accounts and tools
 
-- Accounts: Google Cloud (`gcloud`), Neon, Upstash, Vercel.
-- The `stellar` CLI with a funded Testnet identity that will **own** the demo
-  contracts (this guide uses `signor`). Top it up any time:
-  `curl "https://friendbot.stellar.org/?addr=$(stellar keys address signor)"`.
-- `openssl` and `psql` locally for the one-time key and seed steps.
+You need four accounts and a handful of CLIs. All four have real free tiers; only
+Google Cloud asks for a card, and it is not charged while you stay in the
+always-free allowance.
+
+| Service | Sign up | What it hosts | Card? |
+|---|---|---|---|
+| Google Cloud | https://console.cloud.google.com | prover, orchestrator, sandbox | yes (not charged in free tier) |
+| Neon | https://neon.tech | Postgres | no |
+| Upstash | https://upstash.com | Redis | no |
+| Vercel | https://vercel.com | website / docs / web | no |
+
+### Install the CLIs (macOS)
+
+```bash
+brew install --cask google-cloud-sdk   # gcloud
+brew install stellar-cli               # stellar
+brew install openssl libpq             # openssl + psql (libpq)
+brew link --force libpq                # put psql on PATH
+```
+On Linux/Windows, follow https://cloud.google.com/sdk/docs/install and
+https://developers.stellar.org/docs/tools/cli. The repo also needs Node 22 and
+`pnpm` (`brew install node pnpm`).
+
+### Google Cloud account
+
+1. Sign up at the console, then create a billing account (Billing → Create).
+   Adding a card is required for Cloud Run; the always-free tier plus the $300 /
+   90-day trial credit keep a scale-to-zero demo at $0.
+2. Log in the CLI from this session: type `! gcloud auth login` in the prompt,
+   then `! gcloud auth application-default login`.
+
+### Neon (Postgres)
+
+1. Sign up, create a project (any name, pick the region nearest your Cloud Run
+   region).
+2. Copy the connection string from the dashboard (starts `postgres://`). You use
+   it as `$PG` below.
+
+### Upstash (Redis)
+
+1. Sign up, create a Redis database (Regional, nearest region).
+2. Copy the `rediss://…` URL from the database page. It is `ORCH_REDIS_URL`.
+
+### Vercel
+
+Sign up with your GitHub account so it can import this repo. No setup yet; you
+deploy the website in step 9.
+
+### Stellar Testnet identity
+
+Create the funded identity that owns the demo contracts (this guide calls it
+`signor`):
+
+```bash
+stellar keys generate signor --network testnet --fund
+stellar keys address signor          # its G... address
+```
+Top it up any time it runs low:
+`curl "https://friendbot.stellar.org/?addr=$(stellar keys address signor)"`.
+
+## Deploy the stack
+
+With the accounts and CLIs ready, run the numbered steps below top to bottom from
+the repo root.
 
 ## 0. Google Cloud project and Artifact Registry
 
