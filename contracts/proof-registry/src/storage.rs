@@ -49,6 +49,7 @@ pub enum Error {
     ProofInvalid = 3,
     InsolventBound = 4,
     ProofNotFound = 5,
+    PrevReservesMismatch = 6,
 }
 
 #[contractevent]
