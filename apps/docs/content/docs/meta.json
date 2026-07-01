@@ -2,6 +2,7 @@
   "title": "Documentation",
   "pages": [
     "index",
+    "end-to-end-flow",
     "quickstart",
     "sdk-reference",
     "sandbox",
