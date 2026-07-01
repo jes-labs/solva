@@ -4,7 +4,8 @@ description: The Solva TypeScript SDK surface.
 ---
 
 The SDK wraps the orchestrator REST API and the on-chain proof-registry reads
-behind one class.
+behind one class. You create one `Solva` instance per institution and call its
+methods.
 
 ## new Solva(config)
 
@@ -17,21 +18,62 @@ new Solva({
 });
 ```
 
-`network` selects the default endpoints. `endpoints` overrides any of them, for
-example to point at a local stack.
+- `network` selects the default endpoints for the orchestrator, the RPC, and the
+  network passphrase.
+- `tenant` is the institution id. Every call is scoped to it.
+- `endpoints` overrides any default, for example to point at a local stack or a
+  specific contract.
+- `apiKey` is the bearer token for a gated orchestrator. Send it only from the
+  server. Do not ship it to a browser.
 
 ## Methods
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `connectSource(config)` | `Promise<string>` | Register a reserve source, returns the source id. |
-| `runProofCycle()` | `Promise<string>` | Trigger a cycle, returns the published proof id. |
-| `getLatestProof()` | `Promise<Proof>` | Fetch the latest published proof. |
-| `getProof(id)` | `Promise<Proof>` | Fetch a proof by id. |
+| `connectSource(config)` | `Promise<string>` | Register a reserve source. Returns the source id. |
+| `runProofCycle()` | `Promise<string>` | Run a full cycle. Returns the published proof id. |
+| `getLatestProof()` | `Promise<Proof>` | Fetch the latest proof through the orchestrator. |
+| `getOnChainLatestProof()` | `Promise<ProofMeta>` | Read the latest proof straight from the contract. |
+| `getProof(id)` | `Promise<Proof>` | Fetch one proof by id. |
 | `verifyInclusion(ref)` | `Promise<InclusionResult>` | Verify a customer's inclusion on-chain. |
+
+### connectSource(config)
+
+Registers an account whose balance counts toward reserves. `config` has a `type`,
+a `label`, and source `settings`. It returns the new source id. Call it once per
+source.
+
+### runProofCycle()
+
+Triggers a cycle on the orchestrator: fetch signed reserves, load liabilities,
+prove, and publish. It resolves once the proof is published, and rejects if the
+cycle fails. A cycle fails when reserves are below liabilities, or when the growth
+bound does not hold.
+
+### getLatestProof() and getProof(id)
+
+Return a `Proof`. `getLatestProof` returns the most recent one for the tenant.
+`getProof` returns a specific one by id.
+
+### getOnChainLatestProof()
+
+Reads the latest proof directly from the institution's contract, without going
+through the orchestrator. Use it when you want the on-chain value as the source of
+truth. It returns a `ProofMeta` with the reserves total, the liabilities total,
+the root, and the timestamp.
+
+### verifyInclusion(ref)
+
+Checks that a customer's balance is in the committed tree. `ref` is the reference
+the institution gave the customer. It calls the contract's `verify_inclusion` and
+returns an `InclusionResult` with an `included` flag.
 
 ## Errors
 
-Every failure is a typed error: `OrchestratorError` for REST failures (carries
-the HTTP `status`), `ChainError` for on-chain read failures, and `ConfigError`
-for invalid configuration. All extend `SolvaError`.
+Every failure is a typed error. All extend `SolvaError`.
+
+- `OrchestratorError` for REST failures. It carries the HTTP `status`. A 404 means
+  the tenant or proof was not found. A 401 means the API token is missing or
+  wrong.
+- `ChainError` for on-chain read failures.
+- `ConfigError` for invalid configuration.
