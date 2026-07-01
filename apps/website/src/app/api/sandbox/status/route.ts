@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ORCHESTRATOR_URL } from "@/lib/sandbox-backend";
+import { ORCHESTRATOR_URL, orchestratorHeaders } from "@/lib/sandbox-backend";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,6 @@ export async function GET(request: Request) {
 // fetchJSON returns the parsed body on 2xx, or null otherwise (an unprovisioned
 // tenant or a registry with no proof yet is a normal, non-error state here).
 async function fetchJSON(url: string): Promise<unknown> {
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: orchestratorHeaders() });
   return res.ok ? res.json() : null;
 }

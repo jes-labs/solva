@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ORCHESTRATOR_URL, SANDBOX_URL } from "@/lib/sandbox-backend";
+import { ORCHESTRATOR_URL, SANDBOX_URL, orchestratorHeaders } from "@/lib/sandbox-backend";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +40,10 @@ export async function POST(request: Request) {
     // returns once the proof is published (or the cycle is rejected).
     const cycle = await fetch(`${ORCHESTRATOR_URL}/v1/cycles`, {
       method: "POST",
-      headers: {
+      headers: orchestratorHeaders({
         "content-type": "application/json",
         "Idempotency-Key": `playground-${scenario}-${Date.now()}`,
-      },
+      }),
       body: JSON.stringify({ tenant_id: tenantId }),
     });
 
@@ -72,6 +72,7 @@ export async function POST(request: Request) {
 async function fetchProof(tenantId: string): Promise<unknown> {
   const res = await fetch(
     `${ORCHESTRATOR_URL}/v1/proofs/latest?tenant_id=${encodeURIComponent(tenantId)}`,
+    { headers: orchestratorHeaders() },
   );
   return res.ok ? res.json() : null;
 }

@@ -159,11 +159,15 @@ export SANDBOX_URL="$(gcloud run services describe solva-sandbox --region "$REGI
 ## 7. Deploy the orchestrator
 
 `ORCH_PROVER_TLS=true` dials the prover over TLS (Cloud Run terminates TLS at
-:443); `ORCH_PROVER_ADDR` is the host:port from step 5.
+:443); `ORCH_PROVER_ADDR` is the host:port from step 5. `ORCH_API_TOKEN` gates
+the API so only the website (which holds the same token) can call it.
 
 ```bash
+export ORCH_API_TOKEN="$(openssl rand -hex 32)"   # share this with the website env
+
 cat > orchestrator.env.yaml <<YAML
 ORCH_HTTP_ADDR: ":8080"
+ORCH_API_TOKEN: "$ORCH_API_TOKEN"
 ORCH_POSTGRES_URL: "$PG"
 ORCH_REDIS_URL: "rediss://…"
 ORCH_PROVER_ADDR: "$PROVER_HOST:443"
@@ -231,8 +235,13 @@ the Cloud Run URLs printed above:
 ```
 ORCHESTRATOR_URL = <value of $ORCHESTRATOR_URL>
 SANDBOX_URL      = <value of $SANDBOX_URL>
+ORCH_API_TOKEN   = <value of $ORCH_API_TOKEN>
 NEXT_PUBLIC_STELLAR_EXPLORER = https://stellar.expert/explorer/testnet
 ```
+
+`ORCH_API_TOKEN` must match the orchestrator's; the website sends it server-side
+so the browser never sees it. If you also host `apps/web`, set the same
+`ORCH_API_TOKEN` there.
 
 Deploy, then open `https://<your-site>/sandbox`.
 

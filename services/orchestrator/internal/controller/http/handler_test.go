@@ -48,7 +48,7 @@ func (stubCycle) Run(context.Context, string, string) error { return nil }
 func TestGetInclusionDecodesEncodedRef(t *testing.T) {
 	q := &stubQuery{}
 	h := NewHandler(stubCycle{}, q, zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	uuid := "ab31f400-d433-4af0-bbda-80e26a2a1a05"
@@ -75,7 +75,7 @@ func TestGetInclusionDecodesEncodedRef(t *testing.T) {
 // tenant has no contract yet.
 func TestGetTenantContract(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{}, zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Get(srv.URL + "/v1/tenants/tenant-1/contract")
@@ -90,7 +90,7 @@ func TestGetTenantContract(t *testing.T) {
 
 func TestGetTenantContractNotProvisioned(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{resolveErr: repo.ErrTenantNotProvisioned}, zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Get(srv.URL + "/v1/tenants/tenant-1/contract")
@@ -100,5 +100,38 @@ func TestGetTenantContractNotProvisioned(t *testing.T) {
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", res.StatusCode)
+	}
+}
+
+// With a token set, /v1 needs it and /health does not.
+func TestAPITokenGate(t *testing.T) {
+	h := NewHandler(stubCycle{}, &stubQuery{}, zerolog.Nop())
+	srv := httptest.NewServer(Router(h, "s3cr3t", zerolog.Nop()))
+	defer srv.Close()
+
+	get := func(path, token string) int {
+		req, _ := http.NewRequest(http.MethodGet, srv.URL+path, nil)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+
+	if code := get("/v1/tenants/t/contract", ""); code != http.StatusUnauthorized {
+		t.Fatalf("no token: status = %d, want 401", code)
+	}
+	if code := get("/v1/tenants/t/contract", "wrong"); code != http.StatusUnauthorized {
+		t.Fatalf("wrong token: status = %d, want 401", code)
+	}
+	if code := get("/v1/tenants/t/contract", "s3cr3t"); code != http.StatusOK {
+		t.Fatalf("good token: status = %d, want 200", code)
+	}
+	if code := get("/health", ""); code != http.StatusOK {
+		t.Fatalf("health: status = %d, want 200", code)
 	}
 }

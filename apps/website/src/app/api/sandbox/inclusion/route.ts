@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ORCHESTRATOR_URL } from "@/lib/sandbox-backend";
+import { ORCHESTRATOR_URL, orchestratorHeaders } from "@/lib/sandbox-backend";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   try {
     const latest = await fetch(
       `${ORCHESTRATOR_URL}/v1/proofs/latest?tenant_id=${encodeURIComponent(tenant)}`,
+      { headers: orchestratorHeaders() },
     );
     if (!latest.ok) {
       return NextResponse.json({ error: "no proof to check against yet" }, { status: 404 });
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
     const ref = `${proof.id}:${idHash}`;
     const inc = await fetch(
       `${ORCHESTRATOR_URL}/v1/proofs/inclusion/${encodeURIComponent(ref)}`,
+      { headers: orchestratorHeaders() },
     );
     if (inc.status === 404) {
       return NextResponse.json({ included: false, reason: "customer not in this proof" });

@@ -21,6 +21,8 @@ export async function institutionLatestProof(
   const solva = new Solva({
     network: network(),
     tenant: institution,
+    // Server-only, never shipped to the browser.
+    apiKey: process.env.ORCH_API_TOKEN,
     endpoints: {
       orchestratorUrl:
         process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? DEFAULT_ORCHESTRATOR_URL,
