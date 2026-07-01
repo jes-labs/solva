@@ -29,9 +29,10 @@ RUN cargo build -p solva-prover --release
 # bookworm builder still runs here (glibc is backward compatible).
 FROM debian:trixie-slim AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
-# bb is a C++ binary (libstdc++, OpenMP); git lets nargo fetch circuit deps.
+# bb is a C++ binary (libstdc++, OpenMP); git lets nargo fetch circuit deps; bb
+# shells out to jq during write_vk.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git libstdc++6 libgomp1 && \
+      ca-certificates curl git jq libstdc++6 libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Pin the proving toolchain. noirup installs nargo to ~/.nargo/bin.
