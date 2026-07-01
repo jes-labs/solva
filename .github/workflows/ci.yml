@@ -26,6 +26,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
       circuits: ${{ steps.filter.outputs.circuits }}
       proto: ${{ steps.filter.outputs.proto }}
+      proverimg: ${{ steps.filter.outputs.proverimg }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -56,6 +57,16 @@ jobs:
               - 'proto/**'
               - 'buf.yaml'
               - 'buf.gen.yaml'
+            # Everything the prover Dockerfile COPYs, so the image is rebuilt
+            # only when its inputs change.
+            proverimg:
+              - 'services/prover/**'
+              - 'circuits/**'
+              - 'contracts/**'
+              - 'crates/**'
+              - 'proto/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
 
   ts:
     needs: changes
@@ -204,10 +215,30 @@ jobs:
             exit 1
           fi
 
+  # Build the prover image on an amd64 runner. bb ships a Linux binary for amd64
+  # only, so this cannot be built on Apple Silicon; ubuntu-latest is amd64 and is
+  # the authoritative check that the image (Rust build + nargo compile + bb CRS
+  # bake) is sound before it is deployed to Fly. Build only, no push.
+  prover-image:
+    needs: changes
+    if: needs.changes.outputs.proverimg == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: build prover image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/prover/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # Single required status check. It always runs and fails if any tier that ran
   # did not succeed. Tiers that were skipped do not count as failures.
   ci:
-    needs: [ts, go, rust, circuits, proto, proto-stale-stubs]
+    needs: [ts, go, rust, circuits, proto, proto-stale-stubs, prover-image]
     if: always()
     runs-on: ubuntu-latest
     steps:
