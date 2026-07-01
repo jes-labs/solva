@@ -25,6 +25,8 @@ type Config struct {
 	// ORCH_PROVER_TLS=true when the prover is behind a TLS endpoint such as
 	// Cloud Run (host:443); leave false for a local or private-network prover.
 	ProverTLS bool
+	// ProverToken is sent as a bearer token on prover RPCs. Empty sends none.
+	ProverToken string
 	// APIToken, when set, requires a bearer token on /v1 and /metrics. Empty
 	// disables the gate for local and e2e.
 	APIToken string
@@ -66,6 +68,7 @@ func Load() (Config, error) {
 		RedisURL:                 env("ORCH_REDIS_URL", "redis://localhost:6379/0"),
 		ProverAddr:               env("ORCH_PROVER_ADDR", "localhost:50051"),
 		ProverTLS:                env("ORCH_PROVER_TLS", "false") == "true",
+		ProverToken:              env("ORCH_PROVER_TOKEN", ""),
 		APIToken:                 env("ORCH_API_TOKEN", ""),
 		StellarRPCURL:            env("ORCH_STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
 		StellarNetworkPassphrase: env("ORCH_STELLAR_NETWORK_PASSPHRASE", network.TestNetworkPassphrase),
