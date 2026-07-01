@@ -47,6 +47,11 @@ export async function POST(request: Request) {
       body: JSON.stringify({ tenant_id: tenantId }),
     });
 
+    if (cycle.status === 409) {
+      // Another cycle for this tenant is already running (the orchestrator's
+      // per-tenant lock). Not a failure: the caller should retry shortly.
+      return NextResponse.json({ published: false, busy: true });
+    }
     if (cycle.status < 200 || cycle.status >= 300) {
       // A non-2xx is an expected outcome for insolvent: the proof could not be
       // generated because reserves are below liabilities.
