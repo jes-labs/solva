@@ -16,6 +16,13 @@ use crate::storage::{DataKey, Error, PathNode, ProofMeta, ProofPublishedEvent, P
 #[contract]
 pub struct ProofRegistry;
 
+// Keep proofs and the contract instance queryable: bump their TTL back to ~30
+// days on write and read, well under testnet's max entry TTL. Matters because
+// publish_proof reads the previous proof for the growth bound.
+const LEDGERS_PER_DAY: u32 = 17_280; // ~5s ledgers
+const TTL_BUMP: u32 = 30 * LEDGERS_PER_DAY;
+const TTL_THRESHOLD: u32 = 7 * LEDGERS_PER_DAY;
+
 #[contractimpl]
 impl ProofRegistry {
     pub fn __constructor(env: Env, owner: Address, vk: Bytes) -> Result<(), Error> {
@@ -87,6 +94,10 @@ impl ProofRegistry {
 
         env.storage().persistent().set(&DataKey::Proof(id), &meta);
         env.storage().instance().set(&DataKey::LatestId, &id);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Proof(id), TTL_THRESHOLD, TTL_BUMP);
+        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_BUMP);
 
         ProofPublishedEvent {
             reserves_total: pub_inputs.reserves_total,
@@ -108,10 +119,15 @@ impl ProofRegistry {
     }
 
     pub fn get_proof(env: Env, id: u64) -> Result<ProofMeta, Error> {
-        env.storage()
+        let meta: ProofMeta = env
+            .storage()
             .persistent()
             .get(&DataKey::Proof(id))
-            .ok_or(Error::ProofNotFound)
+            .ok_or(Error::ProofNotFound)?;
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Proof(id), TTL_THRESHOLD, TTL_BUMP);
+        Ok(meta)
     }
 
     pub fn verify_inclusion(
