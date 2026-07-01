@@ -120,9 +120,15 @@ export function SandboxClient() {
         setContract,
         setProof,
       });
-      setStep(id, result.ok ? "done" : "failed", result.lines);
-      const next = NEXT[id];
-      if (result.ok && next) setStep(next, "ready");
+      if (!result.ok && result.retry) {
+        // A transient state (e.g. another cycle is running): keep the step
+        // runnable so the user can try again.
+        setStep(id, "ready", result.lines);
+      } else {
+        setStep(id, result.ok ? "done" : "failed", result.lines);
+        const next = NEXT[id];
+        if (result.ok && next) setStep(next, "ready");
+      }
     } catch (err) {
       setStep(id, "failed", [{ kind: "warn", text: `Step failed: ${String(err)}` }]);
     } finally {
@@ -233,11 +239,11 @@ interface RunCtx {
   setContract: (c: ContractDTO | null) => void;
   setProof: (p: ProofDTO | null) => void;
 }
-interface RunResult { ok: boolean; lines: Log[] }
+interface RunResult { ok: boolean; lines: Log[]; retry?: boolean }
 
 interface ConnectResp { error?: string; clientId?: string; code?: string; accessToken?: string; tokenType?: string; expiresIn?: number }
 interface ReservesResp { error?: string; total?: string; balances?: { source_id: string; balance: string; currency: string; signature: string }[] }
-interface RunResp { error?: string; published?: boolean; rejected?: boolean; proof?: ProofDTO }
+interface RunResp { error?: string; published?: boolean; rejected?: boolean; busy?: boolean; proof?: ProofDTO }
 interface StatusResp { contract?: ContractDTO | null; proof?: ProofDTO | null }
 interface InclusionResp { error?: string; included?: boolean; balance?: string; pathLength?: number; chainProofId?: string }
 
@@ -275,6 +281,13 @@ const RUNNERS: Record<StepId, (ctx: RunCtx) => Promise<RunResult>> = {
 
   prove: async (ctx) => {
     const d = await req<RunResp>("/api/sandbox/run", postInit({ tenantId: ctx.tenantId, scenario: ctx.scenario }));
+    if (d.busy) {
+      return {
+        ok: false,
+        retry: true,
+        lines: [{ kind: "warn", text: "Another cycle is running for this institution. Give it a moment and run again." }],
+      };
+    }
     if (d.rejected) {
       return {
         ok: false,
