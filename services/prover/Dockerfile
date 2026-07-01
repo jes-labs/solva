@@ -68,6 +68,8 @@ RUN cd circuits/solvency && \
 COPY --from=builder /src/target/release/solva-prover /usr/local/bin/solva-prover
 
 ENV SOLVA_CIRCUIT_DIR=/app/circuits/solvency
-ENV PROVER_ADDR=0.0.0.0:50051
+# No PROVER_ADDR here on purpose: the server falls back to PORT (Cloud Run and
+# similar inject it) and then to 50051, so this one image serves both a local
+# docker-compose run (50051) and a Cloud Run deploy (PORT) unchanged.
 EXPOSE 50051
 CMD ["solva-prover"]

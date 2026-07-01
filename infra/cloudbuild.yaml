@@ -1,0 +1,16 @@
+# Reusable Cloud Build config: build one image from a Dockerfile at a custom
+# path, with the repo root as the build context, and push it to Artifact
+# Registry. HOSTING.md uses this to build the amd64 images on Google's builders,
+# which matters for the prover: bb is amd64-only, so it cannot be built on an
+# Apple Silicon machine, but Cloud Build runs on amd64.
+#
+#   gcloud builds submit --config infra/cloudbuild.yaml \
+#     --substitutions=_DOCKERFILE=services/prover/Dockerfile,_IMAGE=$IMG .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "${_DOCKERFILE}", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"
+# The prover build compiles the Rust workspace, compiles the circuit, and bakes
+# the CRS, so give it room beyond the 10 minute default.
+timeout: 1800s

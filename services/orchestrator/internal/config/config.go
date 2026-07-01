@@ -21,6 +21,10 @@ type Config struct {
 	RedisURL string
 	// ProverAddr is the gRPC address of the Rust prover.
 	ProverAddr string
+	// ProverTLS dials the prover over TLS instead of plaintext. Set
+	// ORCH_PROVER_TLS=true when the prover is behind a TLS endpoint such as
+	// Cloud Run (host:443); leave false for a local or private-network prover.
+	ProverTLS bool
 	// StellarRPCURL is the Soroban RPC endpoint used to publish proofs.
 	StellarRPCURL string
 	// StellarNetworkPassphrase selects the network proofs are published to.
@@ -58,6 +62,7 @@ func Load() (Config, error) {
 		PostgresURL:              env("ORCH_POSTGRES_URL", "postgres://solva:solva@localhost:5432/solva?sslmode=disable"),
 		RedisURL:                 env("ORCH_REDIS_URL", "redis://localhost:6379/0"),
 		ProverAddr:               env("ORCH_PROVER_ADDR", "localhost:50051"),
+		ProverTLS:                env("ORCH_PROVER_TLS", "false") == "true",
 		StellarRPCURL:            env("ORCH_STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
 		StellarNetworkPassphrase: env("ORCH_STELLAR_NETWORK_PASSPHRASE", network.TestNetworkPassphrase),
 		StellarSignerSecret:      env("ORCH_STELLAR_SIGNER_SECRET", ""),

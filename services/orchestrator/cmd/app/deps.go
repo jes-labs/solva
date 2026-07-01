@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/config"
 	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/banks"
@@ -39,7 +42,16 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		return deps{}, nil, fmt.Errorf("connect redis: %w", err)
 	}
 
-	prover, err := grpcprover.NewProverClient(cfg.ProverAddr)
+	// When the prover sits behind a TLS endpoint (e.g. Cloud Run on host:443),
+	// override the plaintext default with TLS transport credentials. gRPC applies
+	// the later WithTransportCredentials option, so this wins over the insecure
+	// default that NewProverClient sets.
+	var proverOpts []grpc.DialOption
+	if cfg.ProverTLS {
+		proverOpts = append(proverOpts,
+			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+	}
+	prover, err := grpcprover.NewProverClient(cfg.ProverAddr, proverOpts...)
 	if err != nil {
 		_ = cache.Close()
 		pg.Close()
