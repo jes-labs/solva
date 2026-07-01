@@ -84,6 +84,10 @@ PIDS=()
 cleanup() {
   log "tearing down"
   for pid in "${PIDS[@]:-}"; do kill_tree "$pid"; done
+  # The dockerized prover is a container, not a tracked host PID.
+  if [ "${E2E_DOCKER_PROVER:-0}" = "1" ]; then
+    docker compose -f infra/docker-compose.yml stop prover >/dev/null 2>&1 || true
+  fi
   if [ "${E2E_DOWN:-0}" = "1" ]; then
     docker compose -f infra/docker-compose.yml down || true
   fi
@@ -168,10 +172,19 @@ if [ "${E2E_SERVICES_RUNNING:-0}" != "1" ]; then
   [ -n "$SANDBOX_PUBKEY_PEM" ] || fail "could not fetch sandbox public key"
   ok "fetched sandbox public key"
 
-  log "starting prover (first build is slow)"
-  ( cargo run -p solva-prover ) >/tmp/solva-e2e-prover.log 2>&1 &
-  PIDS+=($!)
-  wait_tcp "${PROVER_HOSTPORT%:*}" "${PROVER_HOSTPORT#*:}" "prover"
+  # The prover runs from its Docker image (pinned nargo/bb/CRS) when
+  # E2E_DOCKER_PROVER=1, otherwise from a host cargo run. The image path needs no
+  # host toolchain and matches what gets hosted.
+  if [ "${E2E_DOCKER_PROVER:-0}" = "1" ]; then
+    log "starting prover (docker image; first build is slow)"
+    docker compose -f infra/docker-compose.yml --profile prover up -d --build prover
+    wait_tcp "${PROVER_HOSTPORT%:*}" "${PROVER_HOSTPORT#*:}" "prover"
+  else
+    log "starting prover (host cargo run; first build is slow)"
+    ( cargo run -p solva-prover ) >/tmp/solva-e2e-prover.log 2>&1 &
+    PIDS+=($!)
+    wait_tcp "${PROVER_HOSTPORT%:*}" "${PROVER_HOSTPORT#*:}" "prover"
+  fi
 
   log "starting orchestrator"
   (

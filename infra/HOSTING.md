@@ -61,9 +61,15 @@ openssl ec -in bank.key -pubout -out bank.pub.pem               # ORCH_BANK_PUBL
 
 ## 4. Deploy the prover (private)
 
+`bb` ships a Linux binary for **amd64 only**, so the prover image is amd64 and
+must be built on an amd64 host. Fly's remote builder is amd64, so `fly deploy`
+builds it correctly even from an Apple Silicon machine (it does not build
+locally). Do not try `docker build` for this image on Apple Silicon; amd64 `bb`
+crashes under Rosetta.
+
 ```bash
 fly launch --no-deploy --dockerfile services/prover/Dockerfile --name solva-prover
-fly deploy --dockerfile services/prover/Dockerfile -a solva-prover
+fly deploy --remote-only --dockerfile services/prover/Dockerfile -a solva-prover
 fly scale memory 2048 -a solva-prover    # bb needs headroom
 ```
 No public service needed; the orchestrator reaches it at `solva-prover.internal:50051`.
