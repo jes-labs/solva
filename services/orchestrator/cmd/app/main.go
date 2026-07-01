@@ -59,7 +59,10 @@ func run(cfg config.Config, log zerolog.Logger) error {
 	query := usecase.NewQuery(deps.postgres, deps.cache)
 
 	handler := controllerhttp.NewHandler(cycle, query, log)
-	router := controllerhttp.Router(handler, log)
+	if cfg.APIToken == "" {
+		log.Warn().Msg("ORCH_API_TOKEN is empty: the HTTP API is UNAUTHENTICATED. Set it before public hosting.")
+	}
+	router := controllerhttp.Router(handler, cfg.APIToken, log)
 
 	// Start the per-tenant cron scheduler if enabled via config flag. The
 	// scheduler runs in a background goroutine and is cancelled with the
@@ -76,6 +79,9 @@ func run(cfg config.Config, log zerolog.Logger) error {
 		Addr:              cfg.HTTPAddr,
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		// No WriteTimeout: a synchronous cycle runs for tens of seconds.
 	}
 
 	serveErr := make(chan error, 1)

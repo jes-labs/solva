@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -47,11 +48,16 @@ type triggerCycleRequest struct {
 	TenantID string `json:"tenant_id"`
 }
 
+const (
+	maxCycleBody = 4 << 10 // 4 KiB: the body is a tiny JSON object.
+	cycleTimeout = 5 * time.Minute
+)
+
 // TriggerCycle starts a proof cycle for a tenant. An in-progress cycle is
 // reported as 409, not an error.
 func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 	var req triggerCycleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCycleBody)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -67,7 +73,11 @@ func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 		requestKey = randomRequestKey()
 	}
 
-	err := h.cycle.Run(r.Context(), req.TenantID, requestKey)
+	// Detach from the request so a disconnect cannot orphan the per-tenant lock.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), cycleTimeout)
+	defer cancel()
+
+	err := h.cycle.Run(ctx, req.TenantID, requestKey)
 	switch {
 	case errors.Is(err, usecase.ErrCycleInProgress):
 		writeError(w, http.StatusConflict, "cycle already in progress")

@@ -12,24 +12,32 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Router builds the chi mux with all routes mounted.
-func Router(h *Handler, log zerolog.Logger) http.Handler {
+// Router mounts the routes. When apiToken is set, /v1 and /metrics require it;
+// /health stays open for liveness probes.
+func Router(h *Handler, apiToken string, log zerolog.Logger) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 
-	r.Route("/v1", func(r chi.Router) {
-		r.Post("/cycles", h.TriggerCycle)
-		r.Get("/proofs/latest", h.GetLatestProof)
-		r.Get("/proofs/{id}", h.GetProof)
-		r.Get("/proofs/inclusion/{ref}", h.GetInclusion)
-		r.Get("/tenants/{id}/contract", h.GetTenantContract)
+	// Gated: sensitive API + metrics.
+	r.Group(func(r chi.Router) {
+		r.Use(requireToken(apiToken))
+
+		r.Route("/v1", func(r chi.Router) {
+			r.Post("/cycles", h.TriggerCycle)
+			r.Get("/proofs/latest", h.GetLatestProof)
+			r.Get("/proofs/{id}", h.GetProof)
+			r.Get("/proofs/inclusion/{ref}", h.GetInclusion)
+			r.Get("/tenants/{id}/contract", h.GetTenantContract)
+		})
+
+		r.Handle("/metrics", promhttp.Handler())
 	})
 
+	// Open for liveness probes.
 	r.Get("/health", h.Health)
-	r.Handle("/metrics", promhttp.Handler())
 
 	return r
 }
