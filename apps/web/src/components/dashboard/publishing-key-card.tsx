@@ -8,6 +8,7 @@ import { truncateMiddle } from "@/lib/format";
 import { useSession } from "@/lib/session/provider";
 import {
   addOrchestratorSigner,
+  describeWalletError,
   getSession,
   signWithPasskey,
   EXPLORER,
@@ -38,7 +39,7 @@ export function PublishingKeyCard() {
   const [registry, setRegistry] = useState("");
   const [statuses, setStatuses] = useState<Record<StepId, Status>>(initialStatuses);
   const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ kind: "error" | "info"; text: string } | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   if (!session) return null;
@@ -51,7 +52,7 @@ export function PublishingKeyCard() {
     setStatuses((prev) => ({ ...prev, [id]: status }));
 
   async function run() {
-    setError(null);
+    setNotice(null);
     setTxHash(null);
     setStatuses(initialStatuses());
     setRunning(true);
@@ -76,8 +77,15 @@ export function PublishingKeyCard() {
       set(current, "done");
       setTxHash(hash);
     } catch (e) {
-      set(current, "error");
-      setError(e instanceof Error ? e.message : String(e));
+      const desc = describeWalletError(e instanceof Error ? e.message : String(e));
+      // AlreadyExists means the signer is in place, so treat it as done.
+      if (desc.alreadyExists) {
+        set(current, "done");
+        setNotice({ kind: "info", text: desc.message });
+      } else {
+        set(current, "error");
+        setNotice({ kind: "error", text: desc.message });
+      }
     } finally {
       setRunning(false);
     }
@@ -127,9 +135,16 @@ export function PublishingKeyCard() {
         ))}
       </ol>
 
-      {error && (
-        <p className="mt-4 rounded-btn border border-red/40 bg-red/10 px-3.5 py-2.5 text-[13px] text-red">
-          {error}
+      {notice && (
+        <p
+          className={cn(
+            "mt-4 rounded-btn border px-3.5 py-2.5 text-[13px]",
+            notice.kind === "error"
+              ? "border-red/40 bg-red/10 text-red"
+              : "border-hair bg-panel text-fg",
+          )}
+        >
+          {notice.text}
         </p>
       )}
 
