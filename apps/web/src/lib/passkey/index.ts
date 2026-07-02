@@ -16,7 +16,7 @@ export type { Session } from "./session";
 export { deployWallet, walletAddressFor, contractExists } from "./wallet";
 export type { DeployResult } from "./wallet";
 export { addOrchestratorSigner } from "./signer";
-export type { AddOrchestratorSignerArgs } from "./signer";
+export type { AddOrchestratorSignerArgs, AddSignerPhase } from "./signer";
 export { payloadForAuthEntry, authorizationPayload } from "./challenge";
 export { passkeyKitSignatureScVal, attachSignatureToEntry } from "./encoder";
 export type { WebAuthnSignatureParts } from "./encoder";
