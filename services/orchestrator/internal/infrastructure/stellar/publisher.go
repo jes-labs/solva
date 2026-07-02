@@ -249,8 +249,16 @@ func (p *Publisher) invokeOnce(ctx context.Context, hostFn xdr.HostFunction) (ui
 		return 0, fmt.Errorf("simulation returned no results")
 	}
 
-	if err := p.applySimulation(op, sim); err != nil {
+	walletAuth, err := p.applySimulation(op, sim)
+	if err != nil {
 		return 0, fmt.Errorf("apply simulation: %w", err)
+	}
+	// A smart-wallet auth needs a second simulation so the footprint and fee
+	// cover its __check_auth, which the recording-mode simulation above skipped.
+	if walletAuth {
+		if err := p.resimulateWithAuth(ctx, op, seq); err != nil {
+			return 0, err
+		}
 	}
 
 	// Re-assemble with the simulation footprint, resource fee, and auth, then
@@ -335,11 +343,12 @@ func (p *Publisher) pollResult(ctx context.Context, hash string) (uint64, error)
 
 // applySimulation attaches the footprint, resource fee, and auth entries from
 // simulation. A source-account credential is covered by the tx signature; a
-// smart-wallet address credential is signed here with the Ed25519 key.
-func (p *Publisher) applySimulation(op *txnbuild.InvokeHostFunction, sim protocol.SimulateTransactionResponse) error {
+// smart-wallet address credential is signed here with the Ed25519 key. Returns
+// true when a wallet auth was signed, which requires a second simulation.
+func (p *Publisher) applySimulation(op *txnbuild.InvokeHostFunction, sim protocol.SimulateTransactionResponse) (bool, error) {
 	var sorobanData xdr.SorobanTransactionData
 	if err := xdr.SafeUnmarshalBase64(sim.TransactionDataXDR, &sorobanData); err != nil {
-		return fmt.Errorf("decode transaction data: %w", err)
+		return false, fmt.Errorf("decode transaction data: %w", err)
 	}
 	// The resource fee from simulation is authoritative; use it directly.
 	sorobanData.ResourceFee = xdr.Int64(sim.MinResourceFee)
@@ -347,23 +356,61 @@ func (p *Publisher) applySimulation(op *txnbuild.InvokeHostFunction, sim protoco
 
 	auth := sim.Results[0].AuthXDR
 	if auth == nil {
-		return nil
+		return false, nil
 	}
 	expiration := uint32(sim.LatestLedger) + authExpirationLedgers
+	walletAuth := false
 	entries := make([]xdr.SorobanAuthorizationEntry, 0, len(*auth))
 	for _, raw := range *auth {
 		var entry xdr.SorobanAuthorizationEntry
 		if err := xdr.SafeUnmarshalBase64(raw, &entry); err != nil {
-			return fmt.Errorf("decode auth entry: %w", err)
+			return false, fmt.Errorf("decode auth entry: %w", err)
 		}
 		if entry.Credentials.Type == xdr.SorobanCredentialsTypeSorobanCredentialsAddress {
 			if err := p.signWalletAuth(&entry, expiration); err != nil {
-				return fmt.Errorf("sign wallet authorization: %w", err)
+				return false, fmt.Errorf("sign wallet authorization: %w", err)
 			}
+			walletAuth = true
 		}
 		entries = append(entries, entry)
 	}
 	op.Auth = entries
+	return walletAuth, nil
+}
+
+// resimulateWithAuth re-simulates the invocation with the signed wallet auth
+// attached, so the footprint and resource fee cover the wallet's __check_auth.
+// The recording-mode simulation does not run __check_auth, so its signer storage
+// read is otherwise missing from the footprint and the publish traps on-chain.
+// Only the footprint and fee are updated; the signed auth is kept.
+func (p *Publisher) resimulateWithAuth(ctx context.Context, op *txnbuild.InvokeHostFunction, seq int64) error {
+	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount:        &txnbuild.SimpleAccount{AccountID: p.signer.Address(), Sequence: seq},
+		IncrementSequenceNum: true,
+		Operations:           []txnbuild.Operation{op},
+		BaseFee:              baseFee,
+		Preconditions:        txnbuild.Preconditions{TimeBounds: txnbuild.NewTimeout(txTimeoutSeconds)},
+	})
+	if err != nil {
+		return fmt.Errorf("build auth simulation transaction: %w", err)
+	}
+	simXDR, err := tx.Base64()
+	if err != nil {
+		return fmt.Errorf("encode auth simulation transaction: %w", err)
+	}
+	sim, err := p.rpc.SimulateTransaction(ctx, protocol.SimulateTransactionRequest{Transaction: simXDR})
+	if err != nil {
+		return transientError{fmt.Errorf("re-simulate with wallet auth: %w", err)}
+	}
+	if sim.Error != "" {
+		return fmt.Errorf("wallet auth simulation rejected: %s", sim.Error)
+	}
+	var sorobanData xdr.SorobanTransactionData
+	if err := xdr.SafeUnmarshalBase64(sim.TransactionDataXDR, &sorobanData); err != nil {
+		return fmt.Errorf("decode auth transaction data: %w", err)
+	}
+	sorobanData.ResourceFee = xdr.Int64(sim.MinResourceFee)
+	op.Ext = xdr.TransactionExt{V: 1, SorobanData: &sorobanData}
 	return nil
 }
 
