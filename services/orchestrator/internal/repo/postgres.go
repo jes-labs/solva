@@ -208,9 +208,10 @@ func (p *Postgres) ResolveTenantContract(ctx context.Context, tenantID string) (
 	return entity.TenantContract{ContractID: row.ContractID.String, Network: row.Network}, nil
 }
 
-// SetTenantContract records the contract a tenant publishes to. Provisioning
-// (who calls this, and when) is the control plane's job (#131); this is the
-// data-model write it builds on.
+// SetTenantContract records the contract a tenant publishes to. Exposed as a
+// control-plane write via PUT /v1/tenants/{id}/contract (usecase.Provision);
+// `just provision-tenant` writes the same column directly via psql for the
+// operator/dev path.
 func (p *Postgres) SetTenantContract(ctx context.Context, tenantID, contractID, network string) error {
 	tid, err := toUUID(tenantID)
 	if err != nil {
@@ -341,6 +342,16 @@ func proofFromRow(row Proof) (entity.Proof, error) {
 		Blob:             row.ProofBlob,
 		PublishedAt:      row.Timestamp.Time,
 	}, nil
+}
+
+// CreateTenant inserts a new tenant row with no contract yet. Provisioning the
+// on-chain registry and recording it via SetTenantContract is a separate step.
+func (p *Postgres) CreateTenant(ctx context.Context, name, plan string) (entity.Tenant, error) {
+	id, err := p.q.CreateTenant(ctx, CreateTenantParams{Name: name, Plan: plan})
+	if err != nil {
+		return entity.Tenant{}, fmt.Errorf("create tenant: %w", err)
+	}
+	return entity.Tenant{ID: fromUUID(id), Name: name, Plan: plan}, nil
 }
 
 // ListTenants returns every tenant row for the scheduler. The orchestrator does

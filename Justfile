@@ -2,12 +2,20 @@
 # Each tier owns its native tooling. This file wires them together.
 
 set shell := ["bash", "-uc"]
-
+# Rust formatting
 fmt-check:
   cargo fmt --all --check
 
 fix:
   cargo fmt --all
+
+# Go
+go-fmt:
+  gofmt -l .
+
+# checks go files for hidden bug and errors
+go-vet:
+  go vet ./...
 
 lint-check:
   cargo clippy --workspace -- -D warnings
@@ -88,7 +96,10 @@ deploy-contract network="testnet" owner="solva-spike":
 # own contract, so their proofs are isolated on-chain (multi-tenancy, #125).
 # `owner` is the account allowed to publish; until the passkey smart wallet is
 # wired (#128) this is the orchestrator's signer, so it can authorize cycles.
-# This is the operator/dev path; the control plane (#131) provisions in product.
+# This is the operator/dev path, talking to Postgres directly. The orchestrator
+# also exposes the same write as an HTTP control-plane API for non-operator
+# callers: PUT /v1/tenants/{id}/contract (and POST /v1/tenants to create the row
+# in the first place) -- see services/orchestrator/internal/controller/http.
 # DB connection comes from the standard PG env vars (defaults match infra/).
 provision-tenant tenant_id owner="signor" network="testnet": build-contract
     #!/usr/bin/env bash
@@ -146,6 +157,14 @@ down:
 # See scripts/e2e.sh for the full prerequisites.
 e2e:
     bash scripts/e2e.sh
+
+# Multi-tenant end-to-end test: two institutions, two isolated on-chain
+# contracts, proven via the orchestrator AND a direct on-chain read (epic
+# #124's final sub-task). Auto-deploys both registries if not supplied. Needs
+# a funded Testnet identity that owns both contracts: export
+# E2E_STELLAR_SIGNER_SECRET. See scripts/e2e-multitenant.sh for prerequisites.
+e2e-multitenant:
+    bash scripts/e2e-multitenant.sh
 
 # Bring up the demo stack for the /sandbox playground and keep it running: seed
 # two institutions, start sandbox + prover + orchestrator. Needs a funded Testnet

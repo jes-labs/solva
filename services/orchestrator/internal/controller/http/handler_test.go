@@ -4,12 +4,14 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/rs/zerolog"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
 	"github.com/jes-labs/solva/services/orchestrator/internal/repo"
+	"github.com/jes-labs/solva/services/orchestrator/internal/usecase"
 )
 
 // stubQuery records the ref GetInclusion is called with so a test can assert the
@@ -43,12 +45,33 @@ type stubCycle struct{}
 
 func (stubCycle) Run(context.Context, string, string) error { return nil }
 
+// stubProvision is a no-op control-plane stub. createErr and setErr let a test
+// force a failure path.
+type stubProvision struct {
+	createErr error
+	setErr    error
+	gotName   string
+	gotPlan   string
+}
+
+func (s *stubProvision) CreateTenant(_ context.Context, name, plan string) (entity.Tenant, error) {
+	s.gotName, s.gotPlan = name, plan
+	if s.createErr != nil {
+		return entity.Tenant{}, s.createErr
+	}
+	return entity.Tenant{ID: "tenant-1", Name: name, Plan: plan}, nil
+}
+
+func (s *stubProvision) SetTenantContract(_ context.Context, _, _, _ string) error {
+	return s.setErr
+}
+
 // The SDK percent-encodes the ref, so the colon arrives as %3A. The handler must
 // decode it so "<proof-id>:<id-hash>" parses, not 404.
 func TestGetInclusionDecodesEncodedRef(t *testing.T) {
 	q := &stubQuery{}
-	h := NewHandler(stubCycle{}, q, zerolog.Nop())
-	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
+	h := NewHandler(stubCycle{}, q, &stubProvision{}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
 	defer srv.Close()
 
 	uuid := "ab31f400-d433-4af0-bbda-80e26a2a1a05"
@@ -74,8 +97,8 @@ func TestGetInclusionDecodesEncodedRef(t *testing.T) {
 // The tenant-contract endpoint returns the resolved contract, and a 404 when the
 // tenant has no contract yet.
 func TestGetTenantContract(t *testing.T) {
-	h := NewHandler(stubCycle{}, &stubQuery{}, zerolog.Nop())
-	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
+	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Get(srv.URL + "/v1/tenants/tenant-1/contract")
@@ -89,8 +112,8 @@ func TestGetTenantContract(t *testing.T) {
 }
 
 func TestGetTenantContractNotProvisioned(t *testing.T) {
-	h := NewHandler(stubCycle{}, &stubQuery{resolveErr: repo.ErrTenantNotProvisioned}, zerolog.Nop())
-	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
+	h := NewHandler(stubCycle{}, &stubQuery{resolveErr: repo.ErrTenantNotProvisioned}, &stubProvision{}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Get(srv.URL + "/v1/tenants/tenant-1/contract")
@@ -103,35 +126,92 @@ func TestGetTenantContractNotProvisioned(t *testing.T) {
 	}
 }
 
-// With a token set, /v1 needs it and /health does not.
-func TestAPITokenGate(t *testing.T) {
-	h := NewHandler(stubCycle{}, &stubQuery{}, zerolog.Nop())
-	srv := httptest.NewServer(Router(h, "s3cr3t", zerolog.Nop()))
+// POST /v1/tenants creates a tenant and returns it. No admin token configured
+// means the dev-mode "no auth" path is exercised.
+func TestCreateTenant(t *testing.T) {
+	p := &stubProvision{}
+	h := NewHandler(stubCycle{}, &stubQuery{}, p, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
 	defer srv.Close()
 
-	get := func(path, token string) int {
-		req, _ := http.NewRequest(http.MethodGet, srv.URL+path, nil)
-		if token != "" {
-			req.Header.Set("Authorization", "Bearer "+token)
-		}
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("GET %s: %v", path, err)
-		}
-		res.Body.Close()
-		return res.StatusCode
+	res, err := http.Post(srv.URL+"/v1/tenants", "application/json",
+		strings.NewReader(`{"name":"Meridian Bank","plan":"growth"}`))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", res.StatusCode)
+	}
+	if p.gotName != "Meridian Bank" || p.gotPlan != "growth" {
+		t.Fatalf("provision got name=%q plan=%q", p.gotName, p.gotPlan)
+	}
+}
+
+// POST /v1/tenants requires the configured admin bearer token.
+func TestCreateTenantRequiresAdminToken(t *testing.T) {
+	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "s3cr3t", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	defer srv.Close()
+
+	// No Authorization header: rejected.
+	res, err := http.Post(srv.URL+"/v1/tenants", "application/json", strings.NewReader(`{"name":"X"}`))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", res.StatusCode)
 	}
 
-	if code := get("/v1/tenants/t/contract", ""); code != http.StatusUnauthorized {
-		t.Fatalf("no token: status = %d, want 401", code)
+	// Correct bearer token: accepted.
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/tenants", strings.NewReader(`{"name":"X"}`))
+	req.Header.Set("Authorization", "Bearer s3cr3t")
+	req.Header.Set("Content-Type", "application/json")
+	res2, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST with token: %v", err)
 	}
-	if code := get("/v1/tenants/t/contract", "wrong"); code != http.StatusUnauthorized {
-		t.Fatalf("wrong token: status = %d, want 401", code)
+	defer res2.Body.Close()
+	if res2.StatusCode != http.StatusCreated {
+		t.Fatalf("status with token = %d, want 201", res2.StatusCode)
 	}
-	if code := get("/v1/tenants/t/contract", "s3cr3t"); code != http.StatusOK {
-		t.Fatalf("good token: status = %d, want 200", code)
+}
+
+// PUT /v1/tenants/{id}/contract records the contract once deployed.
+func TestSetTenantContract(t *testing.T) {
+	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/contract",
+		strings.NewReader(`{"contract_id":"CTENANTCONTRACT","network":"testnet"}`))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT: %v", err)
 	}
-	if code := get("/health", ""); code != http.StatusOK {
-		t.Fatalf("health: status = %d, want 200", code)
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+}
+
+// An invalid network is rejected with a 400, not silently recorded.
+func TestSetTenantContractInvalidNetwork(t *testing.T) {
+	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{setErr: usecase.ErrInvalidNetwork}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/contract",
+		strings.NewReader(`{"contract_id":"CTENANTCONTRACT","network":"devnet"}`))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", res.StatusCode)
 	}
 }
