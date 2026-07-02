@@ -10,6 +10,10 @@ import type { SignWithPasskeyResult } from "./webauthn";
 
 const server = new rpc.Server(RPC_URL);
 
+// The on-chain phases, reported so the UI can show where a run is or where it
+// failed.
+export type AddSignerPhase = "simulate" | "sign" | "submit";
+
 export interface AddOrchestratorSignerArgs {
   session: Session;
   // The passkey smart wallet (C...) that owns the tenant's registry.
@@ -19,6 +23,7 @@ export interface AddOrchestratorSignerArgs {
   // The registry (C...) the signer is scoped to.
   registryContract: string;
   signPayload: (payload: Uint8Array) => Promise<SignWithPasskeyResult>;
+  onPhase?: (phase: AddSignerPhase) => void;
 }
 
 // Add the orchestrator's Ed25519 key as a wallet signer, scoped by SignerLimits
@@ -50,6 +55,7 @@ export async function addOrchestratorSigner(args: AddOrchestratorSignerArgs): Pr
     new Contract(args.walletAddress).call("add_signer", ...callArgs),
   );
 
+  args.onPhase?.("simulate");
   const sim = await server.simulateTransaction(unsignedTx);
   if (rpc.Api.isSimulationError(sim)) throw new Error(`simulation failed: ${sim.error}`);
   const entry = sim.result?.auth?.[0];
@@ -59,6 +65,7 @@ export async function addOrchestratorSigner(args: AddOrchestratorSignerArgs): Pr
   entry.credentials().address().signatureExpirationLedger(latest.sequence + 100);
 
   const payload = payloadForAuthEntry(entry, NETWORK_PASSPHRASE);
+  args.onPhase?.("sign");
   const assertion = await args.signPayload(payload);
   attachSignatureToEntry(
     entry,
@@ -75,5 +82,6 @@ export async function addOrchestratorSigner(args: AddOrchestratorSignerArgs): Pr
     args.session,
     Operation.invokeHostFunction({ func: invokeOp.func, auth: [entry] }),
   );
+  args.onPhase?.("submit");
   return prepareSignSubmit(args.session, signedTx);
 }
