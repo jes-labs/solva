@@ -14,11 +14,11 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 
 
-Solva is a zero-knowledge Proof of Reserves protocol on Stellar. It lets a custodial institution prove that its reserves are greater than or equal to its liabilities, continuously and in real time, without revealing any individual customer balance.
+Solva is a zero-knowledge Proof of Reserves protocol on Stellar. It lets a custodial institution prove that its reserves are greater than or equal to its liabilities, continuously and without revealing any customer balance.
 
 A normal audit samples a few accounts, takes weeks, and ships a report that is already stale. Solva replaces that with a proof. Reserves are attested at the source through signed bank balances or on-chain holdings. Liabilities are committed into a Poseidon2 Merkle Sum Tree. A Noir circuit proves the relation `R >= L`, and a Soroban contract verifies the proof on-chain using the BN254 and Poseidon2 host functions added in Stellar Protocol 25 and 26.
 
-The proof says nothing about who owns what. The public sees only the totals and the commitment root. Regulators can be given a viewing key for selective disclosure. Customers can check that their own balance is included in the committed tree.
+The proof reveals nothing about who owns what. The public sees only the totals and the commitment root. Regulators can be given a viewing key for selective disclosure, and customers can check that their own balance is included in the committed tree.
 
 ## Why both sides of the balance sheet
 
@@ -32,7 +32,7 @@ Most published proof of reserves systems only attest the asset side. Solva binds
 
 ## Architecture
 
-Each tier uses the language that fits it. The rule that holds the system together is crypto isolation: every hash that must match the circuit lives only in the Rust prover and the Soroban contract. The Go orchestrator never hashes for the circuit. The Merkle Sum Tree is built once, in the same Rust stack that generates the proof, and recomputed on-chain by the native Poseidon2 host function. This removes any chance of a parameter mismatch between languages.
+Each tier uses the language that fits it. The system holds together through crypto isolation: every hash that must match the circuit lives only in the Rust prover and the Soroban contract, and the Go orchestrator never hashes for the circuit. The Merkle Sum Tree is built once, in the Rust stack that generates the proof, and recomputed on-chain by the native Poseidon2 host function. This rules out a parameter mismatch between languages.
 
 ```mermaid
 flowchart TB
@@ -109,7 +109,7 @@ proto/       gRPC definitions for orchestrator and prover
 infra/       docker-compose for Postgres and Redis
 ```
 
-This is a polyglot monorepo. The proof schema, contract bindings, and shared types must stay in lockstep across the verifier, prover, orchestrator, SDK, and web app, so they live in one repository where a change to any of them is a single atomic commit.
+This is a polyglot monorepo. The proof schema, contract bindings, and shared types must stay in lockstep across the verifier, prover, orchestrator, SDK, and web app. Keeping them in one repository makes any change to them a single atomic commit.
 
 ## Getting started
 
