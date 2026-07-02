@@ -87,8 +87,8 @@ services:
 
   sandbox:
     build:
-      context: ../..
-      dockerfile: services/sandbox/Dockerfile
+      context: ../../services/sandbox
+      dockerfile: Dockerfile
     environment:
       SANDBOX_HTTP_ADDR: ":8090"
       SANDBOX_SIGNING_KEY_PEM: |
@@ -99,8 +99,8 @@ $(sed 's/^/        /' "$VMDIR/bank.pkcs8.pem")
 
   orchestrator:
     build:
-      context: ../..
-      dockerfile: services/orchestrator/Dockerfile
+      context: ../../services/orchestrator
+      dockerfile: Dockerfile
     environment:
       ORCH_HTTP_ADDR: ":8080"
       ORCH_API_TOKEN: "$ORCH_API_TOKEN"
