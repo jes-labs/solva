@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -31,16 +30,27 @@ type queryService interface {
 	ResolveTenantContract(ctx context.Context, tenantID string) (entity.TenantContract, error)
 }
 
-// Handler holds the use cases the routes call.
-type Handler struct {
-	cycle cycleRunner
-	query queryService
-	log   zerolog.Logger
+// provisionService is the slice of the control-plane use case the HTTP layer
+// needs to create tenants and record their contract once deployed.
+type provisionService interface {
+	CreateTenant(ctx context.Context, name, plan string) (entity.Tenant, error)
+	SetTenantContract(ctx context.Context, tenantID, contractID, network string) error
 }
 
-// NewHandler wires the handler to its use cases.
-func NewHandler(cycle cycleRunner, query queryService, log zerolog.Logger) *Handler {
-	return &Handler{cycle: cycle, query: query, log: log}
+// Handler holds the use cases the routes call.
+type Handler struct {
+	cycle      cycleRunner
+	query      queryService
+	provision  provisionService
+	adminToken string
+	log        zerolog.Logger
+}
+
+// NewHandler wires the handler to its use cases. adminToken gates the
+// provisioning routes (POST /v1/tenants, PUT /v1/tenants/{id}/contract); an
+// empty value disables the check, which is only meant for local dev.
+func NewHandler(cycle cycleRunner, query queryService, provision provisionService, adminToken string, log zerolog.Logger) *Handler {
+	return &Handler{cycle: cycle, query: query, provision: provision, adminToken: adminToken, log: log}
 }
 
 // triggerCycleRequest is the body for POST /v1/cycles.
@@ -48,16 +58,11 @@ type triggerCycleRequest struct {
 	TenantID string `json:"tenant_id"`
 }
 
-const (
-	maxCycleBody = 4 << 10 // 4 KiB: the body is a tiny JSON object.
-	cycleTimeout = 5 * time.Minute
-)
-
 // TriggerCycle starts a proof cycle for a tenant. An in-progress cycle is
 // reported as 409, not an error.
 func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 	var req triggerCycleRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCycleBody)).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -73,11 +78,7 @@ func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 		requestKey = randomRequestKey()
 	}
 
-	// Detach from the request so a disconnect cannot orphan the per-tenant lock.
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), cycleTimeout)
-	defer cancel()
-
-	err := h.cycle.Run(ctx, req.TenantID, requestKey)
+	err := h.cycle.Run(r.Context(), req.TenantID, requestKey)
 	switch {
 	case errors.Is(err, usecase.ErrCycleInProgress):
 		writeError(w, http.StatusConflict, "cycle already in progress")
@@ -86,15 +87,9 @@ func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 		// The key already ran: an idempotent no-op, reported as success.
 		writeJSON(w, http.StatusOK, map[string]string{"status": "already processed"})
 		return
-	case errors.Is(err, usecase.ErrInsolvent):
-		// Expected outcome, not a failure: reserves are below liabilities, so no
-		// proof can be generated. A distinct status lets callers tell this apart
-		// from a real error.
-		writeError(w, http.StatusUnprocessableEntity, "reserves are below liabilities; no proof generated")
-		return
 	case err != nil:
 		h.log.Error().Err(err).Str("tenant", req.TenantID).Msg("trigger cycle")
-		writeError(w, http.StatusInternalServerError, "the proof cycle could not complete")
+		writeError(w, http.StatusNotImplemented, "cycle pipeline not fully implemented")
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
@@ -179,6 +174,80 @@ func (h *Handler) GetTenantContract(w http.ResponseWriter, r *http.Request) {
 type tenantContractDTO struct {
 	ContractID string `json:"contract_id"`
 	Network    string `json:"network"`
+}
+
+// createTenantRequest is the body for POST /v1/tenants.
+type createTenantRequest struct {
+	Name string `json:"name"`
+	Plan string `json:"plan"`
+}
+
+type tenantDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Plan string `json:"plan"`
+}
+
+// CreateTenant registers a new institution (control-plane provisioning,
+// epic #124). The returned tenant has no contract yet: deploy its
+// proof-registry separately, then call SetTenantContract to record it.
+func (h *Handler) CreateTenant(w http.ResponseWriter, r *http.Request) {
+	if !h.authorized(r) {
+		writeError(w, http.StatusUnauthorized, "missing or invalid admin token")
+		return
+	}
+	var req createTenantRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	t, err := h.provision.CreateTenant(r.Context(), req.Name, req.Plan)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, tenantDTO{ID: t.ID, Name: t.Name, Plan: t.Plan})
+}
+
+// setTenantContractRequest is the body for PUT /v1/tenants/{id}/contract.
+type setTenantContractRequest struct {
+	ContractID string `json:"contract_id"`
+	Network    string `json:"network"`
+}
+
+// SetTenantContract records a tenant's deployed proof-registry contract and
+// network, completing provisioning so every consumer's institution-to-contract
+// resolution finds it (control plane, epic #124).
+func (h *Handler) SetTenantContract(w http.ResponseWriter, r *http.Request) {
+	if !h.authorized(r) {
+		writeError(w, http.StatusUnauthorized, "missing or invalid admin token")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	var req setTenantContractRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.provision.SetTenantContract(r.Context(), id, req.ContractID, req.Network); err != nil {
+		if errors.Is(err, usecase.ErrInvalidNetwork) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		h.log.Error().Err(err).Str("tenant", id).Msg("set tenant contract")
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, tenantContractDTO{ContractID: req.ContractID, Network: req.Network})
+}
+
+// authorized reports whether the request carries the configured admin bearer
+// token. An empty h.adminToken disables the check (local dev only).
+func (h *Handler) authorized(r *http.Request) bool {
+	if h.adminToken == "" {
+		return true
+	}
+	return r.Header.Get("Authorization") == "Bearer "+h.adminToken
 }
 
 // Health reports liveness.

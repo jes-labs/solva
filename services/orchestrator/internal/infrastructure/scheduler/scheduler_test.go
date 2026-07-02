@@ -22,6 +22,14 @@ func (r *fakeTenantRepo) ListTenants(_ context.Context) ([]entity.Tenant, error)
 	return r.tenants, nil
 }
 
+func (r *fakeTenantRepo) CreateTenant(_ context.Context, name, plan string) (entity.Tenant, error) {
+	return entity.Tenant{Name: name, Plan: plan}, nil
+}
+
+func (r *fakeTenantRepo) SetTenantContract(_ context.Context, _, _, _ string) error {
+	return nil
+}
+
 // fakeCycleRunner records every Run call and can be configured to fail a
 // fixed number of times before succeeding.
 type fakeCycleRunner struct {

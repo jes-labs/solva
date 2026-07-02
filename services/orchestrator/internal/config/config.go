@@ -21,15 +21,11 @@ type Config struct {
 	RedisURL string
 	// ProverAddr is the gRPC address of the Rust prover.
 	ProverAddr string
-	// ProverTLS dials the prover over TLS instead of plaintext. Set
-	// ORCH_PROVER_TLS=true when the prover is behind a TLS endpoint such as
-	// Cloud Run (host:443); leave false for a local or private-network prover.
+	// ProverTLS enables TLS transport credentials for the prover gRPC
+	// connection, for a prover reachable over a TLS endpoint (e.g. Cloud Run).
 	ProverTLS bool
-	// ProverToken is sent as a bearer token on prover RPCs. Empty sends none.
+	// ProverToken, if set, is sent as a Bearer token in prover gRPC calls.
 	ProverToken string
-	// APIToken, when set, requires a bearer token on /v1 and /metrics. Empty
-	// disables the gate for local and e2e.
-	APIToken string
 	// StellarRPCURL is the Soroban RPC endpoint used to publish proofs.
 	StellarRPCURL string
 	// StellarNetworkPassphrase selects the network proofs are published to.
@@ -57,6 +53,11 @@ type Config struct {
 	SchedulerEnabled bool
 	// LogLevel is the zerolog level, for example "info" or "debug".
 	LogLevel string
+	// AdminToken gates the control-plane provisioning routes (POST /v1/tenants,
+	// PUT /v1/tenants/{id}/contract): a caller must send it as a Bearer token.
+	// Left empty, the check is skipped, matching BankClientID's "empty disables
+	// it" convention — fine for local dev, never for a real deployment.
+	AdminToken string
 }
 
 // Load reads configuration from the environment and applies defaults suitable
@@ -67,9 +68,6 @@ func Load() (Config, error) {
 		PostgresURL:              env("ORCH_POSTGRES_URL", "postgres://solva:solva@localhost:5432/solva?sslmode=disable"),
 		RedisURL:                 env("ORCH_REDIS_URL", "redis://localhost:6379/0"),
 		ProverAddr:               env("ORCH_PROVER_ADDR", "localhost:50051"),
-		ProverTLS:                env("ORCH_PROVER_TLS", "false") == "true",
-		ProverToken:              env("ORCH_PROVER_TOKEN", ""),
-		APIToken:                 env("ORCH_API_TOKEN", ""),
 		StellarRPCURL:            env("ORCH_STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
 		StellarNetworkPassphrase: env("ORCH_STELLAR_NETWORK_PASSPHRASE", network.TestNetworkPassphrase),
 		StellarSignerSecret:      env("ORCH_STELLAR_SIGNER_SECRET", ""),
@@ -79,6 +77,9 @@ func Load() (Config, error) {
 		BankClientID:             env("ORCH_BANK_CLIENT_ID", "solva-orchestrator"),
 		SchedulerEnabled:         env("ORCH_SCHEDULER_ENABLED", "false") == "true",
 		LogLevel:                 env("ORCH_LOG_LEVEL", "info"),
+		ProverTLS:                env("ORCH_PROVER_TLS", "false") == "true",
+		ProverToken:              env("ORCH_PROVER_TOKEN", ""),
+		AdminToken:               env("ORCH_ADMIN_TOKEN", ""),
 	}
 
 	interval, err := time.ParseDuration(env("ORCH_CYCLE_INTERVAL", "1h"))

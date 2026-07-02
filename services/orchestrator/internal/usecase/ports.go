@@ -73,11 +73,20 @@ type ReserveRepo interface {
 	LatestReserves(ctx context.Context, tenantID string) (string, error)
 }
 
-// TenantRepo lists tenants the scheduler needs to drive.
+// TenantRepo lists tenants the scheduler needs to drive, and backs the
+// control-plane provisioning writes (epic #124's "tenant provisioning and
+// control plane" sub-task).
 type TenantRepo interface {
 	// ListTenants returns every active tenant. The scheduler calls this on
 	// each tick so newly provisioned tenants are picked up without a restart.
 	ListTenants(ctx context.Context) ([]entity.Tenant, error)
+	// CreateTenant inserts a new tenant row with no contract yet. The on-chain
+	// registry is deployed separately (just provision-tenant or an operator's
+	// own deploy step); SetTenantContract records the result.
+	CreateTenant(ctx context.Context, name, plan string) (entity.Tenant, error)
+	// SetTenantContract records the contract a tenant publishes to, once it has
+	// been deployed. Safe to call again to rotate the contract or network.
+	SetTenantContract(ctx context.Context, tenantID, contractID, network string) error
 }
 
 // CadenceForPlan maps a billing plan name to its cycle interval. Free tenants

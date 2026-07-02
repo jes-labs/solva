@@ -46,3 +46,23 @@ func TestResolveTenantContractUnknownTenant(t *testing.T) {
 		t.Fatalf("unknown tenant: got %v, want ErrNotFound", err)
 	}
 }
+
+// CreateTenant inserts a fresh tenant row with no contract: the
+// control-plane provisioning write the HTTP layer's POST /v1/tenants exposes.
+func TestCreateTenant(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+
+	tenant, err := store.CreateTenant(ctx, "Meridian Bank", "growth")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	if tenant.Name != "Meridian Bank" || tenant.Plan != "growth" || tenant.ID == "" {
+		t.Fatalf("created tenant = %+v, want name/plan set and a non-empty id", tenant)
+	}
+
+	// Fresh tenant, no contract yet.
+	if _, err := store.ResolveTenantContract(ctx, tenant.ID); !errors.Is(err, ErrTenantNotProvisioned) {
+		t.Fatalf("fresh tenant: got %v, want ErrTenantNotProvisioned", err)
+	}
+}
