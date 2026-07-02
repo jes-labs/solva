@@ -17,6 +17,8 @@ export { deployWallet, walletAddressFor, contractExists } from "./wallet";
 export type { DeployResult } from "./wallet";
 export { addOrchestratorSigner } from "./signer";
 export type { AddOrchestratorSignerArgs, AddSignerPhase } from "./signer";
+export { describeWalletError } from "./wallet-errors";
+export type { WalletError } from "./wallet-errors";
 export { payloadForAuthEntry, authorizationPayload } from "./challenge";
 export { passkeyKitSignatureScVal, attachSignatureToEntry } from "./encoder";
 export type { WebAuthnSignatureParts } from "./encoder";
