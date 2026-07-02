@@ -4,6 +4,7 @@ package stellar
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -43,6 +44,9 @@ const (
 	// Soroban resource fee comes from simulation; this only covers the classic
 	// ledger inclusion cost, set above the network minimum for headroom.
 	baseFee = 1000
+	// authExpirationLedgers is how long a signed wallet authorization stays valid
+	// past the current ledger, ample for a submit-and-poll cycle.
+	authExpirationLedgers = 60
 )
 
 var (
@@ -133,8 +137,8 @@ func NewPublisher(cfg Config) (*Publisher, error) {
 // network failures are retried with exponential backoff; an invalid proof or an
 // insolvent bound is a permanent failure and is returned immediately.
 func (p *Publisher) PublishProof(ctx context.Context, target entity.TenantContract, proof []byte, pub entity.PublicInputs) (uint64, error) {
-	// The signer (current global owner) and RPC are publisher-wide; the contract
-	// is per tenant. Per-tenant owner signing via the passkey smart wallet is #128.
+	// The signer authorizes either as the source account or as an Ed25519 signer
+	// on the tenant's smart wallet; simulation decides which.
 	if p.signer == nil || p.rpc == nil || target.ContractID == "" {
 		return 0, ErrNotConfigured
 	}
@@ -245,7 +249,7 @@ func (p *Publisher) invokeOnce(ctx context.Context, hostFn xdr.HostFunction) (ui
 		return 0, fmt.Errorf("simulation returned no results")
 	}
 
-	if err := applySimulation(op, sim); err != nil {
+	if err := p.applySimulation(op, sim); err != nil {
 		return 0, fmt.Errorf("apply simulation: %w", err)
 	}
 
@@ -329,10 +333,10 @@ func (p *Publisher) pollResult(ctx context.Context, hash string) (uint64, error)
 	}
 }
 
-// applySimulation copies the footprint, resource fee, and authorization entries
-// returned by simulation onto the operation so the assembled transaction has the
-// resources the host requires.
-func applySimulation(op *txnbuild.InvokeHostFunction, sim protocol.SimulateTransactionResponse) error {
+// applySimulation attaches the footprint, resource fee, and auth entries from
+// simulation. A source-account credential is covered by the tx signature; a
+// smart-wallet address credential is signed here with the Ed25519 key.
+func (p *Publisher) applySimulation(op *txnbuild.InvokeHostFunction, sim protocol.SimulateTransactionResponse) error {
 	var sorobanData xdr.SorobanTransactionData
 	if err := xdr.SafeUnmarshalBase64(sim.TransactionDataXDR, &sorobanData); err != nil {
 		return fmt.Errorf("decode transaction data: %w", err)
@@ -341,21 +345,89 @@ func applySimulation(op *txnbuild.InvokeHostFunction, sim protocol.SimulateTrans
 	sorobanData.ResourceFee = xdr.Int64(sim.MinResourceFee)
 	op.Ext = xdr.TransactionExt{V: 1, SorobanData: &sorobanData}
 
-	// Attach the authorization entries simulation determined are required. For
-	// a source-account credential these are satisfied by the transaction
-	// signature; the registry owner authorizes the call this way.
-	if auth := sim.Results[0].AuthXDR; auth != nil {
-		entries := make([]xdr.SorobanAuthorizationEntry, 0, len(*auth))
-		for _, raw := range *auth {
-			var entry xdr.SorobanAuthorizationEntry
-			if err := xdr.SafeUnmarshalBase64(raw, &entry); err != nil {
-				return fmt.Errorf("decode auth entry: %w", err)
-			}
-			entries = append(entries, entry)
-		}
-		op.Auth = entries
+	auth := sim.Results[0].AuthXDR
+	if auth == nil {
+		return nil
 	}
+	expiration := uint32(sim.LatestLedger) + authExpirationLedgers
+	entries := make([]xdr.SorobanAuthorizationEntry, 0, len(*auth))
+	for _, raw := range *auth {
+		var entry xdr.SorobanAuthorizationEntry
+		if err := xdr.SafeUnmarshalBase64(raw, &entry); err != nil {
+			return fmt.Errorf("decode auth entry: %w", err)
+		}
+		if entry.Credentials.Type == xdr.SorobanCredentialsTypeSorobanCredentialsAddress {
+			if err := p.signWalletAuth(&entry, expiration); err != nil {
+				return fmt.Errorf("sign wallet authorization: %w", err)
+			}
+		}
+		entries = append(entries, entry)
+	}
+	op.Auth = entries
 	return nil
+}
+
+// signWalletAuth signs an address-credential auth entry with the orchestrator's
+// Ed25519 key, in the Signatures layout the smart-wallet __check_auth verifies.
+func (p *Publisher) signWalletAuth(entry *xdr.SorobanAuthorizationEntry, expiration uint32) error {
+	addr := entry.Credentials.Address
+	if addr == nil {
+		return fmt.Errorf("address credential has no address")
+	}
+	addr.SignatureExpirationLedger = xdr.Uint32(expiration)
+
+	payload, err := authPayloadHash(p.cfg.NetworkPassphrase, addr.Nonce, addr.SignatureExpirationLedger, entry.RootInvocation)
+	if err != nil {
+		return err
+	}
+
+	sig, err := p.signer.Sign(payload)
+	if err != nil {
+		return fmt.Errorf("sign auth payload: %w", err)
+	}
+	pubKey, err := strkey.Decode(strkey.VersionByteAccountID, p.signer.Address())
+	if err != nil {
+		return fmt.Errorf("decode signer public key: %w", err)
+	}
+	addr.Signature = ed25519SignaturesScVal(pubKey, sig)
+	return nil
+}
+
+// authPayloadHash is sha256 of the Soroban authorization preimage, the payload
+// the wallet contract checks.
+func authPayloadHash(networkPassphrase string, nonce xdr.Int64, expiration xdr.Uint32, invocation xdr.SorobanAuthorizedInvocation) ([]byte, error) {
+	networkID := xdr.Hash(sha256.Sum256([]byte(networkPassphrase)))
+	preimage := xdr.HashIdPreimage{
+		Type: xdr.EnvelopeTypeEnvelopeTypeSorobanAuthorization,
+		SorobanAuthorization: &xdr.HashIdPreimageSorobanAuthorization{
+			NetworkId:                 networkID,
+			Nonce:                     nonce,
+			SignatureExpirationLedger: expiration,
+			Invocation:                invocation,
+		},
+	}
+	raw, err := preimage.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("marshal auth preimage: %w", err)
+	}
+	sum := sha256.Sum256(raw)
+	return sum[:], nil
+}
+
+// ed25519SignaturesScVal encodes Signatures for one Ed25519 signer:
+// Vec[Map{ Ed25519(pubkey) -> Ed25519(sig) }].
+func ed25519SignaturesScVal(pubKey, sig []byte) xdr.ScVal {
+	signerKey := scvVec(symbolVal("Ed25519"), bytesVal(pubKey))
+	signature := scvVec(symbolVal("Ed25519"), bytesVal(sig))
+	m := &xdr.ScMap{{Key: signerKey, Val: signature}}
+	inner := xdr.ScVal{Type: xdr.ScValTypeScvMap, Map: &m}
+	return scvVec(inner)
+}
+
+func scvVec(vals ...xdr.ScVal) xdr.ScVal {
+	vec := xdr.ScVec(vals)
+	v := &vec
+	return xdr.ScVal{Type: xdr.ScValTypeScvVec, Vec: &v}
 }
 
 // encodeArgs builds the ScVal argument list for publish_proof: the raw proof
