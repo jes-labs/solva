@@ -38,7 +38,7 @@ export const footerColumns: FooterColumn[] = [
       { label: "Docs", href: routes.docs },
       { label: "API", href: `${routes.developers}#api` },
       { label: "SDK", href: routes.developers },
-      { label: "Sandbox", href: routes.developers },
+      { label: "Sandbox", href: routes.sandbox },
       { label: "Whitepaper", href: routes.whitepaper },
       { label: "Status", href: routes.status },
     ],
