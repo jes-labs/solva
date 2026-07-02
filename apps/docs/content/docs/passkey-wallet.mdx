@@ -1,0 +1,110 @@
+---
+title: Passkey smart wallet
+description: How institutions authenticate and authorize on-chain with passkeys instead of seed phrases.
+---
+
+Solva institutions do not manage private keys. An operator signs in with a
+passkey, the same Face ID, Touch ID, or security key prompt used to log in to a
+website. That passkey controls an on-chain smart wallet, and the wallet owns the
+institution's proof registry. Every proof published to Stellar is authorized
+through it.
+
+## Why passkeys
+
+A seed phrase is a single secret that can be phished, screenshotted, or lost. A
+passkey is different. The private key is generated inside the device secure
+enclave or a hardware security key and never leaves it. Authentication is a
+WebAuthn signature over a challenge, so there is nothing to type and nothing to
+leak. For an institution that publishes solvency proofs, this removes the most
+common way key custody goes wrong.
+
+## The smart wallet
+
+The passkey does not hold funds or sign transactions directly. It is the signer
+of a smart wallet, which is a Soroban account contract. On first sign-in Solva:
+
+1. Runs a WebAuthn registration, which produces a secp256r1 public key.
+2. Derives the wallet address deterministically from that credential, so the
+   address is known before anything is deployed.
+3. Deploys the wallet contract with the passkey's secp256r1 key as its first signer.
+
+Stellar's Protocol 21 added a secp256r1 host function, which is what lets the
+wallet verify a passkey signature on-chain cheaply. The wallet holds more than
+one kind of signer: secp256r1 for passkeys, Ed25519 for service keys, and policy
+signers, each with optional limits.
+
+## The registry is owned by the wallet
+
+Each institution has its own proof-registry contract, deployed with the wallet as
+its owner. Publishing is owner-gated:
+
+```rust
+pub fn publish_proof(env: Env, proof: Bytes, pub_inputs: PubInputs) {
+    let owner: Address = env.storage().instance().get(&OWNER).unwrap();
+    owner.require_auth();
+    // verify the proof on-chain, then store the result
+}
+```
+
+`owner.require_auth()` means the call cannot succeed unless the owner authorizes
+it. Because the owner is the wallet, the wallet's `__check_auth` runs inside the
+same transaction and decides whether to allow the publish. No other account can
+publish to that registry.
+
+## Authorizing an automated publisher
+
+Proofs are published continuously by the orchestrator, a backend service, not by
+a person clicking a button each cycle. So the orchestrator needs to authorize the
+wallet's publish without a passkey prompt every time.
+
+The operator grants this once. From the console they add the orchestrator's
+Ed25519 key as a signer on the wallet, scoped by `SignerLimits` to the registry
+contract only:
+
+```
+add_signer(Ed25519(orchestrator_key), limits = { registry: none })
+```
+
+The grant itself is authorized by the passkey. After it, the orchestrator can
+authorize `publish_proof` on that one registry and nothing else. It cannot move
+funds, change signers, or touch any other contract. The person keeps the passkey
+as the root of authority and can remove the scoped signer at any time.
+
+## The full flow
+
+1. The operator signs in with a passkey. Solva provisions the smart wallet with
+   the passkey as its signer.
+2. The institution's proof registry is deployed, owned by the wallet.
+3. The operator grants the orchestrator a scoped Ed25519 signer on the wallet,
+   authorized by the passkey.
+4. Each cycle, the orchestrator publishes a proof. The registry calls
+   `owner.require_auth()`, the wallet's `__check_auth` verifies the orchestrator's
+   scoped signature, and the proof is recorded.
+
+A person authorizes with a passkey, a scoped service key does the repetitive
+publishing, and the registry only ever accepts proofs its owner approved.
+
+## Security properties
+
+- **No raw keys held by people.** The passkey private key never leaves the device.
+- **Least privilege for automation.** The orchestrator's signer is limited to one
+  registry's publishing, so a compromised service key cannot do anything else.
+- **Human control.** The passkey is the root signer. The scoped signer can be
+  revoked without moving the wallet or the registry.
+- **Per-institution isolation.** Each institution has its own wallet and registry,
+  so one institution can never authorize a publish for another.
+
+## Beyond one operator
+
+The wallet is multi-signer by design, which is what makes the model extend past a
+single person:
+
+- Several passkeys, on different devices, can sign for the same wallet, which
+  gives an institution recovery and shared control instead of one point of failure.
+- Policy signers can express approval rules, such as requiring more than one
+  signer for a sensitive action.
+- Scoped service keys, like the orchestrator's, can be added and revoked per task.
+
+This is how an institution runs solvency proofs as a team: people hold passkeys,
+services hold narrow and revocable keys, and the wallet ties them together as the
+on-chain identity that owns the registry.

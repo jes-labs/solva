@@ -97,6 +97,10 @@ Postgres stores proofs, liabilities, and the audit log. Redis caches the latest 
 6. The proof and tree are persisted to an append-only audit log. The latest proof is cached in Redis.
 7. The web app reads the latest proof, customers check inclusion on-chain, and the oracle answers solvency queries.
 
+## Passkey smart wallet
+
+Institutions do not hold private keys. An operator signs in with a passkey, and that passkey controls a Soroban smart wallet that owns the institution's proof registry. Publishing is owner-gated through `owner.require_auth()`, so every proof is authorized by the wallet. For continuous publishing, the operator grants the orchestrator's Ed25519 key as a signer scoped to that one registry, so the service can publish and nothing else. The passkey stays the root of authority and can revoke that signer at any time. The full model is in the [passkey smart wallet](apps/docs/content/docs/passkey-wallet.mdx) page.
+
 ## Repository layout
 
 ```
