@@ -5,9 +5,12 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
 	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/grpc/proverpb"
@@ -64,6 +67,9 @@ func (c *ProverClient) Prove(
 
 	resp, err := c.pb.Prove(ctx, req)
 	if err != nil {
+		if isInsolvent(err) {
+			return usecase.ProveResult{}, usecase.ErrInsolvent
+		}
 		return usecase.ProveResult{}, fmt.Errorf("prover.Prove: %w", err)
 	}
 
@@ -81,6 +87,13 @@ func (c *ProverClient) Prove(
 		},
 		SerializedTree: resp.SerializedTree,
 	}, nil
+}
+
+// isInsolvent reports whether the prover rejected the witness for R < L, which
+// it returns as an InvalidArgument status prefixed "insolvent:".
+func isInsolvent(err error) bool {
+	st, ok := status.FromError(err)
+	return ok && st.Code() == codes.InvalidArgument && strings.Contains(st.Message(), "insolvent")
 }
 
 // buildRequest maps orchestrator entity types to the proto request message.

@@ -42,6 +42,10 @@ var ErrCycleInProgress = errors.New("usecase: cycle already in progress for tena
 // failure. It is the durable layer that catches a replay after the lock is gone.
 var ErrDuplicateCycle = errors.New("usecase: cycle already ran for this request key")
 
+// ErrInsolvent means the prover refused the witness because reserves are below
+// liabilities. It is an expected outcome, not a system failure.
+var ErrInsolvent = errors.New("usecase: reserves are below liabilities")
+
 // Cycle runs one full proof cycle: fetch signed reserves, load liabilities,
 // prove, publish on Stellar, then persist and cache. It coordinates the ports
 // and owns none of the crypto.

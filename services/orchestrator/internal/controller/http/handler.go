@@ -86,9 +86,15 @@ func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 		// The key already ran: an idempotent no-op, reported as success.
 		writeJSON(w, http.StatusOK, map[string]string{"status": "already processed"})
 		return
+	case errors.Is(err, usecase.ErrInsolvent):
+		// Expected outcome, not a failure: reserves are below liabilities, so no
+		// proof can be generated. A distinct status lets callers tell this apart
+		// from a real error.
+		writeError(w, http.StatusUnprocessableEntity, "reserves are below liabilities; no proof generated")
+		return
 	case err != nil:
 		h.log.Error().Err(err).Str("tenant", req.TenantID).Msg("trigger cycle")
-		writeError(w, http.StatusNotImplemented, "cycle pipeline not fully implemented")
+		writeError(w, http.StatusInternalServerError, "the proof cycle could not complete")
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
