@@ -12,9 +12,9 @@
 #
 set -euo pipefail
 
-: "${SIGNER_SECRET:?set SIGNER_SECRET to signor's Testnet secret seed}"
-: "${CONTRACT_A:?set CONTRACT_A to Meridian's registry contract id}"
-: "${CONTRACT_B:?set CONTRACT_B to Solstice's registry contract id}"
+: "${SIGNER_SECRET:?set SIGNER_SECRET to the signer Testnet secret seed}"
+: "${CONTRACT_A:?set CONTRACT_A to the Meridian registry contract id}"
+: "${CONTRACT_B:?set CONTRACT_B to the Solstice registry contract id}"
 
 ROOT=$(pwd)
 VMDIR="$ROOT/deploy/vm"
