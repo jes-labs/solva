@@ -65,46 +65,27 @@ STELLAR_NETWORK="${E2E_STELLAR_NETWORK:-testnet}"
 : "${E2E_STELLAR_SIGNER_SECRET:?set it to the secret seed of the account owning both contracts (publish is owner-gated)}"
 
 # ---- output helpers -----------------------------------------------------------
-log() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
-ok() { printf '\033[1;32m    ok: %s\033[0m\n' "$*"; }
-fail() {
-  printf '\033[1;31m    FAIL: %s\033[0m\n' "$*" >&2
-  exit 1
-  printf '\033[1;31m    FAIL: %s\033[0m\n' "$*" >&2
-  exit 1
-}
+log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
+ok()   { printf '\033[1;32m    ok: %s\033[0m\n' "$*"; }
+fail() { printf '\033[1;31m    FAIL: %s\033[0m\n' "$*" >&2; exit 1; }
 
 need() { command -v "$1" >/dev/null 2>&1 || fail "missing required tool: $1"; }
 
 psql_solva() { PGPASSWORD=solva psql -h localhost -U solva -d solva -v ON_ERROR_STOP=1 -qtA "$@"; }
 
 wait_http() { # url name
-      ok "$name ready"
-      return 0
-   
   local url="$1" name="$2" i
   for i in $(seq 1 60); do
-    curl -fsS "$url" >/dev/null 2>&1 && {
-      ok "$name ready"
-      return 0
-    }
+    curl -fsS "$url" >/dev/null 2>&1 && { ok "$name ready"; return 0; }
     sleep 1
   done
   fail "$name not ready at $url"
-      exec 3>&- 3<&-
-      ok "$name listening"
-      return 0
-   
 }
 
 wait_tcp() { # host port name
   local host="$1" port="$2" name="$3" i
   for i in $(seq 1 120); do
-    (exec 3<>"/dev/tcp/$host/$port") 2>/dev/null && {
-      exec 3>&- 3<&-
-      ok "$name listening"
-      return 0
-    }
+    (exec 3<>"/dev/tcp/$host/$port") 2>/dev/null && { exec 3>&- 3<&-; ok "$name listening"; return 0; }
     sleep 1
   done
   fail "$name not listening on $host:$port"
@@ -126,7 +107,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
- 
 # ---- 0. prerequisites ---------------------------------------------------------
 log "checking prerequisites"
 for t in docker psql curl jq stellar; do need "$t"; done
@@ -136,31 +116,26 @@ for t in docker psql curl jq stellar; do need "$t"; done
 # requiring manual setup. Set E2E_CONTRACT_ID_A / _B to reuse fixed contracts
 # across runs (faster, and lets CI pin known-good ids).
 deploy_registry() {
-  need nargo
-  need cargo
+  need nargo; need cargo
   stellar contract deploy \
     --wasm target/wasm32v1-none/release/proof_registry.wasm \
-    --source "$DEPLOY_OWNER" --
- etwork "$STELLAR_NETWORK" -- \
+    --source "$DEPLOY_OWNER" --network "$STELLAR_NETWORK" -- \
     --owner "$DEPLOY_OWNER" \
     --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin | tail -1
 }
 
-if [ -z "$CONTRACT_A" ] || [ -z
- "$CONTRACT_B" ]; then
+if [ -z "$CONTRACT_A" ] || [ -z "$CONTRACT_B" ]; then
   log "building the proof-registry contract"
   stellar contract build >/dev/null 2>&1
 fi
 if [ -z "$CONTRACT_A" ]; then
   log "deploying institution A's registry (set E2E_CONTRACT_ID_A to reuse)"
-  CONTRACT_A=$(deploy_registry)
-  [ -n "$CONTRACT_A" ] || fail "could not deploy institution A's registry"
+  CONTRACT_A=$(deploy_registry); [ -n "$CONTRACT_A" ] || fail "could not deploy institution A's registry"
   ok "institution A registry $CONTRACT_A"
 fi
 if [ -z "$CONTRACT_B" ]; then
   log "deploying institution B's registry (set E2E_CONTRACT_ID_B to reuse)"
-  CONTRACT_B=$(deploy_registry)
-  [ -n "$CONTRACT_B" ] || fail "could not deploy institution B's registry"
+  CONTRACT_B=$(deploy_registry); [ -n "$CONTRACT_B" ] || fail "could not deploy institution B's registry"
   ok "institution B registry $CONTRACT_B"
 fi
 [ "$CONTRACT_A" != "$CONTRACT_B" ] || fail "institution A and B resolved to the SAME contract id ($CONTRACT_A) -- they must be separate deployments, the entire point of this test"
@@ -182,7 +157,7 @@ for i in $(seq 1 30); do
   docker exec solva-postgres pg_isready -U solva >/dev/null 2>&1 && break
   sleep 1
 done
-ok cd services/sandbox && go run ./cmd/app
+ok "postgres ready"
 
 # ---- 2. migrations (clean slate so the run is repeatable) ---------------------
 log "resetting + applying schema"
@@ -192,10 +167,10 @@ for f in $(ls services/orchestrator/migrations/*.sql | grep -v '\.down\.sql$' | 
 done
 ok "schema applied (clean slate)"
 
-# -cargo run -p solva-prover----------------------------------------------------
+# ---- 3. services ---------------------------------------------------------------
 if [ "${E2E_SERVICES_RUNNING:-0}" != "1" ]; then
   log "starting sandbox"
-  (cd services/sandbox && go run ./cmd/app) >/tmp/solva-e2e-mt-sandbox.log 2>&1 &
+  ( cd services/sandbox && go run ./cmd/app ) >/tmp/solva-e2e-mt-sandbox.log 2>&1 &
   PIDS+=($!)
   wait_http "$SANDBOX_URL/health" "sandbox"
 
@@ -205,7 +180,7 @@ if [ "${E2E_SERVICES_RUNNING:-0}" != "1" ]; then
   ok "fetched sandbox public key"
 
   log "starting prover (first build is slow)"
-  (cargo run -p solva-prover) >/tmp/solva-e2e-mt-prover.log 2>&1 &
+  ( cargo run -p solva-prover ) >/tmp/solva-e2e-mt-prover.log 2>&1 &
   PIDS+=($!)
   wait_tcp "${PROVER_HOSTPORT%:*}" "${PROVER_HOSTPORT#*:}" "prover"
 
@@ -276,7 +251,7 @@ SELECT '${TENANT_B}', c.id, v.bal
 FROM c JOIN (VALUES ('cust-b1', 3000000::numeric)) AS v(ref, bal)
   ON c.external_ref = v.ref;
 SQL
-link_contract "$TENANTB" "$CONTRACT_B"
+link_contract "$TENANT_B" "$CONTRACT_B"
 ok "institution B seeded and linked to $CONTRACT_B"
 
 # ---- 5. assertion 1: each tenant resolves to its OWN contract ------------------
@@ -289,29 +264,29 @@ ok "A -> $resolved_a, B -> $resolved_b (distinct, as seeded)"
 
 # ---- 6. run a cycle for each tenant ---------------------------------------------
 seed_scenario() { curl -fsS -X POST "$SANDBOX_URL/admin/scenarios/$1" >/dev/null; }
-seed_scenario solvent # R = 16,000,000 for the shared sandbox; both tenants read it
-2*) ok "institution A cycle accepted [HTTP $code]" ;;
-*)ycle() { # tenant_id idempotency-key
+seed_scenario solvent  # R = 16,000,000 for the shared sandbox; both tenants read it
+
+run_cycle() { # tenant_id idempotency-key
   curl -s -o /tmp/solva-e2e-mt-cycle.json -w '%{http_code}' \
     --max-time 300 \
     -X POST "$ORCH_URL/v1/cycles" \
     -H 'Content-Type: application/json' \
     -H "Idempotency-Key: $2" \
-2*) ok "institution B cycle accepted [HTTP $code]" ;;
-*)
+    -d "{\"tenant_id\":\"${1}\"}"
+}
 
 log "running a cycle for institution A"
 code=$(run_cycle "$TENANT_A" "e2e-mt-a-$(date +%s)")
 case "$code" in
-2*) ok "institution A cycle accepted [HTTP $code]" ;;
-*) fail "institution A cycle returned HTTP $code; see /tmp/solva-e2e-mt-orch.log" ;;
+  2*) ok "institution A cycle accepted [HTTP $code]" ;;
+  *)  fail "institution A cycle returned HTTP $code; see /tmp/solva-e2e-mt-orch.log" ;;
 esac
 
 log "running a cycle for institution B"
 code=$(run_cycle "$TENANT_B" "e2e-mt-b-$(date +%s)")
 case "$code" in
-2*) ok "institution B cycle accepted [HTTP $code]" ;;
-*) fail "institution B cycle returned HTTP $code; see /tmp/solva-e2e-mt-orch.log" ;;
+  2*) ok "institution B cycle accepted [HTTP $code]" ;;
+  *)  fail "institution B cycle returned HTTP $code; see /tmp/solva-e2e-mt-orch.log" ;;
 esac
 
 # ---- 7. assertion 2: each tenant's latest proof is its own --------------------
