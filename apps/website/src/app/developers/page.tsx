@@ -19,35 +19,29 @@ export const metadata: Metadata = {
 
 const sectionX = "mx-auto max-w-site px-7";
 
-const quickstartShell = `# install
-$ npm i @solva/sdk
+const quickstartShell = `# install the SDK
+$ npm i @solva/sdk-ts
 
-# start a local sandbox (mock open-banking)
-$ npx solva sandbox up
+# or run the whole pipeline locally against mock open-banking
+$ git clone https://github.com/jes-labs/solva && cd solva
+$ just demo
+✓ prover, orchestrator, and sandbox up · publishing to Testnet`;
 
-# first proof in ~30s
-$ npx solva prove --demo
-✓ proof 0x7a3f…e3f1 · reserves ≥ liabilities`;
+const readSample = `import { Solva } from "@solva/sdk-ts";
 
-const proveSample = `import { Solva } from "@solva/sdk";
+const solva = new Solva({ network: "testnet", tenant: "meridian-bank" });
 
-const solva = new Solva({ apiKey: process.env.SOLVA_KEY });
+// read the latest solvency proof, verified on-chain
+const proof = await solva.getOnChainLatestProof();
+console.log(BigInt(proof.reservesTotal) >= BigInt(proof.liabilitiesTotal)); // true
 
-// build a proof from your ledger snapshot
-const proof = await solva.prove({
-  reserves:    ledger.reserves,      // stays on-prem
-  liabilities: ledger.liabilities,   // never leaves
-});
-
-// settle it on Stellar
-const receipt = await solva.publish(proof);
-
-console.log(receipt.url); // public, verifiable`;
+// a customer confirms their balance was counted
+const { included } = await solva.verifyInclusion("cust-001");`;
 
 const endpoints = [
-  { method: "POST", path: "/v1/prove", name: "prove", body: "Generate a zero-knowledge proof that reserves cover liabilities, locally." },
-  { method: "POST", path: "/v1/publish", name: "publish", body: "Settle a proof inside the Stellar contract and write it to the registry." },
-  { method: "GET", path: "/v1/verify", name: "verify-inclusion", body: "Confirm a balance was counted, or re-check any published proof." },
+  { method: "POST", path: "/v1/cycles", name: "run a cycle", body: "Fetch signed reserves, generate the zero-knowledge proof, and publish it on-chain. One call runs the full pipeline." },
+  { method: "GET", path: "/v1/proofs/latest", name: "latest proof", body: "The latest published proof for an institution: reserves, liabilities, root, and timestamp." },
+  { method: "GET", path: "/v1/proofs/inclusion/{ref}", name: "inclusion", body: "The data a customer needs to confirm their balance was counted in the committed tree." },
 ];
 
 // A mono panel of terminal output. Children carry the per-line coloring.
@@ -74,7 +68,7 @@ export default function DevelopersPage() {
             publish, and verify inclusion without ever touching a circuit.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button href="/request-a-demo">Open the sandbox</Button>
+            <Button href={routes.sandbox}>Open the sandbox</Button>
             <Button variant="secondary" href="#api">
               API reference
             </Button>
@@ -90,15 +84,16 @@ export default function DevelopersPage() {
         <div className="grid grid-cols-1 items-start gap-12 border-t border-hair pt-12 lg:grid-cols-[.85fr_1.15fr]">
           <Reveal>
             <Eyebrow className="mb-4 text-acc-text">Quickstart</Eyebrow>
-            <h2 className="h2">Prove and publish in one file.</h2>
+            <h2 className="h2">Read and verify in a few lines.</h2>
             <p className="mt-4 text-base leading-relaxed text-sec">
-              The SDK runs the prover locally against your data and returns a proof you can publish to
-              Stellar. Reserves and liabilities stay on your machine.
+              The SDK resolves an institution to its own on-chain registry and reads its latest proof.
+              Proving and publishing run in the orchestrator, so reserves and liabilities never touch
+              your app. An in-browser prover is on the roadmap.
             </p>
             <ul className="mt-5 flex flex-col gap-2.5 text-[14.5px] text-fg">
               {[
                 "Typed end to end (TypeScript)",
-                "Works in Node and edge runtimes",
+                "Reads proofs straight from Stellar",
                 "No circuit knowledge required",
               ].map((line) => (
                 <li key={line} className="flex items-center gap-2.5">
@@ -109,7 +104,7 @@ export default function DevelopersPage() {
             </ul>
           </Reveal>
           <Reveal>
-            <CodeBlock filename="prove.ts" code={proveSample} />
+            <CodeBlock filename="read.ts" code={readSample} />
           </Reveal>
         </div>
       </section>
@@ -119,7 +114,7 @@ export default function DevelopersPage() {
         <Reveal>
           <h2 className="h2 mb-2">The API</h2>
           <p className="mb-8 max-w-[520px] text-base text-sec">
-            Three primitives. Everything else is built on top.
+            Three primitives: run a cycle, read the proof, verify inclusion.
           </p>
         </Reveal>
         <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
@@ -158,20 +153,18 @@ export default function DevelopersPage() {
                 against fake data, then point the same code at production.
               </p>
               <div className="mt-6">
-                <Button href="/request-a-demo">Launch sandbox</Button>
+                <Button href={routes.sandbox}>Launch sandbox</Button>
               </div>
             </div>
             <Terminal>
-              $ solva sandbox seed --bank demo
+              $ curl -X POST $SANDBOX/admin/scenarios/solvent
               <br />
-              <span className="text-fg">→ created 12,480 mock accounts</span>
+              <span className="text-fg">→ reserves 16,000,000 · liabilities 9,000,000</span>
+              <br />$ curl -X POST $ORCH/v1/cycles -d &apos;&#123;&quot;tenant_id&quot;:&quot;meridian-bank&quot;&#125;&apos;
               <br />
-              <span className="text-fg">→ reserves $48.2M · liabilities $41.7M</span>
-              <br />$ solva prove --bank demo
+              <span className="text-acc-text">✓ proof generated and published to Testnet</span>
               <br />
-              <span className="text-acc-text">✓ reserves ≥ liabilities (margin 1,240 bps)</span>
-              <br />
-              <span className="text-acc-text">✓ published 0x91b4…c2a0</span>
+              <span className="text-acc-text">✓ reserves ≥ liabilities</span>
             </Terminal>
           </Card>
         </Reveal>
@@ -243,9 +236,9 @@ export default function DevelopersPage() {
             <Terminal>
               <span className="text-sec">// MCP tool call</span>
               <br />
-              solva.check_solvency(&#123;
+              get_solvency(&#123;
               <br />
-              &nbsp;&nbsp;entity: <span className="text-acc-text">&quot;meridian-bank&quot;</span>
+              &nbsp;&nbsp;institution_id: <span className="text-acc-text">&quot;meridian-bank&quot;</span>
               <br />
               &#125;)
               <br />
@@ -253,9 +246,11 @@ export default function DevelopersPage() {
               <br />
               &nbsp;&nbsp;solvent: <span className="text-acc-text">true</span>,
               <br />
-              &nbsp;&nbsp;margin_bps: <span className="text-fg">1240</span>,
+              &nbsp;&nbsp;reservesTotal: <span className="text-fg">&quot;16000000&quot;</span>,
               <br />
-              &nbsp;&nbsp;proof: <span className="text-fg">&quot;0x7a3f…e3f1&quot;</span>
+              &nbsp;&nbsp;liabilitiesTotal: <span className="text-fg">&quot;9000000&quot;</span>,
+              <br />
+              &nbsp;&nbsp;verifiedOnChain: <span className="text-acc-text">true</span>
               <br />
               <span className="text-fg">&#125;</span>
             </Terminal>
@@ -283,7 +278,7 @@ export default function DevelopersPage() {
                 Free in the sandbox. No customer data, no circuit knowledge.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3.5">
-                <Button size="lg" href="/request-a-demo">
+                <Button size="lg" href={routes.sandbox}>
                   Open the sandbox
                 </Button>
                 <Button size="lg" variant="secondary" href={routes.docs}>
