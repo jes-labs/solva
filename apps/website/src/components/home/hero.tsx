@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, ArrowRightIcon } from "@/components/ui";
+import { routes } from "@/lib/routes";
 import { ProofSeal } from "./proof-seal";
 import { proofHashes } from "./home-data";
 
@@ -44,7 +45,7 @@ export function Hero() {
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3.5">
           <Button href="/request-a-demo">Request a demo</Button>
-          <Button variant="secondary" href="/developers">
+          <Button variant="secondary" href={routes.docs}>
             Read the docs
             <ArrowRightIcon size={15} />
           </Button>

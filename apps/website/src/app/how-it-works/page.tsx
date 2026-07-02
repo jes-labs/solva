@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Reveal, Counter } from "@/components/motion";
 import { Button, Card, Eyebrow, CheckIcon, LockIcon } from "@/components/ui";
+import { routes } from "@/lib/routes";
 import { StepDiagram } from "@/components/how-it-works/step-diagram";
 import { InclusionCheck } from "@/components/how-it-works/inclusion-check";
 import { steps, guarantees } from "@/components/how-it-works/how-it-works-data";
@@ -29,7 +30,7 @@ export default function HowItWorksPage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button href="/request-a-demo">Request a demo</Button>
-            <Button variant="secondary" href="/developers">
+            <Button variant="secondary" href={routes.docs}>
               Read the docs
             </Button>
           </div>
@@ -264,7 +265,7 @@ export default function HowItWorksPage() {
                 <Button size="lg" href="/request-a-demo">
                   Request a demo
                 </Button>
-                <Button size="lg" variant="secondary" href="/developers">
+                <Button size="lg" variant="secondary" href={routes.docs}>
                   Read the docs
                 </Button>
               </div>

@@ -9,6 +9,7 @@ import {
   ShieldIcon,
   NodesIcon,
 } from "@/components/ui";
+import { routes } from "@/lib/routes";
 import { InstitutionsMarquee } from "./institutions-marquee";
 import { MarginChart } from "./margin-chart";
 import { differentiators, audiences, homeFaqs } from "./home-data";
@@ -186,7 +187,7 @@ export function Developers() {
             and verify inclusion, without ever touching a circuit.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button size="sm" href="/developers">
+            <Button size="sm" href="/sandbox">
               Open the sandbox
             </Button>
             <Button size="sm" variant="secondary" href="/developers#api">
@@ -324,7 +325,7 @@ export function FinalCta() {
               <Button size="lg" href="/request-a-demo">
                 Request a demo
               </Button>
-              <Button size="lg" variant="secondary" href="/developers">
+              <Button size="lg" variant="secondary" href={routes.docs}>
                 Read the docs
               </Button>
             </div>

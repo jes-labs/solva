@@ -254,7 +254,7 @@ export default function PricingPage() {
                 No card required. Talk to us when you&rsquo;re ready for production volumes.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3.5">
-                <Button size="lg" href={routes.developers}>
+                <Button size="lg" href={routes.sandbox}>
                   Open the sandbox
                 </Button>
                 <Button size="lg" variant="secondary" href="/request-a-demo">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Reveal } from "@/components/motion";
 import { Button, Eyebrow } from "@/components/ui";
+import { routes } from "@/lib/routes";
 import { SolutionsTabs } from "@/components/solutions/solutions-tabs";
 
 export const metadata: Metadata = {
@@ -49,7 +50,7 @@ export default function SolutionsPage() {
                 <Button size="lg" href="/request-a-demo">
                   Request a demo
                 </Button>
-                <Button size="lg" variant="secondary" href="/developers">
+                <Button size="lg" variant="secondary" href={routes.docs}>
                   Read the docs
                 </Button>
               </div>

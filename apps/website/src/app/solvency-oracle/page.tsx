@@ -71,7 +71,7 @@ export default function SolvencyOraclePage() {
             moves funds, it can check the counterparty and get a cryptographic answer, not a claim.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button href={routes.developers}>Read the docs</Button>
+            <Button href={routes.docs}>Read the docs</Button>
             <Button variant="secondary" href="#query">
               See a query
             </Button>
@@ -184,7 +184,7 @@ export default function SolvencyOraclePage() {
                 Wire the solvency oracle into your stack in an afternoon.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3.5">
-                <Button size="lg" href={routes.developers}>
+                <Button size="lg" href={routes.docs}>
                   Read the docs
                 </Button>
                 <Button size="lg" variant="secondary" href="/request-a-demo">
