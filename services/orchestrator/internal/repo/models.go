@@ -23,6 +23,13 @@ type Customer struct {
 	IDHash      string      `json:"id_hash"`
 }
 
+type CycleRun struct {
+	ID         pgtype.UUID        `json:"id"`
+	TenantID   pgtype.UUID        `json:"tenant_id"`
+	RequestKey string             `json:"request_key"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type Liability struct {
 	ID         pgtype.UUID        `json:"id"`
 	TenantID   pgtype.UUID        `json:"tenant_id"`
@@ -57,8 +64,10 @@ type ReserveSource struct {
 }
 
 type Tenant struct {
-	ID        pgtype.UUID        `json:"id"`
-	Name      string             `json:"name"`
-	Plan      string             `json:"plan"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID         pgtype.UUID        `json:"id"`
+	Name       string             `json:"name"`
+	Plan       string             `json:"plan"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ContractID pgtype.Text        `json:"contract_id"`
+	Network    string             `json:"network"`
 }

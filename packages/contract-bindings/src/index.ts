@@ -6,15 +6,18 @@
 // sites.
 //
 // The generated client lives in ./generated and is produced by
-// `just gen-bindings`. That directory is gitignored and regenerated, not
-// hand-edited. Once it exists, re-export its `Client` and types here:
-//
-//   export { Client, type ProofMeta, type PathNode } from "./generated/index.js";
-//
-// Until then this module exposes the typed factory contract the rest of the
-// codebase depends on, so the build does not require the generated output.
+// `just gen-bindings` from the deployed contract. It is committed so the package
+// builds without the Stellar CLI or a network connection.
 
-import type { PublicInputs, InclusionRef } from "@solva/shared-types";
+import { Buffer } from "buffer";
+
+import type { PublicInputs, InclusionRef, PathNode } from "@solva/shared-types";
+
+import {
+  Client as GeneratedClient,
+  type ProofMeta as GeneratedProofMeta,
+  type PathNode as GeneratedPathNode,
+} from "./generated/dist/index.js";
 
 /** On-chain proof metadata as stored by the proof-registry contract. */
 export interface ProofMeta {
@@ -40,8 +43,8 @@ export interface ContractClientOptions {
 
 /**
  * The read surface of the proof-registry contract that the SDK and oracle use.
- * The generated client implements this shape. Writes (publish_proof) go through
- * the orchestrator, not this client, so they are not part of the read surface.
+ * Writes (publish_proof) go through the orchestrator, not this client, so they
+ * are not part of the read surface.
  */
 export interface ProofRegistryClient {
   getLatestProof(): Promise<ProofMeta>;
@@ -49,21 +52,67 @@ export interface ProofRegistryClient {
   verifyInclusion(ref: InclusionRef): Promise<boolean>;
 }
 
+/** Bare hex of a byte buffer, matching the prover's root-hash encoding. */
+function bufferToHex(buf: Buffer): string {
+  return Buffer.from(buf).toString("hex");
+}
+
+/** Parse bare or 0x-prefixed hex into a buffer. */
+function hexToBuffer(hex: string): Buffer {
+  return Buffer.from(hex.replace(/^0x/, ""), "hex");
+}
+
+/** Map the contract's ProofMeta (bigints, buffer) to the string read surface. */
+function toProofMeta(m: GeneratedProofMeta): ProofMeta {
+  return {
+    rootHash: bufferToHex(m.root_h),
+    reservesTotal: m.r.toString(),
+    liabilitiesTotal: m.l.toString(),
+    timestamp: Number(m.timestamp),
+  };
+}
+
+/** Map a shared PathNode to the contract's PathNode shape. */
+function toContractPathNode(node: PathNode): GeneratedPathNode {
+  return {
+    hash: hexToBuffer(node.hash),
+    sibling_is_left: node.position === "left",
+    sum: BigInt(node.sum),
+  };
+}
+
 /**
- * Build a typed client for the proof-registry contract.
- *
- * This is a stub. When the generated bindings exist, swap the body for a call
- * into `new GeneratedClient({ ...options })` and adapt it to ProofRegistryClient.
- * The signature is stable so call sites do not change when that happens.
+ * Build a typed read client for the proof-registry contract. Each read is a
+ * simulated transaction; the unwrapped result is mapped to the stable surface.
  */
 export function createProofRegistryClient(
   options: ContractClientOptions,
 ): ProofRegistryClient {
-  void options;
-  throw new Error(
-    "contract-bindings: generated client not present. Run `just gen-bindings`, " +
-      "then wire createProofRegistryClient to ./generated.",
-  );
+  const client = new GeneratedClient({
+    contractId: options.contractId,
+    rpcUrl: options.rpcUrl,
+    networkPassphrase: options.networkPassphrase,
+  });
+
+  return {
+    async getLatestProof() {
+      const tx = await client.get_latest_proof();
+      return toProofMeta(tx.result.unwrap());
+    },
+    async getProof(id) {
+      const tx = await client.get_proof({ id: BigInt(id) });
+      return toProofMeta(tx.result.unwrap());
+    },
+    async verifyInclusion(ref) {
+      const tx = await client.verify_inclusion({
+        id: BigInt(ref.proofId),
+        id_hash: hexToBuffer(ref.customerIdHash),
+        balance: BigInt(ref.balance),
+        path: ref.path.map(toContractPathNode),
+      });
+      return tx.result.unwrap();
+    },
+  };
 }
 
 export type { PublicInputs, InclusionRef };

@@ -1,43 +1,25 @@
-import { Networks } from "@stellar/stellar-sdk";
-import { deriveWalletAddress } from "./address";
+import { getSession } from "./session";
+import { deployWallet } from "./wallet";
 
-// The smart-wallet provisioning boundary. The wallet's contract address is
-// derived for real from the passkey credential id (deterministic, known before
-// deploy). Putting the contract account on-chain needs Solva's deployed
-// smart-wallet factory and its generated bindings, so that step is mocked here
-// until the contract lands. The real path is marked inline and the signature
-// stays stable across the swap.
-
-// Placeholder for Solva's smart-wallet factory account. Swap for the real
-// deployed factory address once the contract ships.
-const DEPLOYER = "GDVEU3DD4KOFECV66VIHWEZOYX4ZKR3WV27L464SIIPOU2IUI3JCZA57";
-const NETWORK_PASSPHRASE = Networks.TESTNET;
-
+// The smart-wallet provisioning boundary. The passkey's P-256 key becomes the
+// wallet's first signer, and the wallet is deployed at its derived address on
+// testnet. The deployer is an ephemeral, friendbot-funded session key held in
+// the browser (see session.ts), so this needs no server and no stored secret.
 export interface ProvisionResult {
   contractAddress: string;
   // True when this call deployed a new wallet; false when it already existed.
   deployed: boolean;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function provisionWallet(args: {
   credentialId: Uint8Array;
-  // Needed by the real deploy; unused by the address derivation and the mock.
-  publicKey?: Uint8Array;
+  publicKey: Uint8Array;
 }): Promise<ProvisionResult> {
-  const contractAddress = deriveWalletAddress({
-    deployer: DEPLOYER,
-    keyId: args.credentialId,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  });
-
-  // Real path, once the factory + bindings are deployed:
-  //   if (await contractExists(contractAddress)) return { contractAddress, deployed: false };
-  //   await deployWallet(DEPLOYER, args.credentialId, args.publicKey);  // bindings + Launchtube
-  await delay(900);
-
-  return { contractAddress, deployed: true };
+  const session = await getSession();
+  const { walletAddress, deployed } = await deployWallet(
+    session,
+    args.credentialId,
+    args.publicKey,
+  );
+  return { contractAddress: walletAddress, deployed };
 }

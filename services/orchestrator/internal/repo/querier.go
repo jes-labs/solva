@@ -11,6 +11,10 @@ import (
 )
 
 type Querier interface {
+	// Cycle idempotency claims. ClaimCycle inserts the request key; on a conflict
+	// (the key was already claimed) it returns no row, which the repo maps to a
+	// "duplicate" result rather than an error.
+	ClaimCycle(ctx context.Context, arg ClaimCycleParams) (pgtype.UUID, error)
 	// Audit-log queries. The append-only log records each cycle event, including
 	// reserve snapshots, with a jsonb payload. Retention (180 days) is enforced by a
 	// scheduled purge, not here.
@@ -35,10 +39,12 @@ type Querier interface {
 	GetLatestReservesTotal(ctx context.Context, tenantID pgtype.UUID) (pgtype.Numeric, error)
 	GetMerkleTreeByProof(ctx context.Context, proofID pgtype.UUID) (MerkleTree, error)
 	GetProof(ctx context.Context, id pgtype.UUID) (Proof, error)
+	GetTenantContract(ctx context.Context, id pgtype.UUID) (GetTenantContractRow, error)
 	ListAuditLog(ctx context.Context, arg ListAuditLogParams) ([]AuditLog, error)
 	// The tenant's current customer balances, joined to the customer id_hash the
 	// prover witnesses into the Merkle Sum Tree.
 	ListLiabilities(ctx context.Context, tenantID pgtype.UUID) ([]ListLiabilitiesRow, error)
+	SetTenantContract(ctx context.Context, arg SetTenantContractParams) error
 }
 
 var _ Querier = (*Queries)(nil)

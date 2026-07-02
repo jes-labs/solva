@@ -1,0 +1,119 @@
+---
+title: Architecture
+description: The zero-knowledge design, the Merkle Sum Tree, and on-chain verification.
+---
+
+This page explains how the proof is built and checked. It covers the proving
+stack, the Merkle Sum Tree, the circuit, and the on-chain verification. The
+snippets are trimmed to show the shape, not the full source.
+
+## The proving stack
+
+- **Noir** writes the circuit. The solvency circuit lives in
+  `circuits/solvency`.
+- **Barretenberg** proves and verifies it. Solva uses the UltraHonk proving
+  system over the BN254 curve, with a keccak transcript so the proof can be
+  verified on Stellar.
+- **Poseidon2** is the hash used wherever a commitment is built. The circuit,
+  the prover, and the contract all use the same Poseidon2, so their roots match.
+
+The tooling is pinned: Noir 1.0.0-beta.9 and Barretenberg 0.87.0.
+
+## The Merkle Sum Tree
+
+Liabilities are committed with a Merkle Sum Tree. It is a binary tree where every
+node carries a hash and a sum. A leaf is one customer. A parent combines its two
+children.
+
+```rust
+// A leaf commits to one customer as (id_hash, balance).
+// leaf = { hash: hash4([id_hash, balance, 0, 0]), sum: balance }
+
+// A parent binds both child hashes and both child sums.
+fn combine(left: Node, right: Node) -> Node {
+    Node {
+        hash: hash4([left.hash, left.sum, right.hash, right.sum]),
+        sum:  left.sum + right.sum,
+    }
+}
+```
+
+`hash4` is `Poseidon2::hash(inputs, 4)`. Two properties matter:
+
+- The root hash commits to the exact set of leaves. Change any balance and the
+  root changes.
+- The root sum is the total liability L. Each parent sum is the exact sum of its
+  children, so no branch can hide a smaller total.
+
+Binding the sums into the hash is what stops a subtree from lying about its
+total. This is the core of the design.
+
+## The circuit
+
+The circuit takes four public inputs, then the private witness.
+
+```rust
+fn main(
+    R: pub Field,      // total reserves
+    root_h: pub Field, // Merkle Sum Tree root hash
+    L: pub Field,      // total liabilities
+    R_prev: pub Field, // previous cycle reserves
+    // private: leaf_ids, leaf_balances, reserves
+)
+```
+
+It proves five things:
+
+```rust
+// 1. Solvency, on range-checked u64 values.
+assert(r_u64 >= l_u64, "insolvent: reserves below liabilities");
+
+// 2. The root recomputed from the leaves matches, and its sum is L.
+let root = compute_root(leaf_ids, leaf_balances);
+assert(root.hash == root_h);
+assert(root.sum == L);
+
+// 3 and 4. Leaf balances sum to L, and reserves sum to R.
+
+// 5. Growth bound: R <= floor(1.1 * R_prev), as integer math.
+assert(10 * r_u64 <= 11 * r_prev_u64, "fraud bound: reserves grew too fast");
+```
+
+Every balance is range-checked to a 64-bit integer before it is summed. Without
+that check, a wrapped negative Field value could make a sum look smaller than it
+is. The solvency check is an unsigned compare, so there is no underflow trick.
+
+## On-chain verification
+
+The contract embeds the verifying key for this exact circuit. It runs UltraHonk
+verification with the native BN254 host functions on Stellar.
+
+`publish_proof` runs four checks before it stores anything:
+
+1. Verify the zero-knowledge proof against the embedded verifying key.
+2. Check that R is greater than or equal to L.
+3. Check the growth bound against the last proof this contract stored. The
+   circuit enforces `10 * R <= 11 * R_prev`, but `R_prev` is a value the prover
+   supplies. The contract binds `R_prev` to the previous on-chain reserves, so an
+   institution cannot pick a low baseline to justify a jump.
+4. Store the root, R, L, and the timestamp.
+
+The public inputs are re-encoded on-chain into the field layout the circuit
+declares, in the order `R, root_h, L, R_prev`, as BN254 field elements. If the
+layout does not match, verification fails.
+
+## Inclusion, on-chain
+
+A customer's inclusion is checked by the same fold. `verify_inclusion` rebuilds
+the root from the customer's leaf and sibling path with the native Poseidon2. It
+then checks the rebuilt root against the stored root, and the running sum against
+the stored L. It uses the same hash and the same combine rule as the circuit, so
+the on-chain check and the circuit agree.
+
+## Parity
+
+The circuit in Noir, the prover in Rust, and the contract in Rust each build the
+tree on their own. They must produce the same root for the same leaves, or a
+proof would never verify on-chain. This is locked in two ways: parity tests
+compare all three against a shared set of Poseidon2 vectors, and each layer
+checks the same canonical root value for a fixed set of leaves.

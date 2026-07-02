@@ -2,6 +2,7 @@
 
 export { Solva } from "./solva.js";
 export type { SolvaConfig, Network, NetworkConfig } from "./config.js";
+export type { ProofMeta } from "@solva/contract-bindings";
 export type { BankSourceConfig } from "./orchestrator-client.js";
 export type { ChainClientOptions } from "./chain-client.js";
 export {

@@ -42,20 +42,10 @@ export function OnboardingClient() {
   }
 
   function handleApprove() {
-    const institution = session?.institution;
+    // Advances the mock UI only. The "approved" email is an operator/out-of-band
+    // action and is never triggered from the client, so we do not call /api/kyb
+    // here. This closes the approval-mail relay on the public endpoint.
     approveKyb();
-    if (institution) {
-      void fetch("/api/kyb", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "approved",
-          legalName: institution.legalName,
-          contactName: institution.contactName,
-          contactEmail: institution.contactEmail,
-        }),
-      }).catch(() => {});
-    }
   }
 
   if (!session || status === "active") return null;

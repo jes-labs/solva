@@ -6,7 +6,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { Proof } from "@solva/shared-types";
 import { Solva } from "@solva/sdk-ts";
 import { registerOracleTools, type OracleDeps } from "./tools.js";
-import { sdkSolvencyDeps } from "./solvency.js";
+import { chainSolvencyDeps } from "./solvency.js";
 
 type Network = "testnet" | "mainnet" | "local";
 
@@ -19,7 +19,7 @@ function networkFromEnv(): Network {
 /** Build the oracle dependencies backed by the Solva SDK. */
 export function buildDeps(network: Network): OracleDeps {
   return {
-    solvency: sdkSolvencyDeps(network),
+    solvency: chainSolvencyDeps(network),
     async getProofHistory(institutionId: string): Promise<Proof[]> {
       // The orchestrator audit log holds the full history. The SDK exposes the
       // latest proof today; until a history endpoint lands, return the latest

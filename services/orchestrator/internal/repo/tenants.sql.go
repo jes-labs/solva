@@ -32,3 +32,38 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (pgt
 	err := row.Scan(&id)
 	return id, err
 }
+
+const getTenantContract = `-- name: GetTenantContract :one
+SELECT contract_id, network
+FROM tenants
+WHERE id = $1
+`
+
+type GetTenantContractRow struct {
+	ContractID pgtype.Text `json:"contract_id"`
+	Network    string      `json:"network"`
+}
+
+func (q *Queries) GetTenantContract(ctx context.Context, id pgtype.UUID) (GetTenantContractRow, error) {
+	row := q.db.QueryRow(ctx, getTenantContract, id)
+	var i GetTenantContractRow
+	err := row.Scan(&i.ContractID, &i.Network)
+	return i, err
+}
+
+const setTenantContract = `-- name: SetTenantContract :exec
+UPDATE tenants
+SET contract_id = $2, network = $3
+WHERE id = $1
+`
+
+type SetTenantContractParams struct {
+	ID         pgtype.UUID `json:"id"`
+	ContractID pgtype.Text `json:"contract_id"`
+	Network    string      `json:"network"`
+}
+
+func (q *Queries) SetTenantContract(ctx context.Context, arg SetTenantContractParams) error {
+	_, err := q.db.Exec(ctx, setTenantContract, arg.ID, arg.ContractID, arg.Network)
+	return err
+}

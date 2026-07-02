@@ -14,10 +14,11 @@
     "start": "node dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/anomaly.test.ts"
+    "test": "node --import tsx --test src/anomaly.test.ts src/solvency.test.ts src/tools.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@solva/contract-bindings": "workspace:*",
     "@solva/sdk-ts": "workspace:*",
     "@solva/shared-types": "workspace:*",
     "zod": "^3.25.0"

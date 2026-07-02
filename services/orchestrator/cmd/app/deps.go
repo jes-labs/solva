@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/config"
 	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/banks"
@@ -39,7 +42,19 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		return deps{}, nil, fmt.Errorf("connect redis: %w", err)
 	}
 
-	prover, err := grpcprover.NewProverClient(cfg.ProverAddr)
+	// When the prover sits behind a TLS endpoint (e.g. Cloud Run on host:443),
+	// override the plaintext default with TLS transport credentials. gRPC applies
+	// the later WithTransportCredentials option, so this wins over the insecure
+	// default that NewProverClient sets.
+	var proverOpts []grpc.DialOption
+	if cfg.ProverTLS {
+		proverOpts = append(proverOpts,
+			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+	}
+	if cfg.ProverToken != "" {
+		proverOpts = append(proverOpts, grpc.WithPerRPCCredentials(bearerToken{cfg.ProverToken}))
+	}
+	prover, err := grpcprover.NewProverClient(cfg.ProverAddr, proverOpts...)
 	if err != nil {
 		_ = cache.Close()
 		pg.Close()
@@ -47,7 +62,9 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 	}
 
 	publisher, err := stellar.NewPublisher(stellar.Config{
-		RPCURL: cfg.StellarRPCURL,
+		RPCURL:            cfg.StellarRPCURL,
+		NetworkPassphrase: cfg.StellarNetworkPassphrase,
+		SignerSecret:      cfg.StellarSignerSecret,
 	})
 	if err != nil {
 		_ = prover.Close()
@@ -86,3 +103,13 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		banks:    bankAdapter,
 	}, cleanup, nil
 }
+
+// bearerToken sends the prover API token as gRPC per-RPC metadata. It permits
+// plaintext transport since a local prover runs without TLS.
+type bearerToken struct{ token string }
+
+func (b bearerToken) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{"authorization": "Bearer " + b.token}, nil
+}
+
+func (bearerToken) RequireTransportSecurity() bool { return false }

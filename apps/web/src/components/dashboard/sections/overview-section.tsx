@@ -6,6 +6,7 @@ import { StatusPill, type StatusTone } from "@solva/ui";
 import { SolvencyStatus } from "@solva/shared-types";
 import { StatusHero } from "@/components/dashboard/status-hero";
 import { Walkthrough } from "@/components/dashboard/walkthrough";
+import { AnomalyPanel } from "@/components/dashboard/anomaly-panel";
 
 // recharts is heavy; load it only when the overview mounts, behind a skeleton.
 const MarginTrend = dynamic(
@@ -84,6 +85,8 @@ export function OverviewSection() {
           </ul>
         </section>
       </div>
+
+      <AnomalyPanel cycles={data.cycles} />
     </div>
   );
 }

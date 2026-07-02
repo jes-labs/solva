@@ -47,3 +47,10 @@ func (q *Query) GetInclusion(ctx context.Context, ref string) (entity.InclusionR
 	}
 	return inc, nil
 }
+
+// ResolveTenantContract returns the tenant's contract and network so the SDK and
+// oracle can read from the tenant's own contract. The repo's not-found and
+// not-provisioned errors pass through unwrapped so the handler can map them.
+func (q *Query) ResolveTenantContract(ctx context.Context, tenantID string) (entity.TenantContract, error) {
+	return q.proofs.ResolveTenantContract(ctx, tenantID)
+}

@@ -6,5 +6,14 @@ export type { Liability, Reserve, PublicInputs, Proof } from "./proof.js";
 export type { MerkleTreeNode, PathNode, InclusionRef } from "./merkle.js";
 export type { SolvencyResult, InclusionResult } from "./solvency.js";
 export { SolvencyStatus } from "./solvency.js";
-export type { AnomalyFlag } from "./anomaly.js";
-export { AnomalyKind, AnomalySeverity } from "./anomaly.js";
+export type { AnomalyFlag, AnomalyThresholds } from "./anomaly.js";
+export {
+  AnomalyKind,
+  AnomalySeverity,
+  DEFAULT_THRESHOLDS,
+  detectAnomalies,
+  reserveDrift,
+  liabilitySpike,
+  cycleTimingGap,
+  percentChange,
+} from "./anomaly.js";

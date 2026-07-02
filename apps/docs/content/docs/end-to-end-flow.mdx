@@ -1,0 +1,158 @@
+---
+title: End-to-end flow
+description: How an institution, the public, and a customer each use Solva.
+---
+
+Solva is a proof of solvency protocol. A custodial institution proves that its
+reserves are greater than or equal to what it owes its customers. It proves this
+without showing any single customer balance, and without showing its raw reserve
+accounts.
+
+There are three actors:
+
+- The **institution** runs proof cycles and publishes each proof on-chain.
+- The **public** reads a published proof and checks that reserves cover
+  liabilities.
+- A **customer** checks that their own balance was counted in the liabilities.
+
+The rest of this page follows each actor in order.
+
+## The institution
+
+The institution is the only actor that writes to the chain. Everything it
+publishes is checked by the contract before it is stored.
+
+### 1. Onboard
+
+An operator signs up in the console and submits KYB (know your business)
+details: legal name, jurisdiction, registration number, and a contact. A Solva
+operator reviews the submission by hand. Approval is not self-serve, so a random
+sign-up cannot publish proofs under a real institution's name.
+
+### 2. Get provisioned
+
+Provisioning deploys a fresh proof-registry contract for the institution on
+Stellar. Solva stores the mapping from the institution to that contract address.
+Each institution has its own contract. Two institutions never share one, so one
+institution can never overwrite or read into another's proofs.
+
+The contract is created with the verifying key for the current solvency circuit.
+That key is what lets the contract check proofs later.
+
+### 3. Connect reserve sources
+
+The institution links the accounts that hold its reserves. Solva reads each
+balance over an open banking connection. Every balance a source returns is signed
+with an ECDSA key. The orchestrator checks that signature on each read. If the
+signature does not match, the balance is rejected. This stops a tampered or
+made-up reserve figure from entering a proof.
+
+### 4. Run a proof cycle
+
+A cycle can run on a manual trigger or on a schedule. In one cycle the
+orchestrator:
+
+1. Fetches the signed reserve balances from every source and verifies them.
+2. Loads the customer liabilities for the institution.
+3. Sends the reserves, the liabilities, and the previous reserve total to the
+   prover.
+
+The prover builds a Poseidon2 Merkle Sum Tree over the liabilities. Each leaf is
+one customer. A leaf holds a hash of the customer id and the customer balance.
+Each parent node holds a hash of its two children and the sum of their balances.
+The value at the top of the tree is the total liabilities. The hash at the top is
+the commitment root.
+
+The prover then generates a Noir and UltraHonk zero-knowledge proof. The proof
+shows, without revealing the inputs, that:
+
+- The reserves add up to a total R.
+- The liabilities add up to a total L, and that total matches the tree root.
+- R is greater than or equal to L.
+- R is within the growth bound of the previous total.
+
+### 5. Publish
+
+The orchestrator calls `publish_proof` on the institution's contract with the
+proof and the public values: R, L, the root, and the previous total. The contract
+does four things before it stores anything:
+
+1. Verifies the zero-knowledge proof against its stored verifying key.
+2. Checks that R is greater than or equal to L.
+3. Checks the growth bound. The declared previous total must equal the reserves
+   of the last proof this contract stored. So an institution cannot pick a low
+   baseline to justify a sudden jump.
+4. Stores the root, R, L, and the timestamp, and extends the storage lifetime so
+   the proof stays queryable.
+
+Publishing needs authentication. Only the institution's orchestrator can call
+`publish_proof`. The public cannot trigger a cycle or a publish.
+
+## The public
+
+Anyone can read an institution's latest proof. No account and no permission are
+needed. The read goes straight to the institution's contract.
+
+`get_latest_proof` returns four values:
+
+- `r`: the total reserves.
+- `l`: the total liabilities.
+- `root_h`: the commitment root over the liabilities.
+- `timestamp`: when the proof was published.
+
+These values are safe to trust for one reason. The contract stored them only
+after the proof verified on-chain. The chain, not the institution, enforced that
+R is greater than or equal to L. A large reserve figure cannot hide a larger
+liability, because both totals live inside the same proof.
+
+The growth bound adds a second guarantee. Each new reserve total can be at most
+about ten percent above the previous one. The exact rule is `10 * R <= 11 * R_prev`.
+The previous total is read from the last proof on-chain, so an institution cannot
+inflate reserves in one step and pass it off as real.
+
+The SDK reads the same values with `getOnChainLatestProof`. The console and the
+`/sandbox` playground show them live.
+
+## The customer
+
+A customer checks that their balance is part of the liabilities in a proof. They
+do not learn anyone else's balance.
+
+The check uses the same Merkle Sum Tree the institution built. To be counted, a
+customer's leaf must sit under the published root.
+
+### Steps
+
+1. The institution gives the customer their inclusion path. This is their own
+   leaf, which is the hash of their id and their balance, plus one sibling hash
+   and sibling sum for each level of the tree.
+2. The customer, or a tool acting for them, calls
+   `verify_inclusion(proof_id, id_hash, balance, path)` on the contract.
+3. The contract rebuilds the root from the leaf and the path. It checks two
+   things: the rebuilt root equals the stored root, and the running sum equals
+   the stored liabilities total.
+
+### What this proves
+
+Each node hash covers both child hashes and both child sums. Because of that:
+
+- The customer's balance is in the tree. If the balance were wrong, the rebuilt
+  root would not match.
+- The customer was not left out. An excluded customer's path cannot rebuild the
+  published root.
+- No branch was undercounted. A parent sum that did not equal its children's
+  sums would break the final total check.
+
+The check reveals nothing about other customers. The customer only sees sibling
+hashes and sums, never names or individual balances.
+
+The SDK exposes this as `verifyInclusion`.
+
+## What is public and what stays private
+
+| Public | Private |
+|---|---|
+| Total reserves (R) | Individual reserve account balances |
+| Total liabilities (L) | Individual customer balances |
+| Commitment root and timestamp | The list of customers |
+| That R is greater than or equal to L | The proof witness |

@@ -8,13 +8,20 @@
 
 use soroban_poseidon::Poseidon2Sponge;
 use soroban_sdk::crypto::bn254::Bn254Fr;
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Map, Vec, U256};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec, U256};
 use ultrahonk_soroban_verifier::{UltraHonkVerifier, PROOF_BYTES};
 
 use crate::storage::{DataKey, Error, PathNode, ProofMeta, ProofPublishedEvent, PubInputs};
 
 #[contract]
 pub struct ProofRegistry;
+
+// Keep proofs and the contract instance queryable: bump their TTL back to ~30
+// days on write and read, well under testnet's max entry TTL. Matters because
+// publish_proof reads the previous proof for the growth bound.
+const LEDGERS_PER_DAY: u32 = 17_280; // ~5s ledgers
+const TTL_BUMP: u32 = 30 * LEDGERS_PER_DAY;
+const TTL_THRESHOLD: u32 = 7 * LEDGERS_PER_DAY;
 
 #[contractimpl]
 impl ProofRegistry {
@@ -25,8 +32,6 @@ impl ProofRegistry {
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage().instance().set(&DataKey::Vk, &vk);
         env.storage().instance().set(&DataKey::LatestId, &0u64);
-        let proofs: Map<u64, ProofMeta> = Map::new(&env);
-        env.storage().persistent().set(&DataKey::Proofs, &proofs);
         Ok(())
     }
 
@@ -54,12 +59,30 @@ impl ProofRegistry {
             return Err(Error::InsolventBound);
         }
 
-        let id: u64 = env
+        // Anchor the growth bound to on-chain history. The circuit enforces
+        // 10*R <= 11*R_prev, but R_prev is a prover-chosen public input, so the
+        // bound only constrains anything if R_prev is tied to what was actually
+        // published last. At genesis there is no prior proof, so require zero
+        // growth (prev == reserves) instead of an arbitrary baseline the prover
+        // could inflate against next cycle.
+        let latest_id: u64 = env
             .storage()
             .instance()
             .get(&DataKey::LatestId)
-            .unwrap_or(0)
-            + 1;
+            .unwrap_or(0);
+        let previous_reserves = if latest_id == 0 {
+            0
+        } else {
+            Self::get_proof(env.clone(), latest_id)?.r
+        };
+        enforce_growth_baseline(
+            latest_id,
+            previous_reserves,
+            pub_inputs.prev_reserves,
+            pub_inputs.reserves_total,
+        )?;
+
+        let id: u64 = latest_id + 1;
 
         let ts = env.ledger().timestamp();
         let meta = ProofMeta {
@@ -69,14 +92,12 @@ impl ProofRegistry {
             timestamp: ts,
         };
 
-        let mut proofs: Map<u64, ProofMeta> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::Proofs)
-            .unwrap_or_else(|| Map::new(&env));
-        proofs.set(id, meta);
-        env.storage().persistent().set(&DataKey::Proofs, &proofs);
+        env.storage().persistent().set(&DataKey::Proof(id), &meta);
         env.storage().instance().set(&DataKey::LatestId, &id);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Proof(id), TTL_THRESHOLD, TTL_BUMP);
+        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_BUMP);
 
         ProofPublishedEvent {
             reserves_total: pub_inputs.reserves_total,
@@ -98,12 +119,15 @@ impl ProofRegistry {
     }
 
     pub fn get_proof(env: Env, id: u64) -> Result<ProofMeta, Error> {
-        let proofs: Map<u64, ProofMeta> = env
+        let meta: ProofMeta = env
             .storage()
             .persistent()
-            .get(&DataKey::Proofs)
-            .ok_or(Error::NotInitialized)?;
-        proofs.get(id).ok_or(Error::ProofNotFound)
+            .get(&DataKey::Proof(id))
+            .ok_or(Error::ProofNotFound)?;
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Proof(id), TTL_THRESHOLD, TTL_BUMP);
+        Ok(meta)
     }
 
     pub fn verify_inclusion(
@@ -119,14 +143,14 @@ impl ProofRegistry {
         let mut node_sum = balance;
 
         for step in path.iter() {
-            let (left_hash, right_hash) = if step.sibling_is_left {
-                (step.hash.clone(), node_hash.clone())
+            // Order this node and its sibling, carrying each one's sum, so the
+            // node hash binds both hashes and both sums.
+            let (left_hash, left_sum, right_hash, right_sum) = if step.sibling_is_left {
+                (step.hash.clone(), step.sum, node_hash.clone(), node_sum)
             } else {
-                (node_hash.clone(), step.hash.clone())
+                (node_hash.clone(), node_sum, step.hash.clone(), step.sum)
             };
-            // Only the two child hashes are fed into the hash -- not the sums.
-            // This matches the Noir circuit's hash2(left.hash, right.hash).
-            node_hash = poseidon2_node(&env, &left_hash, &right_hash);
+            node_hash = poseidon2_node(&env, &left_hash, left_sum, &right_hash, right_sum);
             node_sum = node_sum.saturating_add(step.sum);
         }
 
@@ -158,24 +182,37 @@ fn u256_to_bytes32(env: &Env, v: U256) -> BytesN<32> {
     BytesN::from_array(env, &arr)
 }
 
-/// Poseidon2([id_hash, balance], 2) -- matches hash_leaf in the Noir circuit.
+// Leaf hash, matching the circuit: hash4([id_hash, balance, 0, 0]).
 fn poseidon2_leaf(env: &Env, id_hash: &BytesN<32>, balance: u128) -> BytesN<32> {
     let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
+    let zero = U256::from_u32(env, 0);
     let inputs = soroban_sdk::vec![
         env,
         bytes32_to_u256(env, id_hash),
         U256::from_u128(env, balance),
+        zero.clone(),
+        zero,
     ];
     u256_to_bytes32(env, sponge.compute_hash(&inputs))
 }
 
-/// Poseidon2([left_hash, right_hash], 2) -- matches hash2 in the Noir circuit.
-fn poseidon2_node(env: &Env, left_hash: &BytesN<32>, right_hash: &BytesN<32>) -> BytesN<32> {
+// Internal node, matching the circuit: hash4([left.hash, left.sum, right.hash,
+// right.sum]). Binding the sums into the hash stops a subtree from lying about
+// its total.
+fn poseidon2_node(
+    env: &Env,
+    left_hash: &BytesN<32>,
+    left_sum: u128,
+    right_hash: &BytesN<32>,
+    right_sum: u128,
+) -> BytesN<32> {
     let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
     let inputs = soroban_sdk::vec![
         env,
         bytes32_to_u256(env, left_hash),
+        U256::from_u128(env, left_sum),
         bytes32_to_u256(env, right_hash),
+        U256::from_u128(env, right_sum),
     ];
     u256_to_bytes32(env, sponge.compute_hash(&inputs))
 }
@@ -213,6 +250,29 @@ fn encode_public_inputs(env: &Env, pi: &PubInputs) -> Bytes {
     append_u128_field(&mut out, pi.liabilities_total); // L
     append_u128_field(&mut out, pi.prev_reserves); // R_prev
     out
+}
+
+// Require the prover-declared prev_reserves to match on-chain history, so the
+// in-circuit 10R <= 11*R_prev growth bound cannot be gamed with a fabricated
+// baseline. Non-genesis publishes must declare the previous proof's reserves;
+// the genesis publish (no prior proof) must declare zero growth so there is no
+// arbitrary baseline to inflate against later. Pure integer logic, unit-tested
+// directly since a full-proof path can only reach it with matching inputs.
+fn enforce_growth_baseline(
+    latest_id: u64,
+    previous_reserves: u128,
+    declared_prev_reserves: u128,
+    reserves_total: u128,
+) -> Result<(), Error> {
+    let expected = if latest_id == 0 {
+        reserves_total
+    } else {
+        previous_reserves
+    };
+    if declared_prev_reserves != expected {
+        return Err(Error::PrevReservesMismatch);
+    }
+    Ok(())
 }
 
 // Append a u128 as a 32-byte big-endian field element (16 zero bytes, then the

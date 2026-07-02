@@ -32,6 +32,24 @@ field excluded. The orchestrator rebuilds the same bytes and verifies. See
 `internal/bank/payload.go` here and the matching code in the orchestrator's
 `banks` package.
 
+## Scenarios
+
+`POST /admin/scenarios/{name}` seeds all three accounts (`acct-anchor`,
+`acct-beacon`, `acct-cedar`) to a named state. Seeding is deterministic, so a
+scenario yields the same balances on every run. Balances are chosen relative to
+the demo liability total **L = 9,000,000** (integer minor units) so each
+scenario drives a deterministic solvency outcome once the orchestrator seeds
+liabilities to that total:
+
+| Scenario | Reserve total (R) | R vs L | Outcome |
+| --- | --- | --- | --- |
+| `solvent` (default) | 16,000,000 | +78% | solvent, healthy margin |
+| `near-breach` | 9,500,000 | +5.6% | solvent, thin margin |
+| `insolvent` | 4,500,000 | R < L | insolvent |
+
+A fresh sandbox boots seeded with `solvent`. An unknown scenario name returns
+400 with the list of available scenarios.
+
 ## Modules
 
 - `internal/signer`: P-256 key handling and signing.

@@ -98,20 +98,33 @@ transcript; see `circuits/README.md`.
 
 ### Testnet record
 
-Deployed to Testnet (protocol 27) with the solvency verifying key and exercised
-with the sample proof from `circuits/solvency`:
+Deployed to Testnet with the solvency verifying key and exercised with the
+sample proof from `circuits/solvency`. This is the deployment the orchestrator
+publishes to; its id is recorded in `contracts/proof-registry/.contract_id` and
+is the default for `ORCH_STELLAR_CONTRACT_ID`.
 
-- Contract id: `CD3Q35TI5OLJISJ6RGXOMLYOWVO47QP6LARCK4SULBZ5OKHALBEEHCHI`
-  ([explorer](https://stellar.expert/explorer/testnet/contract/CD3Q35TI5OLJISJ6RGXOMLYOWVO47QP6LARCK4SULBZ5OKHALBEEHCHI)).
+- Contract id: `CAYWB2IMDG753S3YF7DKVNLD7WBROYSP3JP5HEJET77W53UBWRD7ZX3Z`
+  ([explorer](https://stellar.expert/explorer/testnet/contract/CAYWB2IMDG753S3YF7DKVNLD7WBROYSP3JP5HEJET77W53UBWRD7ZX3Z)).
+- Wasm hash: `67ad9c1bd10da64b247380cd2a6fbaa03464ce5ca7a60f98b5ba6239043c7ccb`.
+- Owner: `solva-spike`
+  (`GA7DH2I6MKJNJ2XU6DAGV4ZSTVYKKXVAKM7BHGYREOTEI27NJGNB2UV4`). `publish_proof`
+  runs `owner.require_auth()`, so the orchestrator must sign as this account
+  (`ORCH_STELLAR_SIGNER_SECRET`).
 - A genuine proof published successfully, returning id 1 and emitting
-  `ProofPublished`
-  ([tx](https://stellar.expert/explorer/testnet/tx/8319c77d9cdff121c6f9e3d2fa532c31c188d2fc215eb5d9653d31b8cc029aef)).
-  A proof with one flipped byte was rejected on-chain with error 3
-  (`ProofInvalid`).
-- `publish_proof` fee: 240693 stroops (0.0240693 XLM). The BN254 verification
-  portion is consistent with the 0.0122514 XLM measured for the bare reference
-  verifier in the Testnet validation; the rest is the registry's persistent
-  write, the event, and the bound re-check.
+  `ProofPublished` (reserves_total 400, liabilities_total 360)
+  ([deploy tx](https://stellar.expert/explorer/testnet/tx/3a0884d9a29add167d4806696cfeaa9590f6ce7dea66bd1b0182f326b7acfe87),
+  [publish tx](https://stellar.expert/explorer/testnet/tx/b055468a113809b72a38af74d76a9137c3df8794ee265150622d92651b08cc80)).
+  `get_latest_proof` reads it back as `{ r: 400, l: 360, root_h: 1a3c…db1d }`.
+  Tampered-proof and mismatched-input rejection (`ProofInvalid`) are covered by
+  the contract's own tests in `src/test.rs`.
+- `publish_proof` fee is consistent with the earlier measurement of 240693
+  stroops (0.0240693 XLM): the BN254 verification portion matches the 0.0122514
+  XLM measured for the bare reference verifier in the Testnet validation, plus
+  the registry's persistent write, the event, and the bound re-check.
+
+A prior deployment from the build-out spike,
+`CD3Q35TI5OLJISJ6RGXOMLYOWVO47QP6LARCK4SULBZ5OKHALBEEHCHI`, is still live but is
+owned by a key not wired into the orchestrator.
 
 ## Hardening note
 

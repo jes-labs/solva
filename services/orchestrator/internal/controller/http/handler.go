@@ -2,20 +2,25 @@ package http
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
+	"github.com/jes-labs/solva/services/orchestrator/internal/repo"
 	"github.com/jes-labs/solva/services/orchestrator/internal/usecase"
 )
 
 // cycleRunner is the slice of the cycle use case the HTTP layer needs.
 type cycleRunner interface {
-	Run(ctx context.Context, tenantID string) error
+	Run(ctx context.Context, tenantID, requestKey string) error
 }
 
 // queryService is the slice of the read use case the HTTP layer needs.
@@ -23,6 +28,7 @@ type queryService interface {
 	GetLatestProof(ctx context.Context, tenantID string) (entity.Proof, error)
 	GetProof(ctx context.Context, id string) (entity.Proof, error)
 	GetInclusion(ctx context.Context, ref string) (entity.InclusionRef, error)
+	ResolveTenantContract(ctx context.Context, tenantID string) (entity.TenantContract, error)
 }
 
 // Handler holds the use cases the routes call.
@@ -42,11 +48,16 @@ type triggerCycleRequest struct {
 	TenantID string `json:"tenant_id"`
 }
 
+const (
+	maxCycleBody = 4 << 10 // 4 KiB: the body is a tiny JSON object.
+	cycleTimeout = 5 * time.Minute
+)
+
 // TriggerCycle starts a proof cycle for a tenant. An in-progress cycle is
 // reported as 409, not an error.
 func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 	var req triggerCycleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCycleBody)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -55,17 +66,47 @@ func (h *Handler) TriggerCycle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.cycle.Run(r.Context(), req.TenantID)
+	// The caller supplies an Idempotency-Key to make a retry safe; without one
+	// each trigger gets a fresh key and runs independently.
+	requestKey := r.Header.Get("Idempotency-Key")
+	if requestKey == "" {
+		requestKey = randomRequestKey()
+	}
+
+	// Detach from the request so a disconnect cannot orphan the per-tenant lock.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), cycleTimeout)
+	defer cancel()
+
+	err := h.cycle.Run(ctx, req.TenantID, requestKey)
 	switch {
 	case errors.Is(err, usecase.ErrCycleInProgress):
 		writeError(w, http.StatusConflict, "cycle already in progress")
 		return
+	case errors.Is(err, usecase.ErrDuplicateCycle):
+		// The key already ran: an idempotent no-op, reported as success.
+		writeJSON(w, http.StatusOK, map[string]string{"status": "already processed"})
+		return
+	case errors.Is(err, usecase.ErrInsolvent):
+		// Expected outcome, not a failure: reserves are below liabilities, so no
+		// proof can be generated. A distinct status lets callers tell this apart
+		// from a real error.
+		writeError(w, http.StatusUnprocessableEntity, "reserves are below liabilities; no proof generated")
+		return
 	case err != nil:
 		h.log.Error().Err(err).Str("tenant", req.TenantID).Msg("trigger cycle")
-		writeError(w, http.StatusNotImplemented, "cycle pipeline not fully implemented")
+		writeError(w, http.StatusInternalServerError, "the proof cycle could not complete")
 		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+
+// randomRequestKey makes a fallback idempotency key when the caller sends no
+// Idempotency-Key header. A client that wants retry-safe behaviour supplies its
+// own key so a replay reuses it.
+func randomRequestKey() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
 }
 
 // GetLatestProof returns the latest proof for a tenant. The tenant comes from
@@ -97,13 +138,47 @@ func (h *Handler) GetProof(w http.ResponseWriter, r *http.Request) {
 
 // GetInclusion returns a customer inclusion proof for a reference.
 func (h *Handler) GetInclusion(w http.ResponseWriter, r *http.Request) {
-	ref := chi.URLParam(r, "ref")
-	inc, err := h.query.GetInclusion(r.Context(), ref)
+	// chi returns the raw path segment, so the ref's "<id>:<hash>" arrives with
+	// the colon still percent-encoded. Decode it before parsing.
+	ref, err := url.PathUnescape(chi.URLParam(r, "ref"))
 	if err != nil {
-		writeError(w, http.StatusNotImplemented, "inclusion lookup not implemented")
+		writeError(w, http.StatusBadRequest, "invalid inclusion ref encoding")
 		return
 	}
-	writeJSON(w, http.StatusOK, inc)
+	inc, err := h.query.GetInclusion(r.Context(), ref)
+	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "no inclusion path for that proof and customer")
+			return
+		}
+		h.log.Error().Err(err).Str("ref", ref).Msg("get inclusion")
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, toInclusionDTO(inc))
+}
+
+// GetTenantContract returns the tenant's deployed contract and network so the
+// SDK and oracle read from the tenant's own contract. An unknown tenant or one
+// with no contract yet is a 404.
+func (h *Handler) GetTenantContract(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	tc, err := h.query.ResolveTenantContract(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) || errors.Is(err, repo.ErrTenantNotProvisioned) {
+			writeError(w, http.StatusNotFound, "no contract for that tenant")
+			return
+		}
+		h.log.Error().Err(err).Str("tenant", id).Msg("resolve tenant contract")
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, tenantContractDTO{ContractID: tc.ContractID, Network: tc.Network})
+}
+
+type tenantContractDTO struct {
+	ContractID string `json:"contract_id"`
+	Network    string `json:"network"`
 }
 
 // Health reports liveness.
@@ -129,6 +204,37 @@ func toProofDTO(p entity.Proof) proofDTO {
 		RootHash:         p.RootHash,
 		ReservesTotal:    p.ReservesTotal,
 		LiabilitiesTotal: p.LiabilitiesTotal,
+	}
+}
+
+// pathNodeDTO and inclusionDTO are the JSON surface for the inclusion endpoint.
+// sibling_is_left matches the contract's PathNode so the SDK maps it straight
+// into verify_inclusion. proof_id is the chain proof id verify_inclusion takes.
+type pathNodeDTO struct {
+	Hash          string `json:"hash"`
+	Sum           string `json:"sum"`
+	SiblingIsLeft bool   `json:"sibling_is_left"`
+}
+
+type inclusionDTO struct {
+	ProofID        string        `json:"proof_id"`
+	CustomerIDHash string        `json:"customer_id_hash"`
+	Balance        string        `json:"balance"`
+	RootHash       string        `json:"root_hash"`
+	Path           []pathNodeDTO `json:"path"`
+}
+
+func toInclusionDTO(inc entity.InclusionRef) inclusionDTO {
+	path := make([]pathNodeDTO, len(inc.Path))
+	for i, n := range inc.Path {
+		path[i] = pathNodeDTO{Hash: n.Hash, Sum: n.Sum, SiblingIsLeft: n.Left}
+	}
+	return inclusionDTO{
+		ProofID:        inc.ProofID,
+		CustomerIDHash: inc.CustomerIDHash,
+		Balance:        inc.Balance,
+		RootHash:       inc.RootHash,
+		Path:           path,
 	}
 }
 

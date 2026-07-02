@@ -89,5 +89,5 @@ the order is load bearing:
 `Prover.toml.example` is the committed sample input. It matches the in-circuit
 `test_solvent_passes` vector: a complete `N=8` tree of customers with balances
 `10..80` (`L = 360`), reserves `[200, 200, 0, 0]` (`R = 400`), and `R_prev = 400`
-so the fraud bound holds. The Poseidon2 root for that leaf set is
-`0x1a3ca29c3724320ab2fe855f698969f7c9e18486ad39434345a05c0cf716db1d`.
+so the fraud bound holds. The Poseidon2 hash4-with-sums root for that leaf set is
+`0x0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f`.

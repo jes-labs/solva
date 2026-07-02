@@ -6,3 +6,13 @@
 INSERT INTO tenants (name, plan)
 VALUES ($1, $2)
 RETURNING id;
+
+-- name: GetTenantContract :one
+SELECT contract_id, network
+FROM tenants
+WHERE id = $1;
+
+-- name: SetTenantContract :exec
+UPDATE tenants
+SET contract_id = $2, network = $3
+WHERE id = $1;

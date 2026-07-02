@@ -15,6 +15,7 @@ import (
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/config"
 	controllerhttp "github.com/jes-labs/solva/services/orchestrator/internal/controller/http"
+	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/scheduler"
 	"github.com/jes-labs/solva/services/orchestrator/internal/usecase"
 )
 
@@ -58,12 +59,29 @@ func run(cfg config.Config, log zerolog.Logger) error {
 	query := usecase.NewQuery(deps.postgres, deps.cache)
 
 	handler := controllerhttp.NewHandler(cycle, query, log)
-	router := controllerhttp.Router(handler, log)
+	if cfg.APIToken == "" {
+		log.Warn().Msg("ORCH_API_TOKEN is empty: the HTTP API is UNAUTHENTICATED. Set it before public hosting.")
+	}
+	router := controllerhttp.Router(handler, cfg.APIToken, log)
+
+	// Start the per-tenant cron scheduler if enabled via config flag. The
+	// scheduler runs in a background goroutine and is cancelled with the
+	// top-level context on shutdown.
+	if cfg.SchedulerEnabled {
+		sched := scheduler.New(cycle, deps.postgres, log)
+		go sched.Run(ctx)
+		log.Info().Msg("per-tenant cron scheduler started (ORCH_SCHEDULER_ENABLED=true)")
+	} else {
+		log.Info().Msg("cron scheduler disabled (set ORCH_SCHEDULER_ENABLED=true to enable)")
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		// No WriteTimeout: a synchronous cycle runs for tens of seconds.
 	}
 
 	serveErr := make(chan error, 1)

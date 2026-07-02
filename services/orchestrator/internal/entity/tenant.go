@@ -13,3 +13,13 @@ type Tenant struct {
 	// CreatedAt is when the tenant was provisioned.
 	CreatedAt time.Time
 }
+
+// TenantContract is the on-chain home for a tenant's proofs: the deployed
+// proof-registry contract and the Stellar network it lives on. A tenant has one
+// once it is provisioned (epic #124).
+type TenantContract struct {
+	// ContractID is the deployed proof-registry address, C... strkey.
+	ContractID string
+	// Network is the Stellar network the contract lives on, for example "testnet".
+	Network string
+}

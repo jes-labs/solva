@@ -23,11 +23,11 @@ use crate::{Error, PathNode, ProofRegistry, ProofRegistryClient, PubInputs};
 static SOLVENCY_VK: &[u8] = include_bytes!("testdata/solvency_vk.bin");
 static SOLVENCY_PROOF: &[u8] = include_bytes!("testdata/solvency_proof.bin");
 
-// Poseidon2 sum-tree root for the sample leaves (ids 1..8, balances 10..80).
-// This is the `root_h` public input the proof commits to.
+// Poseidon2 hash4-with-sums root for the sample leaves (ids 1..8, balances
+// 10..80). This is the `root_h` public input the proof commits to.
 const SAMPLE_ROOT_H: [u8; 32] = [
-    0x1a, 0x3c, 0xa2, 0x9c, 0x37, 0x24, 0x32, 0x0a, 0xb2, 0xfe, 0x85, 0x5f, 0x69, 0x89, 0x69, 0xf7,
-    0xc9, 0xe1, 0x84, 0x86, 0xad, 0x39, 0x43, 0x43, 0x45, 0xa0, 0x5c, 0x0c, 0xf7, 0x16, 0xdb, 0x1d,
+    0x0e, 0x36, 0x88, 0x8d, 0x7c, 0xad, 0xe7, 0xe7, 0x93, 0x09, 0xcd, 0x7e, 0x58, 0x10, 0x96, 0x11,
+    0x10, 0x4c, 0x22, 0x5f, 0x2f, 0xcd, 0x5a, 0x15, 0x8c, 0x66, 0x2d, 0xeb, 0xb1, 0x73, 0x57, 0x2f,
 ];
 
 // Deploys the contract with the real solvency verifying key.
@@ -78,6 +78,12 @@ fn real_proof_verifies_and_is_recorded() {
     // Publishing the same valid proof again bumps the monotonic id.
     let id2 = client.publish_proof(&proof, &inputs);
     assert_eq!(id2, 2);
+
+    // Per-id storage: both proofs stay independently retrievable, and each
+    // publish writes only its own entry (no growing map to read and rewrite).
+    assert_eq!(client.get_proof(&1).r, 400);
+    assert_eq!(client.get_proof(&2).r, 400);
+    assert_eq!(client.get_latest_proof().r, 400);
 }
 
 #[test]
@@ -120,6 +126,81 @@ fn publish_requires_owner_auth() {
     assert!(result.is_err());
 }
 
+// Growth-baseline binding. The reject branches cannot be reached through a full
+// proof (only inputs the proof commits to survive verification, and those are
+// self-consistent), so the pure baseline check is unit-tested directly. The
+// accept path is exercised end to end by real_proof_verifies_and_is_recorded,
+// which publishes a genesis proof (prev == reserves) and then a second proof
+// bound to the first proof's reserves.
+
+#[test]
+fn growth_baseline_genesis_requires_zero_growth() {
+    // Genesis (no prior proof): the only accepted baseline is prev == reserves.
+    assert_eq!(crate::enforce_growth_baseline(0, 0, 400, 400), Ok(()));
+    // A first proof that declares a low baseline to grow against is rejected.
+    assert_eq!(
+        crate::enforce_growth_baseline(0, 0, 360, 400),
+        Err(Error::PrevReservesMismatch)
+    );
+}
+
+#[test]
+fn growth_baseline_binds_to_previous_reserves() {
+    // Non-genesis: the declared baseline must equal the previous proof reserves.
+    assert_eq!(crate::enforce_growth_baseline(1, 400, 400, 440), Ok(()));
+    // Declaring a baseline the chain never recorded is rejected. This is what
+    // stops an inflated jump (e.g. prev=500 to justify R=440) from verifying.
+    assert_eq!(
+        crate::enforce_growth_baseline(1, 400, 500, 440),
+        Err(Error::PrevReservesMismatch)
+    );
+}
+
+// Publishing bumps the proof entry and the instance TTL back to ~30 days, and a
+// later read re-extends the proof, so proofs stay queryable (#143).
+#[test]
+fn ttl_is_extended_on_write_and_read() {
+    use soroban_sdk::testutils::storage::{Instance as _, Persistent as _};
+
+    let (env, client, _owner) = setup();
+    env.mock_all_auths();
+    env.ledger().set_sequence_number(1000);
+    env.ledger().set_max_entry_ttl(40 * 17_280); // above the 30-day bump
+
+    let proof = Bytes::from_slice(&env, SOLVENCY_PROOF);
+    let id = client.publish_proof(&proof, &solvent_inputs(&env));
+
+    let (proof_ttl, instance_ttl) = env.as_contract(&client.address, || {
+        (
+            env.storage()
+                .persistent()
+                .get_ttl(&crate::storage::DataKey::Proof(id)),
+            env.storage().instance().get_ttl(),
+        )
+    });
+    assert!(
+        proof_ttl >= 29 * 17_280,
+        "proof ttl not extended: {proof_ttl}"
+    );
+    assert!(
+        instance_ttl >= 29 * 17_280,
+        "instance ttl not extended: {instance_ttl}"
+    );
+
+    // Advance most of the window; a read must re-extend the proof.
+    env.ledger().set_sequence_number(1000 + 25 * 17_280);
+    client.get_proof(&id);
+    let after_read = env.as_contract(&client.address, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&crate::storage::DataKey::Proof(id))
+    });
+    assert!(
+        after_read >= 29 * 17_280,
+        "read did not re-extend ttl: {after_read}"
+    );
+}
+
 // Native Poseidon2 inclusion check.
 
 // Convert a 32-byte big-endian node hash back into a field element, matching
@@ -130,12 +211,21 @@ fn b32_to_u256(env: &Env, b: &BytesN<32>) -> U256 {
 
 // Build the 8-leaf Poseidon2 sum tree for the sample leaves (ids 1..8,
 // balances 10..80) and return the levels bottom-up. Each node is (hash, sum).
-// Mirrors the prover fold in services/prover/src/tree.rs.
+// Mirrors the prover fold in services/prover/src/tree.rs: leaf is
+// hash4([id, balance, 0, 0]), node is hash4([left.hash, left.sum, right.hash,
+// right.sum]).
 fn build_sample_levels(env: &Env) -> std::vec::Vec<std::vec::Vec<(BytesN<32>, u128)>> {
+    let zero = U256::from_u32(env, 0);
     let mut leaves: std::vec::Vec<(BytesN<32>, u128)> = std::vec::Vec::new();
     for i in 1u128..=8 {
         let bal = 10 * i;
-        let hash = poseidon2_two(env, U256::from_u128(env, i), U256::from_u128(env, bal));
+        let hash = poseidon2_four(
+            env,
+            U256::from_u128(env, i),
+            U256::from_u128(env, bal),
+            zero.clone(),
+            zero.clone(),
+        );
         leaves.push((hash, bal));
     }
 
@@ -152,7 +242,13 @@ fn build_sample_levels(env: &Env) -> std::vec::Vec<std::vec::Vec<(BytesN<32>, u1
             } else {
                 &cur[k]
             };
-            let hash = poseidon2_two(env, b32_to_u256(env, lh), b32_to_u256(env, rh));
+            let hash = poseidon2_four(
+                env,
+                b32_to_u256(env, lh),
+                U256::from_u128(env, *ls),
+                b32_to_u256(env, rh),
+                U256::from_u128(env, *rs),
+            );
             parents.push((hash, ls.saturating_add(*rs)));
             k += 2;
         }
@@ -274,6 +370,14 @@ fn json_expected_hex(id: &str) -> BytesN<32> {
 fn poseidon2_two(env: &Env, a: U256, b: U256) -> BytesN<32> {
     let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
     let inputs = soroban_sdk::vec![env, a, b];
+    let result = sponge.compute_hash(&inputs);
+    let arr: [u8; 32] = result.to_be_bytes().try_into().unwrap_or([0u8; 32]);
+    BytesN::from_array(env, &arr)
+}
+
+fn poseidon2_four(env: &Env, a: U256, b: U256, c: U256, d: U256) -> BytesN<32> {
+    let mut sponge = Poseidon2Sponge::<4, Bn254Fr>::new(env);
+    let inputs = soroban_sdk::vec![env, a, b, c, d];
     let result = sponge.compute_hash(&inputs);
     let arr: [u8; 32] = result.to_be_bytes().try_into().unwrap_or([0u8; 32]);
     BytesN::from_array(env, &arr)

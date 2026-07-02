@@ -32,10 +32,12 @@ type Liability struct {
 	Balance        string
 }
 
-// StellarPublisher publishes a verified proof to the Soroban proof-registry
-// and returns the monotonic on-chain proof id.
+// StellarPublisher publishes a verified proof to a tenant's Soroban proof-registry
+// and returns the monotonic on-chain proof id. target names the tenant's contract
+// and network. The owner signature that authorizes the publish is the publisher's
+// concern; per-tenant signing via the tenant's passkey smart wallet lands in #128.
 type StellarPublisher interface {
-	PublishProof(ctx context.Context, proof []byte, pub entity.PublicInputs) (uint64, error)
+	PublishProof(ctx context.Context, target entity.TenantContract, proof []byte, pub entity.PublicInputs) (uint64, error)
 }
 
 // BankAdapter fetches reserve figures from a source and verifies their ECDSA
@@ -53,6 +55,15 @@ type ProofRepo interface {
 	GetLatestProof(ctx context.Context, tenantID string) (entity.Proof, error)
 	GetInclusion(ctx context.Context, ref string) (entity.InclusionRef, error)
 	LoadLiabilities(ctx context.Context, tenantID string) ([]Liability, error)
+	// ResolveTenantContract returns the tenant's contract and network. An
+	// unprovisioned tenant is a clear handled state (ErrTenantNotProvisioned).
+	ResolveTenantContract(ctx context.Context, tenantID string) (entity.TenantContract, error)
+	// ClaimCycle records the cycle's idempotency key. It returns true when the
+	// key is new (claimed) and false when it was already claimed (a duplicate).
+	// This is the durable idempotency layer that backs the Redis lock.
+	ClaimCycle(ctx context.Context, tenantID, requestKey string) (bool, error)
+	// AppendAudit writes one event to the append-only audit log.
+	AppendAudit(ctx context.Context, tenantID, event string, payload []byte) error
 }
 
 // ReserveRepo records reserve snapshots and reports the previous cycle total,
@@ -60,6 +71,32 @@ type ProofRepo interface {
 type ReserveRepo interface {
 	SaveSnapshot(ctx context.Context, snap entity.ReserveSnapshot) error
 	LatestReserves(ctx context.Context, tenantID string) (string, error)
+}
+
+// TenantRepo lists tenants the scheduler needs to drive.
+type TenantRepo interface {
+	// ListTenants returns every active tenant. The scheduler calls this on
+	// each tick so newly provisioned tenants are picked up without a restart.
+	ListTenants(ctx context.Context) ([]entity.Tenant, error)
+}
+
+// CadenceForPlan maps a billing plan name to its cycle interval. Free tenants
+// run hourly; pro tenants run every hour by default but can be tightened to
+// daily. Unknown plans fall back to hourly so a misconfigured tenant still
+// produces proofs rather than being silently skipped.
+//
+// PRD 2 §7.1 defines the two supported cadences. Billing logic (which plan a
+// tenant is on) is intentionally out of scope here: the plan field is read,
+// not written.
+func CadenceForPlan(plan string) (hourly, daily bool) {
+	switch plan {
+	case "pro":
+		return true, false // pro: hourly
+	case "free":
+		return false, true // free: daily
+	default:
+		return true, false // unknown: default to hourly
+	}
 }
 
 // Cache holds the latest proof id per tenant and the idempotency locks that

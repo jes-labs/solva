@@ -70,6 +70,9 @@ export function initialDashboard(): DashboardData {
       cycle("1042", now - 130, "12400000", "11980000", 1820),
       cycle("1041", now - 5400, "12310000", "11940000", 1760),
       cycle("1038", now - 92000, "12100000", "11890000", 1910),
+      // Liabilities jumped ~19% into 1038: still solvent, but the anomaly watch
+      // flags the spike as an early warning.
+      cycle("1035", now - 180000, "12050000", "10000000", 1880),
     ],
   };
 }

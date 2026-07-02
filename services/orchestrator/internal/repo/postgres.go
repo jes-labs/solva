@@ -9,8 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
@@ -21,8 +24,10 @@ import (
 // errors.Is rather than reaching for the pgx-specific sentinel.
 var ErrNotFound = errors.New("repo: not found")
 
-// errNotImplemented marks a method that still waits on an upstream contract.
-var errNotImplemented = errors.New("repo: not implemented")
+// ErrTenantNotProvisioned is returned when a tenant exists but has no contract
+// yet. It is a distinct, expected state, not a failure: the tenant is known but
+// not yet wired to an on-chain proof-registry.
+var ErrTenantNotProvisioned = errors.New("repo: tenant has no contract")
 
 // Postgres implements ProofRepo and ReserveRepo over a pgx pool.
 type Postgres struct {
@@ -84,9 +89,9 @@ func (p *Postgres) SaveProof(ctx context.Context, proof entity.Proof, serialized
 		return fmt.Errorf("insert proof: %w", err)
 	}
 
-	// depth is carried inside the serialized tree the prover produces. The
-	// orchestrator stores that blob opaquely, so depth stays 0 until the
-	// serialized-tree schema is defined (same dependency as GetInclusion).
+	// The serialized tree carries its own structure (paths per leaf), so the
+	// orchestrator stores the blob opaquely and leaves depth at 0; GetInclusion
+	// reads the blob directly rather than relying on this column.
 	if err := qtx.CreateMerkleTree(ctx, CreateMerkleTreeParams{
 		ProofID:    id,
 		Depth:      0,
@@ -133,15 +138,89 @@ func (p *Postgres) GetLatestProof(ctx context.Context, tenantID string) (entity.
 	return proofFromRow(row)
 }
 
-// GetInclusion builds an inclusion reference from the stored serialized tree.
+// GetInclusion resolves a customer's inclusion path. ref is "<proof-id>:<id-hash>"
+// where proof-id is the orchestrator's internal proof id. It loads the prover's
+// serialized tree for that proof, finds the customer's leaf, and returns the
+// path plus the chain proof id the contract's verify_inclusion expects.
 func (p *Postgres) GetInclusion(ctx context.Context, ref string) (entity.InclusionRef, error) {
-	_ = ctx
-	_ = ref
-	// Building an inclusion reference means decoding the prover's serialized
-	// Merkle Sum Tree (merkle_trees.serialized) into sibling path nodes. That
-	// format is owned by the prover and is not finalized, so this stays a stub
-	// until the serialized-tree schema lands.
-	return entity.InclusionRef{}, errNotImplemented
+	proofID, idHash, ok := strings.Cut(ref, ":")
+	if !ok || proofID == "" || idHash == "" {
+		return entity.InclusionRef{}, fmt.Errorf("%w: ref must be \"<proof-id>:<id-hash>\"", ErrNotFound)
+	}
+
+	proof, err := p.GetProof(ctx, proofID)
+	if err != nil {
+		return entity.InclusionRef{}, err
+	}
+
+	pid, err := toUUID(proofID)
+	if err != nil {
+		return entity.InclusionRef{}, err
+	}
+	row, err := p.q.GetMerkleTreeByProof(ctx, pid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.InclusionRef{}, ErrNotFound
+		}
+		return entity.InclusionRef{}, fmt.Errorf("get merkle tree: %w", err)
+	}
+
+	var tree serializedTree
+	if err := json.Unmarshal(row.Serialized, &tree); err != nil {
+		return entity.InclusionRef{}, fmt.Errorf("decode serialized tree: %w", err)
+	}
+	leaf, ok := tree.findLeaf(idHash)
+	if !ok {
+		return entity.InclusionRef{}, ErrNotFound
+	}
+
+	path := make([]entity.PathNode, len(leaf.Path))
+	for i, n := range leaf.Path {
+		path[i] = entity.PathNode{Hash: n.Hash, Sum: n.Sum, Left: n.SiblingIsLeft}
+	}
+	return entity.InclusionRef{
+		ProofID:        strconv.FormatUint(proof.ChainProofID, 10),
+		CustomerIDHash: leaf.IDHash,
+		Balance:        leaf.Balance,
+		Path:           path,
+		RootHash:       tree.RootHash,
+	}, nil
+}
+
+// ResolveTenantContract returns the tenant's deployed contract and network. A
+// known tenant with no contract yet returns ErrTenantNotProvisioned; an unknown
+// tenant returns ErrNotFound.
+func (p *Postgres) ResolveTenantContract(ctx context.Context, tenantID string) (entity.TenantContract, error) {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return entity.TenantContract{}, err
+	}
+	row, err := p.q.GetTenantContract(ctx, tid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.TenantContract{}, ErrNotFound
+		}
+		return entity.TenantContract{}, fmt.Errorf("get tenant contract: %w", err)
+	}
+	if !row.ContractID.Valid || row.ContractID.String == "" {
+		return entity.TenantContract{}, ErrTenantNotProvisioned
+	}
+	return entity.TenantContract{ContractID: row.ContractID.String, Network: row.Network}, nil
+}
+
+// SetTenantContract records the contract a tenant publishes to. Provisioning
+// (who calls this, and when) is the control plane's job (#131); this is the
+// data-model write it builds on.
+func (p *Postgres) SetTenantContract(ctx context.Context, tenantID, contractID, network string) error {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return err
+	}
+	return p.q.SetTenantContract(ctx, SetTenantContractParams{
+		ID:         tid,
+		ContractID: pgtype.Text{String: contractID, Valid: true},
+		Network:    network,
+	})
 }
 
 // LoadLiabilities loads a tenant's current customer balances for witnessing.
@@ -208,6 +287,39 @@ func (p *Postgres) LatestReserves(ctx context.Context, tenantID string) (string,
 	return fromNumeric(n)
 }
 
+// ClaimCycle records the cycle's idempotency key. The INSERT ... ON CONFLICT DO
+// NOTHING RETURNING returns a row when the key is new, and no row when it was
+// already claimed. A missing row is the durable "duplicate" signal, not an error.
+func (p *Postgres) ClaimCycle(ctx context.Context, tenantID, requestKey string) (bool, error) {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return false, err
+	}
+	if _, err := p.q.ClaimCycle(ctx, ClaimCycleParams{TenantID: tid, RequestKey: requestKey}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("claim cycle: %w", err)
+	}
+	return true, nil
+}
+
+// AppendAudit writes one event to the append-only audit log.
+func (p *Postgres) AppendAudit(ctx context.Context, tenantID, event string, payload []byte) error {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return err
+	}
+	if err := p.q.CreateAuditLog(ctx, CreateAuditLogParams{
+		TenantID: tid,
+		Event:    event,
+		Payload:  payload,
+	}); err != nil {
+		return fmt.Errorf("append audit: %w", err)
+	}
+	return nil
+}
+
 // proofFromRow maps a generated proofs row to the domain Proof, converting each
 // pgtype value back to the string/time form the entity uses.
 func proofFromRow(row Proof) (entity.Proof, error) {
@@ -231,8 +343,35 @@ func proofFromRow(row Proof) (entity.Proof, error) {
 	}, nil
 }
 
+// ListTenants returns every tenant row for the scheduler. The orchestrator does
+// not own tenant lifecycle, but must read the plan field to know each tenant's
+// cycle cadence.
+func (p *Postgres) ListTenants(ctx context.Context) ([]entity.Tenant, error) {
+	const q = `SELECT id, name, plan, created_at FROM tenants ORDER BY created_at`
+	rows, err := p.pool.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list tenants: %w", err)
+	}
+	defer rows.Close()
+
+	var out []entity.Tenant
+	for rows.Next() {
+		var t entity.Tenant
+		var pgID pgtype.UUID
+		var pgCreated pgtype.Timestamptz
+		if err := rows.Scan(&pgID, &t.Name, &t.Plan, &pgCreated); err != nil {
+			return nil, fmt.Errorf("scan tenant row: %w", err)
+		}
+		t.ID = fromUUID(pgID)
+		t.CreatedAt = pgCreated.Time
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // Ensure Postgres satisfies the repo ports.
 var (
 	_ usecase.ProofRepo   = (*Postgres)(nil)
 	_ usecase.ReserveRepo = (*Postgres)(nil)
+	_ usecase.TenantRepo  = (*Postgres)(nil)
 )

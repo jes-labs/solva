@@ -27,9 +27,35 @@ build-circuits:
     cd circuits/solvency && nargo compile
     cd circuits/merkle && nargo compile
 
+# Assemble the prover's runtime artifacts into ./artifacts:
+#   solva.json  the compiled solvency circuit (renamed from nargo's output)
+#   g1.dat g2.dat  the BN254 CRS that bb downloads to ~/.bb-crs
+# Requires the pinned nargo and bb (see circuits/README.md). bb write_vk needs
+# no witness; it is the witness-free way to trigger the CRS download.
+build-artifacts:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # nargo and bb install outside the default PATH; add them so this runs from
+    # just, CI, or any non-interactive shell, not only an interactive one.
+    export PATH="$HOME/.bb:$HOME/.nargo/bin:$PATH"
+    ( cd circuits/solvency && nargo compile )
+    ( cd circuits/solvency && bb write_vk --scheme ultra_honk --oracle_hash keccak \
+        --bytecode_path target/solva_solvency.json \
+        --output_path target --output_format bytes_and_fields )
+    mkdir -p artifacts
+    cp circuits/solvency/target/solva_solvency.json artifacts/solva.json
+    cp "$HOME/.bb-crs/bn254_g1.dat" artifacts/g1.dat
+    cp "$HOME/.bb-crs/bn254_g2.dat" artifacts/g2.dat
+    echo "artifacts assembled: artifacts/{solva.json,g1.dat,g2.dat}"
+
 # Run the Rust prover service.
 dev-prover:
     cargo run -p solva-prover
+
+# Build the reproducible prover image: the gRPC server plus the pinned toolchain
+# (Noir beta.9, bb 0.87.0) and the CRS baked in, so it runs with no host setup.
+prover-image:
+    docker build -f services/prover/Dockerfile -t solva-prover .
 
 # Run the Go orchestrator.
 dev-orchestrator:
@@ -39,21 +65,56 @@ dev-orchestrator:
 dev-sandbox:
     cd services/sandbox && go run ./cmd/app
 
-# Generate gRPC stubs for Go and Rust from proto/prover.proto.
-proto:
-    buf generate
-
 # Build the Soroban contract to wasm.
 build-contract:
     stellar contract build
 
 # Deploy the contract to testnet. Requires a funded identity.
-deploy-contract network="testnet":
-    stellar contract deploy --wasm target/wasm32v1-none/release/proof_registry.wasm --network {{network}}
+# The constructor takes the registry owner (the account allowed to publish) and
+# the embedded solvency verifying key. The deployed contract id is written to
+# contracts/proof-registry/.contract_id.
+deploy-contract network="testnet" owner="solva-spike":
+    stellar contract deploy \
+      --wasm target/wasm32v1-none/release/proof_registry.wasm \
+      --source {{owner}} \
+      --network {{network}} \
+      -- \
+      --owner {{owner}} \
+      --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin \
+      | tail -1 | tee contracts/proof-registry/.contract_id
 
-# Regenerate the TypeScript contract bindings after a contract change.
-gen-bindings:
-    stellar contract bindings typescript --output-dir packages/contract-bindings/src/generated --overwrite
+# Provision a tenant: deploy a dedicated proof-registry, embed the shared
+# solvency VK, and record the contract id on the tenant row. Each tenant gets its
+# own contract, so their proofs are isolated on-chain (multi-tenancy, #125).
+# `owner` is the account allowed to publish; until the passkey smart wallet is
+# wired (#128) this is the orchestrator's signer, so it can authorize cycles.
+# This is the operator/dev path; the control plane (#131) provisions in product.
+# DB connection comes from the standard PG env vars (defaults match infra/).
+provision-tenant tenant_id owner="signor" network="testnet": build-contract
+    #!/usr/bin/env bash
+    set -euo pipefail
+    id=$(stellar contract deploy \
+      --wasm target/wasm32v1-none/release/proof_registry.wasm \
+      --source {{owner}} \
+      --network {{network}} \
+      -- \
+      --owner {{owner}} \
+      --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin | tail -1)
+    echo "deployed registry for tenant {{tenant_id}}: $id"
+    rows=$(PGPASSWORD="${PGPASSWORD:-solva}" psql -h "${PGHOST:-localhost}" \
+      -U "${PGUSER:-solva}" -d "${PGDATABASE:-solva}" -v ON_ERROR_STOP=1 -qtA -c \
+      "UPDATE tenants SET contract_id='$id', network='{{network}}' WHERE id='{{tenant_id}}' RETURNING id;")
+    [ -n "$rows" ] || { echo "no tenant {{tenant_id}} to record the contract on" >&2; exit 1; }
+    echo "recorded contract_id on tenant {{tenant_id}}"
+
+# Regenerate the TypeScript contract bindings from the deployed contract. The
+# CLI fetches the interface from the network using the id in .contract_id.
+gen-bindings network="testnet":
+    stellar contract bindings typescript \
+      --network {{network}} \
+      --id "$(cat contracts/proof-registry/.contract_id)" \
+      --output-dir packages/contract-bindings/src/generated \
+      --overwrite
 
 # Regenerate the sqlc database layer after changing query/ or migrations/.
 sqlc:
@@ -79,25 +140,65 @@ lint:
 down:
     docker compose -f infra/docker-compose.yml down
 
-# Run `just parity-check` to execute all three parity gate tests.
-# Runs the full Poseidon2 parity gate across all three layers.
-# Step 0 is manual: run `just parity-print` first, populate the JSON, then run this.
-parity-check: parity-circuit parity-prover parity-contract
-    @echo "✓ All three Poseidon2 parity layers passed."
+# End-to-end test: sandbox -> orchestrator -> prover -> contract on Testnet,
+# across the solvent / near-breach / insolvent scenarios. Needs a funded
+# Testnet identity that owns the contract: export E2E_STELLAR_SIGNER_SECRET.
+# See scripts/e2e.sh for the full prerequisites.
+e2e:
+    bash scripts/e2e.sh
 
-# Step 0 (manual, run once): print the ground-truth hash values from the Noir circuit.
-# Copy the output into test-vectors/poseidon2_parity.json before running parity-check.
+# Bring up the demo stack for the /sandbox playground and keep it running: seed
+# two institutions, start sandbox + prover + orchestrator. Needs a funded Testnet
+# identity that owns the demo contracts: export ORCH_STELLAR_SIGNER_SECRET.
+# See scripts/demo-up.sh for the full prerequisites.
+demo:
+    bash scripts/demo-up.sh
+
+# Cross-layer parity gate: the circuit, prover, and contract must each build the
+# canonical Poseidon2 hash4-with-sums root for the sample leaves. The contract is
+# the source of truth (native on-chain Poseidon2); the other layers must match.
+parity-check: parity-contract parity-circuit parity-prover
+    @echo "✓ Circuit, prover, and contract all build the canonical root."
+
+# Print the canonical root from the contract's native Poseidon2 (CANONICAL_ROOT_HASH).
+# This is the value the circuit and prover parity tests assert against.
 parity-print:
-    cd circuits/lib && nargo test --show-output poseidon2_parity_print
+    cargo test -p proof-registry canonical_root -- --nocapture
 
-# Layer 1 — Noir circuit
+# Layer 1 — Noir circuit: root matches the contract canonical root.
 parity-circuit:
-    cd circuits/lib && nargo test --package solva_lib poseidon2_parity
+    cd circuits/solvency && nargo test parity_root_matches_contract
 
-# Layer 2 — Rust prover
+# Layer 2 — Rust prover: production tree builds the canonical root.
 parity-prover:
-    cargo test -p solva-prover poseidon2_parity -- --nocapture
+    cargo test -p solva-prover root_matches_canonical
 
-# Layer 3 — Stellar contract
+# Layer 3 — Stellar contract: inclusion helpers build the canonical root.
 parity-contract:
-    cargo test -p proof-registry poseidon2_parity -- --nocapture
+    cargo test -p proof-registry inclusion_helpers_match_canonical
+
+# Install the Go protoc plugins required by buf.gen.yaml.
+_install-proto-plugins:
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+# Generate gRPC stubs for Go from proto/prover.proto.
+# Rust stubs are generated automatically by the prover's build.rs (tonic-build).
+proto: _install-proto-plugins
+    buf generate
+    @echo "✓ Go stubs regenerated → services/orchestrator/internal/infrastructure/grpc/proverpb"
+
+# Check that committed Go stubs match what buf generate would produce.
+# Run before opening a PR if you changed any .proto file.
+proto-check: _install-proto-plugins
+    #!/usr/bin/env bash
+    set -euo pipefail
+    buf generate
+    if ! git diff --quiet -- services/orchestrator/internal/infrastructure/grpc/proverpb; then
+        echo ""
+        echo "Stale Go stubs detected. Run 'just proto' and commit the result."
+        echo ""
+        git diff -- services/orchestrator/internal/infrastructure/grpc/proverpb
+        exit 1
+    fi
+    echo "✓ Go stubs are up to date."
