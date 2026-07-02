@@ -248,8 +248,9 @@ assert_insolvent() { # scenario-name
   key="e2e-${name}-$(date +%s)"
   code=$(run_cycle "$key")
   case "$code" in
-    2*) fail "$name cycle returned HTTP $code, want a failure: R below L must not prove" ;;
-    *)  ok "$name cycle correctly rejected [HTTP $code]" ;;
+    422) ok "$name cycle correctly rejected [HTTP 422, reserves below liabilities]" ;;
+    2*)  fail "$name cycle returned HTTP $code, want 422: R below L must not prove" ;;
+    *)   fail "$name cycle returned HTTP $code, want 422 (reserves below liabilities)" ;;
   esac
 }
 

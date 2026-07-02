@@ -52,11 +52,16 @@ export async function POST(request: Request) {
       // per-tenant lock). Not a failure: the caller should retry shortly.
       return NextResponse.json({ published: false, busy: true });
     }
+    if (cycle.status === 422) {
+      // The expected insolvent outcome: reserves are below liabilities, so no
+      // proof is generated. This is the only case that should be shown as R < L.
+      return NextResponse.json({ published: false, rejected: true });
+    }
     if (cycle.status < 200 || cycle.status >= 300) {
-      // A non-2xx is an expected outcome for insolvent: the proof could not be
-      // generated because reserves are below liabilities.
+      // A real failure, not insolvency. Surface the reason instead of blaming
+      // solvency.
       const detail = await cycle.text().catch(() => "");
-      return NextResponse.json({ published: false, rejected: true, detail });
+      return NextResponse.json({ published: false, error: cycleError(cycle.status, detail) });
     }
 
     const proof = await fetchProof(tenantId);
@@ -67,6 +72,19 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
+}
+
+// cycleError turns the orchestrator's failure into a readable line. The body is
+// JSON like {"error":"..."}; fall back to a neutral reason if it is not.
+function cycleError(status: number, detail: string): string {
+  let reason = "the proof cycle could not complete";
+  try {
+    const parsed = JSON.parse(detail) as { error?: string };
+    if (parsed.error) reason = parsed.error;
+  } catch {
+    // Not JSON; keep the default reason.
+  }
+  return `Cycle failed (HTTP ${status}): ${reason}`;
 }
 
 async function fetchProof(tenantId: string): Promise<unknown> {
