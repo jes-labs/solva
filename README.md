@@ -22,7 +22,7 @@ The proof reveals nothing about who owns what. The public sees only the totals a
 
 **Live demo:** run the full flow on Stellar Testnet at **[joinsolva.xyz/sandbox](https://www.joinsolva.xyz/sandbox)** — connect a mock bank, generate a zero-knowledge proof, publish it on-chain, and check a customer's inclusion.
 
-**Demo video:** [watch the walkthrough](https://youtu.be/AEZxDTR-WPU).
+**Demo video:** [watch the walkthrough](https://www.youtube.com/watch?v=fDMml7nLFHU).
 
 ## Why both sides of the balance sheet
 
