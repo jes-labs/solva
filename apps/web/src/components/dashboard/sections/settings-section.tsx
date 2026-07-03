@@ -4,18 +4,20 @@ import { useState } from "react";
 import { Button } from "@solva/ui";
 import { cn } from "@solva/ui";
 import { CopyButton } from "@/components/copy-button";
+import { ProvisioningCard } from "@/components/dashboard/provisioning-card";
 import { PublishingKeyCard } from "@/components/dashboard/publishing-key-card";
 import { truncateMiddle } from "@/lib/format";
 import { useSession } from "@/lib/session/provider";
 import { can, ROLE_LABELS, type Action } from "@/lib/session/permissions";
 import { INSTITUTION_TYPE_LABELS, type Role, type Session } from "@/lib/session/types";
 
-type TabId = "institution" | "team" | "disclosures" | "publishing" | "keys";
+type TabId = "institution" | "team" | "disclosures" | "registry" | "publishing" | "keys";
 
 const TABS: { id: TabId; label: string; requires?: Action }[] = [
   { id: "institution", label: "Institution" },
   { id: "team", label: "Team & roles", requires: "team.manage" },
   { id: "disclosures", label: "Disclosures", requires: "disclosure.manage" },
+  { id: "registry", label: "Registry", requires: "keys.manage" },
   { id: "publishing", label: "Publishing", requires: "keys.manage" },
   { id: "keys", label: "Developer keys", requires: "keys.manage" },
 ];
@@ -50,6 +52,7 @@ export function SettingsSection() {
       {tab === "institution" && <InstitutionTab session={session} />}
       {tab === "team" && <TeamTab role={role} operatorLabel={session.operatorLabel} />}
       {tab === "disclosures" && <DisclosuresTab />}
+      {tab === "registry" && <ProvisioningCard />}
       {tab === "publishing" && <PublishingKeyCard />}
       {tab === "keys" && <KeysTab />}
     </div>
