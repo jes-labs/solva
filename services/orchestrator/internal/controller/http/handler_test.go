@@ -41,9 +41,9 @@ func (s *stubQuery) ResolveTenantContract(_ context.Context, _ string) (entity.T
 	return entity.TenantContract{ContractID: "CTENANTCONTRACT", Network: "testnet"}, nil
 }
 
-type stubCycle struct{}
+type stubCycle struct{ err error }
 
-func (stubCycle) Run(context.Context, string, string) error { return nil }
+func (s stubCycle) Run(context.Context, string, string) error { return s.err }
 
 // stubProvision is a no-op control-plane stub. createErr and setErr let a test
 // force a failure path.
@@ -255,5 +255,23 @@ func TestSetTenantWalletInvalid(t *testing.T) {
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", res.StatusCode)
+	}
+}
+
+// A cycle the prover refuses for R < L returns HTTP 422, not a generic error, so
+// callers can tell insolvency apart from a real failure (#179).
+func TestTriggerCycleInsolvent(t *testing.T) {
+	h := NewHandler(stubCycle{err: usecase.ErrInsolvent}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	defer srv.Close()
+
+	res, err := http.Post(srv.URL+"/v1/cycles", "application/json",
+		strings.NewReader(`{"tenant_id":"tenant-1"}`))
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", res.StatusCode)
 	}
 }
