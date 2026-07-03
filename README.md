@@ -20,6 +20,10 @@ A normal audit samples a few accounts, takes weeks, and ships a report that is a
 
 The proof reveals nothing about who owns what. The public sees only the totals and the commitment root. Regulators can be given a viewing key for selective disclosure, and customers can check that their own balance is included in the committed tree.
 
+**Live demo:** run the full flow on Stellar Testnet at **[joinsolva.xyz/sandbox](https://www.joinsolva.xyz/sandbox)** — connect a mock bank, generate a zero-knowledge proof, publish it on-chain, and check a customer's inclusion.
+
+**Demo video:** [watch the walkthrough](https://youtu.be/AEZxDTR-WPU).
+
 ## Why both sides of the balance sheet
 
 Proving that you hold assets is not the same as proving you are solvent. A reserve figure can look healthy while the liabilities owed to customers are larger.
@@ -97,6 +101,14 @@ Postgres stores proofs, liabilities, and the audit log. Redis caches the latest 
 6. The proof and tree are persisted to an append-only audit log. The latest proof is cached in Redis.
 7. The web app reads the latest proof, customers check inclusion on-chain, and the oracle answers solvency queries.
 
+## What is real, and what is simulated
+
+Solva's cryptographic core is real and runs on Stellar Testnet today: the Noir circuit, the UltraHonk prover, and the Soroban contract that verifies the proof on-chain and stores the result. The `/sandbox` demo generates real proofs and publishes them to Testnet, and each institution publishes to its own contract.
+
+To make that runnable without a real bank, the reserve data comes from a **mock Open Banking sandbox**: a Go service that returns ECDSA-signed balances, standing in for the signed Open Banking feeds or on-chain holdings a production institution would connect. The signatures are real and verified by the orchestrator; only the balance figures are synthetic. The sandbox simulates the reserve-attestation step, not the cryptography.
+
+The operator console (`apps/web`) is partly illustrative: the passkey wallet, publishing, and tenant provisioning call the real services, while the main dashboard's cycle history and connect-source views use mock data. Real Open Banking and on-chain reserve integration, and a production-data console, are future work.
+
 ## Passkey smart wallet
 
 Institutions do not hold private keys. An operator signs in with a passkey, and that passkey controls a Soroban smart wallet that owns the institution's proof registry. Publishing is owner-gated through `owner.require_auth()`, so every proof is authorized by the wallet. For continuous publishing, the operator grants the orchestrator's Ed25519 key as a signer scoped to that one registry, so the service can publish and nothing else. The passkey stays the root of authority and can revoke that signer at any time. The full model is in the [passkey smart wallet](apps/docs/content/docs/passkey-wallet.mdx) page.
@@ -115,24 +127,74 @@ infra/       docker-compose for Postgres and Redis
 
 This is a polyglot monorepo. The proof schema, contract bindings, and shared types must stay in lockstep across the verifier, prover, orchestrator, SDK, and web app. Keeping them in one repository makes any change to them a single atomic commit.
 
-## Getting started
+## Running it locally
 
-You need Node 22 with pnpm, Go 1.25, Rust 1.91 with the `wasm32v1-none` target, the Stellar CLI, Nargo (Noir 1.0.0-beta.9), Docker, Just, and Buf.
+Everything runs against Stellar Testnet on your machine.
+
+### Prerequisites
+
+- Docker (Postgres and Redis run in containers)
+- Node 22 and pnpm
+- Go 1.25
+- Rust 1.91 with the `wasm32v1-none` target
+- The Stellar CLI
+- Nargo (Noir 1.0.0-beta.9) and Barretenberg `bb` (0.87.0), for the prover
+- Just
+
+Install dependencies and create a funded Testnet identity that signs and publishes proofs:
 
 ```bash
 pnpm install
-just dev
+stellar keys generate tester --network testnet --fund
 ```
 
-`just dev` starts Postgres and Redis, compiles the circuits, and runs every service. Run `just --list` for the individual targets. The full setup guide and the workflow for contributors are in [CONTRIBUTING.md](./CONTRIBUTING.md), and the engineering standards are in [SKILL.md](./SKILL.md).
+**Docker must be running** for both options below: the sandbox, prover, and orchestrator run locally, and Postgres and Redis start in containers.
+
+### Option A: the full pipeline in one command
+
+Runs attestation through on-chain verification across all three scenarios:
+
+```bash
+export E2E_STELLAR_SIGNER_SECRET=$(stellar keys show tester)
+just e2e
+```
+
+It deploys the registry, starts the sandbox, prover, and orchestrator, fetches signed reserves, generates the Noir/UltraHonk proof, publishes it to the Soroban contract, and verifies it on-chain. It ends with `E2E PASSED`: the solvent and near-breach proofs are published and verified, and the insolvent case is refused (the system will not prove a lie).
+
+### Option B: the interactive playground
+
+Bring up the stack with two seeded institutions, each with its own on-chain registry:
+
+```bash
+export ORCH_STELLAR_SIGNER_SECRET=$(stellar keys show tester)
+just demo
+```
+
+Then, in a second terminal, start the website against it:
+
+```bash
+ORCHESTRATOR_URL=http://localhost:8080 SANDBOX_URL=http://localhost:8090 \
+  pnpm --filter @solva/website dev
+```
+
+Open `http://localhost:3000/sandbox`, connect the mock bank, and run a cycle. Try the three scenarios: `solvent` and `near-breach` publish a proof, `insolvent` is refused on-chain. You can also check a customer's inclusion against the published proof, and open the transaction on the public explorer.
+
+### Other commands
+
+- `just --list` shows every target.
+- `just test` runs the test suites.
+- `just parity-check` confirms the circuit, prover, and contract compute the same Poseidon2 commitment.
+- `just e2e-multitenant` proves two institutions stay isolated on-chain (export `E2E_STELLAR_SIGNER_SECRET` first, as in Option A).
+
+The contributor workflow is in [CONTRIBUTING.md](./CONTRIBUTING.md), and the engineering standards are in [SKILL.md](./SKILL.md).
 
 ## Documentation
 
-Protocol overview, quickstart, SDK reference, and the sandbox guide live in `apps/docs`. The cryptographic construction and the formal algorithm are in the whitepaper.
+Protocol overview, quickstart, SDK reference, and the sandbox guide live in [Docs](https://docs.joinsolva.xyz/). The cryptographic construction and the formal algorithm are in the [whitepaper](https://drive.google.com/file/d/1Dw3cdqTik4GZSMxB1Wckv230VRGUq538/view).
 
 ## Project status
 
-Work in progress, built for the Stellar Real-World ZK hackathon and the SDF grant track. The target chain is Stellar Testnet for the MVP and Mainnet for production. Open work is tracked in the repository [issues](https://github.com/jes-labs/solva/issues).
+Built for the Stellar Real-World ZK hackathon. Running on Stellar Testnet today: the Noir/UltraHonk proving pipeline, the Soroban on-chain verifier, per-institution multi-tenancy, and passkey smart-wallet publishing. Try it at [joinsolva.xyz/sandbox](https://www.joinsolva.xyz/sandbox). The reserve source in the demo is a mock Open Banking sandbox, described above in "What is real, and what is simulated". Next: real Open Banking and on-chain reserve integration, a production-data console, a security audit, and Mainnet. Open work is tracked in the [issues](https://github.com/jes-labs/solva/issues).
 
 ## Contact
 

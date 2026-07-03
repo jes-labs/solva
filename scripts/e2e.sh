@@ -37,7 +37,8 @@ SANDBOX_URL="${E2E_SANDBOX_URL:-http://localhost:8090}"
 PROVER_HOSTPORT="${E2E_PROVER_HOSTPORT:-localhost:50051}"
 TENANT_ID="${E2E_TENANT_ID:-11111111-1111-1111-1111-111111111111}"
 CONTRACT_ID="${E2E_CONTRACT_ID:-}"
-[ -n "$CONTRACT_ID" ] || CONTRACT_ID=$(cat contracts/proof-registry/.contract_id)
+[ -n "$CONTRACT_ID" ] || CONTRACT_ID=$(cat contracts/proof-registry/.contract_id 2>/dev/null || true)
+DEPLOY_OWNER="${E2E_DEPLOY_OWNER:-tester}"
 RPC_URL="${E2E_RPC_URL:-https://soroban-testnet.stellar.org}"
 NETWORK_PASSPHRASE="${E2E_NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}"
 
@@ -108,6 +109,22 @@ if [ "${E2E_SERVICES_RUNNING:-0}" != "1" ]; then
     fi
   done
   ok "service ports free"
+fi
+
+# ---- deploy a fresh registry if none was supplied ----------------------------
+# A clean clone has no .contract_id, so deploy one owned by the signer (the
+# source-account publish path). Set E2E_CONTRACT_ID to reuse a fixed contract.
+if [ -z "$CONTRACT_ID" ]; then
+  need nargo
+  log "deploying a fresh proof-registry (owned by $DEPLOY_OWNER)"
+  stellar contract build >/dev/null 2>&1
+  CONTRACT_ID=$(stellar contract deploy \
+    --wasm target/wasm32v1-none/release/proof_registry.wasm \
+    --source "$DEPLOY_OWNER" --network testnet -- \
+    --owner "$DEPLOY_OWNER" \
+    --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin 2>/dev/null | tail -1)
+  [ -n "$CONTRACT_ID" ] || fail "could not deploy the proof-registry"
+  ok "deployed registry $CONTRACT_ID"
 fi
 
 # ---- 1. infrastructure --------------------------------------------------------

@@ -34,7 +34,7 @@ TENANT_A="11111111-1111-1111-1111-111111111111" # Meridian Bank
 TENANT_B="22222222-2222-2222-2222-222222222222" # Solstice Exchange
 CONTRACT_A="${DEMO_CONTRACT_A:-}"
 CONTRACT_B="${DEMO_CONTRACT_B:-}"
-DEPLOY_OWNER="${DEMO_DEPLOY_OWNER:-signor}"
+DEPLOY_OWNER="${DEMO_DEPLOY_OWNER:-tester}"
 
 : "${ORCH_STELLAR_SIGNER_SECRET:?set it to the contract owner Testnet secret seed (publish is owner-gated)}"
 
