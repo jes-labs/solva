@@ -87,6 +87,9 @@ type TenantRepo interface {
 	// SetTenantContract records the contract a tenant publishes to, once it has
 	// been deployed. Safe to call again to rotate the contract or network.
 	SetTenantContract(ctx context.Context, tenantID, contractID, network string) error
+	// SetTenantWallet records the passkey smart-wallet account that owns the
+	// tenant's registry. Safe to call again if the wallet is rotated.
+	SetTenantWallet(ctx context.Context, tenantID, walletAddress string) error
 }
 
 // CadenceForPlan maps a billing plan name to its cycle interval. Free tenants

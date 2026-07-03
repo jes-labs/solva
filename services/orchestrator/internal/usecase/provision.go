@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/entity"
 )
@@ -16,6 +17,11 @@ var ErrInvalidNetwork = errors.New("usecase: network must be testnet, mainnet, o
 // validNetworks mirrors the SDK's Network type (packages/sdk-ts/src/config.ts)
 // so a tenant's recorded network is always one the SDK and oracle can resolve.
 var validNetworks = map[string]bool{"testnet": true, "mainnet": true, "local": true}
+
+// ErrInvalidWallet means SetTenantWallet was given something that is not a
+// Stellar contract address (C... strkey, 56 chars). A tenant's wallet must be a
+// smart-wallet contract, not an account.
+var ErrInvalidWallet = errors.New("usecase: wallet must be a contract address (C...)")
 
 // Provision is the control-plane use case behind tenant onboarding: creating
 // the tenant row, then recording the on-chain contract once it is deployed.
@@ -60,6 +66,19 @@ func (p *Provision) SetTenantContract(ctx context.Context, tenantID, contractID,
 	}
 	if err := p.tenants.SetTenantContract(ctx, tenantID, contractID, network); err != nil {
 		return fmt.Errorf("set tenant contract: %w", err)
+	}
+	return nil
+}
+
+// SetTenantWallet records the passkey smart-wallet account (C...) that owns the
+// tenant's registry, so provisioning can deploy the registry owned by the wallet
+// and publishing is authorized through it.
+func (p *Provision) SetTenantWallet(ctx context.Context, tenantID, walletAddress string) error {
+	if !strings.HasPrefix(walletAddress, "C") || len(walletAddress) != 56 {
+		return ErrInvalidWallet
+	}
+	if err := p.tenants.SetTenantWallet(ctx, tenantID, walletAddress); err != nil {
+		return fmt.Errorf("set tenant wallet: %w", err)
 	}
 	return nil
 }

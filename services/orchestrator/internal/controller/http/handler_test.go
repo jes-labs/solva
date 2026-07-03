@@ -66,6 +66,10 @@ func (s *stubProvision) SetTenantContract(_ context.Context, _, _, _ string) err
 	return s.setErr
 }
 
+func (s *stubProvision) SetTenantWallet(_ context.Context, _, _ string) error {
+	return s.setErr
+}
+
 // The SDK percent-encodes the ref, so the colon arrives as %3A. The handler must
 // decode it so "<proof-id>:<id-hash>" parses, not 404.
 func TestGetInclusionDecodesEncodedRef(t *testing.T) {
@@ -205,6 +209,44 @@ func TestSetTenantContractInvalidNetwork(t *testing.T) {
 
 	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/contract",
 		strings.NewReader(`{"contract_id":"CTENANTCONTRACT","network":"devnet"}`))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", res.StatusCode)
+	}
+}
+
+// PUT /v1/tenants/{id}/wallet records the tenant's passkey smart-wallet account.
+func TestSetTenantWallet(t *testing.T) {
+	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/wallet",
+		strings.NewReader(`{"wallet_address":"CBX5EJPO6Y4SL3LEAKCZBT4QKWBPFI4LMOUUFQ5KDY4YQ3RA6PPUFU7J"}`))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT: %v", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+}
+
+// A non-contract wallet is rejected with a 400.
+func TestSetTenantWalletInvalid(t *testing.T) {
+	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{setErr: usecase.ErrInvalidWallet}, "", zerolog.Nop())
+	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/wallet",
+		strings.NewReader(`{"wallet_address":"GDTTUZQEBRZGR5WTYWS77ENBEM6YSWY5LAGOYU4V4NRUM5AUMXCWVD6G"}`))
 	req.Header.Set("Content-Type", "application/json")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

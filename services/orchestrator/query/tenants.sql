@@ -16,3 +16,13 @@ WHERE id = $1;
 UPDATE tenants
 SET contract_id = $2, network = $3
 WHERE id = $1;
+
+-- name: SetTenantWallet :exec
+UPDATE tenants
+SET wallet_address = $2
+WHERE id = $1;
+
+-- name: GetTenantWallet :one
+SELECT wallet_address
+FROM tenants
+WHERE id = $1;

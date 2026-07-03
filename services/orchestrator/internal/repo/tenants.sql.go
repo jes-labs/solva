@@ -51,6 +51,19 @@ func (q *Queries) GetTenantContract(ctx context.Context, id pgtype.UUID) (GetTen
 	return i, err
 }
 
+const getTenantWallet = `-- name: GetTenantWallet :one
+SELECT wallet_address
+FROM tenants
+WHERE id = $1
+`
+
+func (q *Queries) GetTenantWallet(ctx context.Context, id pgtype.UUID) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getTenantWallet, id)
+	var wallet_address pgtype.Text
+	err := row.Scan(&wallet_address)
+	return wallet_address, err
+}
+
 const setTenantContract = `-- name: SetTenantContract :exec
 UPDATE tenants
 SET contract_id = $2, network = $3
@@ -65,5 +78,21 @@ type SetTenantContractParams struct {
 
 func (q *Queries) SetTenantContract(ctx context.Context, arg SetTenantContractParams) error {
 	_, err := q.db.Exec(ctx, setTenantContract, arg.ID, arg.ContractID, arg.Network)
+	return err
+}
+
+const setTenantWallet = `-- name: SetTenantWallet :exec
+UPDATE tenants
+SET wallet_address = $2
+WHERE id = $1
+`
+
+type SetTenantWalletParams struct {
+	ID            pgtype.UUID `json:"id"`
+	WalletAddress pgtype.Text `json:"wallet_address"`
+}
+
+func (q *Queries) SetTenantWallet(ctx context.Context, arg SetTenantWalletParams) error {
+	_, err := q.db.Exec(ctx, setTenantWallet, arg.ID, arg.WalletAddress)
 	return err
 }

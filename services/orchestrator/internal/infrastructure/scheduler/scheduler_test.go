@@ -30,6 +30,10 @@ func (r *fakeTenantRepo) SetTenantContract(_ context.Context, _, _, _ string) er
 	return nil
 }
 
+func (r *fakeTenantRepo) SetTenantWallet(_ context.Context, _, _ string) error {
+	return nil
+}
+
 // fakeCycleRunner records every Run call and can be configured to fail a
 // fixed number of times before succeeding.
 type fakeCycleRunner struct {

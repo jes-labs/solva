@@ -28,6 +28,7 @@ func Router(h *Handler, log zerolog.Logger) http.Handler {
 		r.Get("/tenants/{id}/contract", h.GetTenantContract)
 		r.Post("/tenants", h.CreateTenant)
 		r.Put("/tenants/{id}/contract", h.SetTenantContract)
+		r.Put("/tenants/{id}/wallet", h.SetTenantWallet)
 	})
 
 	r.Get("/health", h.Health)
