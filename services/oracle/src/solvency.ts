@@ -66,19 +66,36 @@ export async function getSolvency(
  * The SDK import is dynamic so loading this module in a test that stubs
  * SolvencyDeps directly never resolves the SDK package.
  */
-export function chainSolvencyDeps(
-  network: "testnet" | "mainnet" | "local",
-): SolvencyDeps {
+type OracleNetwork = "testnet" | "mainnet" | "local";
+
+// Endpoint overrides from the environment, so the oracle can point the SDK at a
+// local or hosted orchestrator instead of the network default. The institution
+// stays a tool argument; these only decide where reads go.
+function sdkConfig(network: OracleNetwork, tenant: string) {
+  const endpoints: { orchestratorUrl?: string; rpcUrl?: string; contractId?: string } = {};
+  if (process.env.SOLVA_ORCHESTRATOR_URL) endpoints.orchestratorUrl = process.env.SOLVA_ORCHESTRATOR_URL;
+  if (process.env.SOLVA_RPC_URL) endpoints.rpcUrl = process.env.SOLVA_RPC_URL;
+  if (process.env.SOLVA_CONTRACT_ID) endpoints.contractId = process.env.SOLVA_CONTRACT_ID;
+  const cfg: { network: OracleNetwork; tenant: string; endpoints?: typeof endpoints; apiKey?: string } = {
+    network,
+    tenant,
+  };
+  if (Object.keys(endpoints).length > 0) cfg.endpoints = endpoints;
+  if (process.env.SOLVA_API_TOKEN) cfg.apiKey = process.env.SOLVA_API_TOKEN;
+  return cfg;
+}
+
+export function chainSolvencyDeps(network: OracleNetwork): SolvencyDeps {
   return {
     async getLatestProof(tenant: string): Promise<Proof> {
       const { Solva } = await import("@solva/sdk-ts");
-      return new Solva({ network, tenant }).getLatestProof();
+      return new Solva(sdkConfig(network, tenant)).getLatestProof();
     },
 
     async verifyOnChain(tenant: string): Promise<boolean> {
       try {
         const { Solva } = await import("@solva/sdk-ts");
-        const onChain = await new Solva({ network, tenant }).getOnChainLatestProof();
+        const onChain = await new Solva(sdkConfig(network, tenant)).getOnChainLatestProof();
         return reservesCoverLiabilities(onChain.reservesTotal, onChain.liabilitiesTotal);
       } catch {
         return false;
