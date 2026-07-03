@@ -33,7 +33,7 @@
 #         export E2E_STELLAR_SIGNER_SECRET=S...
 #   - a deployed proof-registry per institution. Pass existing ones via
 #     E2E_CONTRACT_ID_A / E2E_CONTRACT_ID_B (set E2E_DEPLOY_OWNER if the
-#     funded identity is not named "signor" in your stellar CLI config), or
+#     funded identity is not named "tester" in your stellar CLI config), or
 #     leave them unset and the script deploys two fresh ones itself (needs
 #     nargo + cargo on PATH in that case, same as `just provision-tenant`).
 #
@@ -58,7 +58,7 @@ CONTRACT_A="${E2E_CONTRACT_ID_A:-}"
 CONTRACT_B="${E2E_CONTRACT_ID_B:-}"
 [ -n "$CONTRACT_A" ] || CONTRACT_A=$(cat contracts/proof-registry/.contract_id_a 2>/dev/null || true)
 [ -n "$CONTRACT_B" ] || CONTRACT_B=$(cat contracts/proof-registry/.contract_id_b 2>/dev/null || true)
-DEPLOY_OWNER="${E2E_DEPLOY_OWNER:-signor}"
+DEPLOY_OWNER="${E2E_DEPLOY_OWNER:-tester}"
 
 STELLAR_NETWORK="${E2E_STELLAR_NETWORK:-testnet}"
 

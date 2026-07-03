@@ -64,6 +64,10 @@ packages/contract-bindings/src/generated/node_modules/
 
 # Stellar
 .stellar/
+# Deployed-contract ids are local artifacts: the e2e and demo deploy fresh
+# registries, or pin one with E2E_CONTRACT_ID. Not tracked so a fresh clone
+# never publishes to a stale contract.
+contracts/proof-registry/.contract_id*
 
 #Cargo
 Cargo.lock
