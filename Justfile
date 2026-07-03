@@ -91,30 +91,34 @@ deploy-contract network="testnet" owner="solva-spike":
       --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin \
       | tail -1 | tee contracts/proof-registry/.contract_id
 
-# Provision a tenant: deploy a dedicated proof-registry, embed the shared
-# solvency VK, and record the contract id on the tenant row. Each tenant gets its
-# own contract, so their proofs are isolated on-chain (multi-tenancy, #125).
-# `owner` is the account allowed to publish; until the passkey smart wallet is
-# wired (#128) this is the orchestrator's signer, so it can authorize cycles.
-# This is the operator/dev path, talking to Postgres directly. The orchestrator
-# also exposes the same write as an HTTP control-plane API for non-operator
-# callers: PUT /v1/tenants/{id}/contract (and POST /v1/tenants to create the row
-# in the first place) -- see services/orchestrator/internal/controller/http.
+# Provision a tenant: deploy a dedicated proof-registry owned by `owner`, embed
+# the shared solvency VK, and record the contract (and the wallet, when the owner
+# is a smart-wallet contract) on the tenant row. Each tenant gets its own
+# contract, so their proofs are isolated on-chain (multi-tenancy, #125).
+# `owner` authorizes publishing: pass the tenant's passkey smart wallet (C...) to
+# make the wallet own the registry (#131), or a funded account (G...) for the
+# interim source-account path. `source` is the funded account that signs and pays
+# for the deploy; it must be an account, so when `owner` is a wallet keep `source`
+# a funded identity like signor. Also exposed over HTTP: PUT
+# /v1/tenants/{id}/contract and PUT /v1/tenants/{id}/wallet.
 # DB connection comes from the standard PG env vars (defaults match infra/).
-provision-tenant tenant_id owner="signor" network="testnet": build-contract
+provision-tenant tenant_id owner="signor" network="testnet" source="signor": build-contract
     #!/usr/bin/env bash
     set -euo pipefail
     id=$(stellar contract deploy \
       --wasm target/wasm32v1-none/release/proof_registry.wasm \
-      --source {{owner}} \
+      --source {{source}} \
       --network {{network}} \
       -- \
       --owner {{owner}} \
       --vk-file-path contracts/proof-registry/src/testdata/solvency_vk.bin | tail -1)
-    echo "deployed registry for tenant {{tenant_id}}: $id"
+    echo "deployed registry for tenant {{tenant_id}} owned by {{owner}}: $id"
+    # Record the wallet too when the owner is a smart-wallet contract (C...).
+    wallet_sql=""
+    case "{{owner}}" in C*) wallet_sql=", wallet_address='{{owner}}'" ;; esac
     rows=$(PGPASSWORD="${PGPASSWORD:-solva}" psql -h "${PGHOST:-localhost}" \
       -U "${PGUSER:-solva}" -d "${PGDATABASE:-solva}" -v ON_ERROR_STOP=1 -qtA -c \
-      "UPDATE tenants SET contract_id='$id', network='{{network}}' WHERE id='{{tenant_id}}' RETURNING id;")
+      "UPDATE tenants SET contract_id='$id', network='{{network}}'$wallet_sql WHERE id='{{tenant_id}}' RETURNING id;")
     [ -n "$rows" ] || { echo "no tenant {{tenant_id}} to record the contract on" >&2; exit 1; }
     echo "recorded contract_id on tenant {{tenant_id}}"
 

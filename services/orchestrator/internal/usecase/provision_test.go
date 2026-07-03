@@ -11,12 +11,14 @@ import (
 // stubTenantRepo is a minimal in-memory TenantRepo for testing Provision
 // without a database.
 type stubTenantRepo struct {
-	created         entity.Tenant
-	createErr       error
-	setContractErr  error
-	gotTenantID     string
-	gotContract     string
-	gotNetwork      string
+	created        entity.Tenant
+	createErr      error
+	setContractErr error
+	setWalletErr   error
+	gotTenantID    string
+	gotContract    string
+	gotNetwork     string
+	gotWallet      string
 }
 
 func (s *stubTenantRepo) ListTenants(context.Context) ([]entity.Tenant, error) {
@@ -33,6 +35,33 @@ func (s *stubTenantRepo) CreateTenant(_ context.Context, name, plan string) (ent
 func (s *stubTenantRepo) SetTenantContract(_ context.Context, tenantID, contractID, network string) error {
 	s.gotTenantID, s.gotContract, s.gotNetwork = tenantID, contractID, network
 	return s.setContractErr
+}
+
+func (s *stubTenantRepo) SetTenantWallet(_ context.Context, tenantID, walletAddress string) error {
+	s.gotTenantID, s.gotWallet = tenantID, walletAddress
+	return s.setWalletErr
+}
+
+func TestProvisionSetTenantWalletRecordsWallet(t *testing.T) {
+	repo := &stubTenantRepo{}
+	p := NewProvision(repo)
+
+	wallet := "CBX5EJPO6Y4SL3LEAKCZBT4QKWBPFI4LMOUUFQ5KDY4YQ3RA6PPUFU7J"
+	if err := p.SetTenantWallet(context.Background(), "tenant-1", wallet); err != nil {
+		t.Fatalf("set tenant wallet: %v", err)
+	}
+	if repo.gotWallet != wallet {
+		t.Fatalf("recorded wallet = %q, want %q", repo.gotWallet, wallet)
+	}
+}
+
+func TestProvisionSetTenantWalletRejectsNonContract(t *testing.T) {
+	p := NewProvision(&stubTenantRepo{})
+	for _, bad := range []string{"", "GDTTUZQEBRZGR5WTYWS77ENBEM6YSWY5LAGOYU4V4NRUM5AUMXCWVD6G", "C123"} {
+		if err := p.SetTenantWallet(context.Background(), "tenant-1", bad); !errors.Is(err, ErrInvalidWallet) {
+			t.Fatalf("wallet %q: err = %v, want ErrInvalidWallet", bad, err)
+		}
+	}
 }
 
 func TestProvisionCreateTenantDefaultsPlan(t *testing.T) {

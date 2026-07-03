@@ -35,6 +35,7 @@ type queryService interface {
 type provisionService interface {
 	CreateTenant(ctx context.Context, name, plan string) (entity.Tenant, error)
 	SetTenantContract(ctx context.Context, tenantID, contractID, network string) error
+	SetTenantWallet(ctx context.Context, tenantID, walletAddress string) error
 }
 
 // Handler holds the use cases the routes call.
@@ -239,6 +240,37 @@ func (h *Handler) SetTenantContract(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, tenantContractDTO{ContractID: req.ContractID, Network: req.Network})
+}
+
+// setTenantWalletRequest is the body for PUT /v1/tenants/{id}/wallet.
+type setTenantWalletRequest struct {
+	WalletAddress string `json:"wallet_address"`
+}
+
+// SetTenantWallet records the passkey smart-wallet account that owns a tenant's
+// registry, so the registry can be deployed owned by the wallet and publishing
+// is authorized through it (control plane, #131).
+func (h *Handler) SetTenantWallet(w http.ResponseWriter, r *http.Request) {
+	if !h.authorized(r) {
+		writeError(w, http.StatusUnauthorized, "missing or invalid admin token")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	var req setTenantWalletRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.provision.SetTenantWallet(r.Context(), id, req.WalletAddress); err != nil {
+		if errors.Is(err, usecase.ErrInvalidWallet) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		h.log.Error().Err(err).Str("tenant", id).Msg("set tenant wallet")
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"wallet_address": req.WalletAddress})
 }
 
 // authorized reports whether the request carries the configured admin bearer

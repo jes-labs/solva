@@ -224,6 +224,20 @@ func (p *Postgres) SetTenantContract(ctx context.Context, tenantID, contractID, 
 	})
 }
 
+// SetTenantWallet records the passkey smart-wallet account that owns the tenant's
+// proof-registry. Exposed as a control-plane write via PUT
+// /v1/tenants/{id}/wallet (usecase.Provision).
+func (p *Postgres) SetTenantWallet(ctx context.Context, tenantID, walletAddress string) error {
+	tid, err := toUUID(tenantID)
+	if err != nil {
+		return err
+	}
+	return p.q.SetTenantWallet(ctx, SetTenantWalletParams{
+		ID:            tid,
+		WalletAddress: pgtype.Text{String: walletAddress, Valid: true},
+	})
+}
+
 // LoadLiabilities loads a tenant's current customer balances for witnessing.
 func (p *Postgres) LoadLiabilities(ctx context.Context, tenantID string) ([]usecase.Liability, error) {
 	tid, err := toUUID(tenantID)

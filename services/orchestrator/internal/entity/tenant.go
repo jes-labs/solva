@@ -10,6 +10,9 @@ type Tenant struct {
 	Name string
 	// Plan is the billing tier, for example "free" or "pro".
 	Plan string
+	// WalletAddress is the tenant's passkey smart-wallet account (C...) that owns
+	// its proof-registry. Empty until the wallet is provisioned.
+	WalletAddress string
 	// CreatedAt is when the tenant was provisioned.
 	CreatedAt time.Time
 }

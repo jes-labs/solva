@@ -66,3 +66,28 @@ func TestCreateTenant(t *testing.T) {
 		t.Fatalf("fresh tenant: got %v, want ErrTenantNotProvisioned", err)
 	}
 }
+
+// SetTenantWallet records the passkey smart-wallet account that owns the tenant's
+// registry (#131), readable back on the tenant row.
+func TestSetTenantWallet(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	q := New(store.pool)
+
+	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Meridian Bank", Plan: "growth"})
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+
+	const wallet = "CBX5EJPO6Y4SL3LEAKCZBT4QKWBPFI4LMOUUFQ5KDY4YQ3RA6PPUFU7J"
+	if err := store.SetTenantWallet(ctx, fromUUID(tenantID), wallet); err != nil {
+		t.Fatalf("set tenant wallet: %v", err)
+	}
+	got, err := q.GetTenantWallet(ctx, tenantID)
+	if err != nil {
+		t.Fatalf("get tenant wallet: %v", err)
+	}
+	if !got.Valid || got.String != wallet {
+		t.Fatalf("wallet = %+v, want %s", got, wallet)
+	}
+}
