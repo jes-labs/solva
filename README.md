@@ -133,15 +133,77 @@ Everything runs against Stellar Testnet on your machine.
 
 ### Prerequisites
 
-- Docker (Postgres and Redis run in containers)
-- Node 22 and pnpm
-- Go 1.25
-- Rust 1.91 with the `wasm32v1-none` target
-- The Stellar CLI
-- Nargo (Noir 1.0.0-beta.9) and Barretenberg `bb` (0.87.0), for the prover
-- Just
+Install the tools below. Two of them are **version-sensitive**: `bb` and `nargo`
+must be the exact pinned versions, or proofs will not verify. Rust (1.91.1 +
+`wasm32v1-none`) and pnpm are pinned in the repo (`rust-toolchain.toml`,
+`packageManager`), so those resolve automatically once the tool is installed.
 
-Install dependencies and create a funded Testnet identity that signs and publishes proofs:
+On **Windows**, use **WSL2** (Ubuntu) and follow the Linux steps.
+
+#### Installation guides
+
+**Docker** — runs Postgres and Redis.
+- macOS: [Docker Desktop](https://www.docker.com/products/docker-desktop/), or `brew install --cask docker`
+- Linux: `curl -fsSL https://get.docker.com | sh` ([docs](https://docs.docker.com/engine/install/))
+
+**Node 22 + pnpm** — web tier and SDK.
+```bash
+# Node 22 via nvm (https://github.com/nvm-sh/nvm)
+nvm install 22 && nvm use 22
+# pnpm via corepack (picks up the version pinned in package.json)
+corepack enable
+```
+
+**Go 1.25** — orchestrator and sandbox.
+- macOS: `brew install go`
+- Linux: follow https://go.dev/doc/install
+
+**Rust 1.91.1** — prover and Soroban contract. `rust-toolchain.toml` pins the
+version and the `wasm32v1-none` target, so rustup installs them for you.
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+**Stellar CLI** — deploys and reads contracts.
+```bash
+brew install stellar-cli        # macOS / Linux with Homebrew
+# or: cargo install --locked stellar-cli
+```
+[Install docs](https://developers.stellar.org/docs/tools/cli/install-cli)
+
+**Noir `nargo` 1.0.0-beta.9** — the circuit toolchain.
+```bash
+curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
+noirup --version 1.0.0-beta.9
+```
+
+**Barretenberg `bb` 0.87.0** — the proving backend. Pick the build for your OS
+and CPU from the [v0.87.0 release](https://github.com/AztecProtocol/aztec-packages/releases/tag/v0.87.0):
+```bash
+mkdir -p ~/.bb
+# Apple Silicon (arm64 Mac):
+curl -L https://github.com/AztecProtocol/aztec-packages/releases/download/v0.87.0/barretenberg-arm64-darwin.tar.gz | tar -xzC ~/.bb
+# Intel Mac:  barretenberg-amd64-darwin.tar.gz
+# Linux:      barretenberg-amd64-linux.tar.gz
+echo 'export PATH="$HOME/.bb:$PATH"' >> ~/.zshrc   # or ~/.bashrc
+source ~/.zshrc
+```
+
+**Just** — the command runner.
+```bash
+brew install just               # macOS / Linux with Homebrew
+# or: cargo install just
+```
+
+**Verify everything is installed and on PATH:**
+```bash
+docker --version && node --version && pnpm --version && go version \
+  && rustc --version && stellar --version && nargo --version \
+  && bb --version && just --version
+```
+`bb --version` must print `0.87.0` and `nargo --version` `1.0.0-beta.9`.
+
+Then install dependencies and create a funded Testnet identity that signs and publishes proofs:
 
 ```bash
 pnpm install
