@@ -6,15 +6,13 @@ export const gitConfig = {
   branch: "main",
 };
 
-// Canonical base URL for robots, sitemap, and metadata. Derived from the
-// environment so the build runs anywhere with no fixed domain.
+// Canonical base URL for robots, sitemap, and metadata. Set NEXT_PUBLIC_DOCS_URL
+// at build time; production builds fall back to the live domain.
 function resolveSiteUrl(): string {
   if (process.env.NEXT_PUBLIC_DOCS_URL) return process.env.NEXT_PUBLIC_DOCS_URL;
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
+  return process.env.NODE_ENV === "production"
+    ? "https://docs.joinsolva.xyz"
+    : "http://localhost:3000";
 }
 
 export const siteUrl = resolveSiteUrl();

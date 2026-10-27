@@ -49,7 +49,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const ip =
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
   if (rateLimited(ip)) {
     return Response.json({ error: "Too many requests." }, { status: 429 });
   }

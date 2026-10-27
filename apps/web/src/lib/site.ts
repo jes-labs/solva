@@ -1,13 +1,10 @@
 // Site config and the canonical base URL for resolving relative metadata, same
-// pattern as the marketing site. The base is derived from the environment so the
-// build runs anywhere with no fixed domain.
+// pattern as the marketing site.
 function resolveSiteUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
+  return process.env.NODE_ENV === "production"
+    ? "https://app.joinsolva.xyz"
+    : "http://localhost:3000";
 }
 
 export const siteUrl = resolveSiteUrl();
