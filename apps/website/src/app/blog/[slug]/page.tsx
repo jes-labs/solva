@@ -15,6 +15,10 @@ import { slugify } from "@/lib/slug";
 
 const sectionX = "mx-auto max-w-site px-7";
 
+// Posts are read from disk at build time only; Workers have no filesystem, so an
+// unknown slug must 404 rather than render.
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   return getPostSlugs().map((slug) => ({ slug }));
 }

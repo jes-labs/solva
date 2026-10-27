@@ -14,7 +14,7 @@ here costs money.
 | Prover (Rust + bb) | **Google Cloud Run** | always-free tier, scales to zero, amd64, gRPC |
 | Orchestrator (Go) | **Google Cloud Run** | same always-free tier |
 | Sandbox (Go) | **Google Cloud Run** | same always-free tier |
-| Website / docs / web (Next) | **Vercel** | your existing free projects |
+| Website / docs / web (Next) | **Cloudflare Workers** | Workers Free plan, see [CLOUDFLARE.md](./CLOUDFLARE.md) |
 
 Why Cloud Run and not Fly.io or AWS: Fly.io removed its free tier for new orgs in
 2024 (pay-as-you-go only now). AWS's revamped free tier is time-boxed credits
@@ -32,7 +32,7 @@ the website (no CORS). The website reaches the orchestrator and sandbox over the
 public Cloud Run HTTPS URLs. The orchestrator reaches the prover over gRPC on the
 prover's Cloud Run URL (HTTP/2, TLS on port 443).
 
-A note on "free": Neon, Upstash, and Vercel need no card. Google Cloud requires a
+A note on "free": Neon, Upstash, and Cloudflare need no card. Google Cloud requires a
 billing account (a card) to use Cloud Run as of 2026, but you are not charged
 while you stay inside the always-free allowance, and a scale-to-zero demo does.
 New Google Cloud accounts also get a $300 / 90-day trial credit as a buffer. Set
@@ -49,7 +49,7 @@ always-free allowance.
 | Google Cloud | https://console.cloud.google.com | prover, orchestrator, sandbox | yes (not charged in free tier) |
 | Neon | https://neon.tech | Postgres | no |
 | Upstash | https://upstash.com | Redis | no |
-| Vercel | https://vercel.com | website / docs / web | no |
+| Cloudflare | https://dash.cloudflare.com | website / docs / web | no |
 
 ### Install the CLIs (macOS)
 
@@ -83,10 +83,10 @@ https://developers.stellar.org/docs/tools/cli. The repo also needs Node 22 and
 1. Sign up, create a Redis database (Regional, nearest region).
 2. Copy the `rediss://…` URL from the database page. It is `ORCH_REDIS_URL`.
 
-### Vercel
+### Cloudflare
 
-Sign up with your GitHub account so it can import this repo. No setup yet; you
-deploy the website in step 9.
+Sign up, then connect GitHub under Workers & Pages so Workers Builds can import
+this repo. No setup yet; you deploy the website in step 9.
 
 ### Stellar Testnet identity
 
@@ -291,10 +291,11 @@ SELECT ins.tenant_id, ins.id, v.bal FROM ins JOIN (VALUES
 SQL
 ```
 
-## 9. Deploy the website (Vercel)
+## 9. Deploy the website (Cloudflare Workers)
 
-Import the repo, set the root to `apps/website`, and set environment variables to
-the Cloud Run URLs printed above:
+Create the `solva-website` Worker from the repo as described in
+[CLOUDFLARE.md](./CLOUDFLARE.md), with `apps/website` as the root, and set these
+values (server-only ones as Worker secrets) to the Cloud Run URLs printed above:
 
 ```
 ORCHESTRATOR_URL = <value of $ORCHESTRATOR_URL>
