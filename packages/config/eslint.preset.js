@@ -8,7 +8,14 @@ import prettier from "eslint-config-prettier";
 // any stylistic rules that would fight the formatter.
 export const base = tseslint.config(
   {
-    ignores: ["dist/**", ".next/**", "node_modules/**", "**/generated/**"],
+    ignores: [
+      "dist/**",
+      ".next/**",
+      ".open-next/**",
+      ".wrangler/**",
+      "node_modules/**",
+      "**/generated/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

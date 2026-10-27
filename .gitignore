@@ -8,6 +8,11 @@ build/
 out/
 .next/
 .turbo/
+# Cloudflare Workers (OpenNext) build output and local secrets
+.open-next/
+.wrangler/
+.dev.vars*
+!.dev.vars.example
 target/
 **/test_snapshots/
 *.wasm
