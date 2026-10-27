@@ -37,6 +37,8 @@ jobs:
               - 'apps/**'
               - 'packages/**'
               - 'services/oracle/**'
+              - 'scripts/worker-smoke.sh'
+              - 'scripts/cloudflare/**'
               - 'package.json'
               - 'pnpm-workspace.yaml'
               - 'pnpm-lock.yaml'
@@ -84,6 +86,30 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm run build
+
+  # Build each app for Cloudflare Workers and smoke test it on workerd. A
+  # passing `next build` does not prove the Worker serves pages.
+  workers:
+    needs: changes
+    if: needs.changes.outputs.ts == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [website, web, docs]
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test scripts/cloudflare/env-parse.test.mjs
+      - run: pnpm --filter @solva/${{ matrix.app }} build:cloudflare
+      - run: scripts/worker-smoke.sh ${{ matrix.app }}
 
   go:
     needs: changes
@@ -238,7 +264,7 @@ jobs:
   # Single required status check. It always runs and fails if any tier that ran
   # did not succeed. Tiers that were skipped do not count as failures.
   ci:
-    needs: [ts, go, rust, circuits, proto, proto-stale-stubs, prover-image]
+    needs: [ts, workers, go, rust, circuits, proto, proto-stale-stubs, prover-image]
     if: always()
     runs-on: ubuntu-latest
     steps:
