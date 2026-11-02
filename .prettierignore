@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+packages/contract-bindings/
+**/.next/
+**/.open-next/
+**/.wrangler/
+**/dist/
+target/

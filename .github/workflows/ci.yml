@@ -261,10 +261,40 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Commit messages
+        if: github.event_name == 'pull_request'
+        run: pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+      - name: Format of changed files
+        env:
+          CHANGED_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: pnpm format:check
+      - name: Comments in changed files
+        env:
+          CHANGED_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: pnpm comments:check
+      - name: Release note
+        if: github.event_name == 'pull_request'
+        env:
+          RELEASE_NOTES_BASE: ${{ github.event.pull_request.base.sha }}
+          STRICT_RELEASE_NOTES: "true"
+        run: bash scripts/check_release_notes.sh
+
   # Single required status check. It always runs and fails if any tier that ran
   # did not succeed. Tiers that were skipped do not count as failures.
   ci:
-    needs: [ts, workers, go, rust, circuits, proto, proto-stale-stubs, prover-image]
+    needs: [governance, ts, workers, go, rust, circuits, proto, proto-stale-stubs, prover-image]
     if: always()
     runs-on: ubuntu-latest
     steps:
