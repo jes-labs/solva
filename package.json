@@ -14,9 +14,17 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "format": "prettier --write \"**/*.{ts,tsx,md,mdx,json}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md,mdx,json}\"",
+    "format:check": "node scripts/check-format.mjs",
+    "comments:check": "node scripts/check-comments.mjs",
+    "knip": "pnpm -r --if-present knip",
+    "preflight": "./scripts/preflight.sh",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "lefthook": "2.2.2",
     "prettier": "^3.4.2",
     "turbo": "^2.5.0",
     "typescript": "^5.7.0"

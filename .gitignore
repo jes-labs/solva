@@ -76,3 +76,6 @@ contracts/proof-registry/.contract_id*
 
 #Cargo
 Cargo.lock
+
+.worktrees/
+/*.sh

@@ -1,0 +1,20 @@
+pre-commit:
+  piped: true
+  jobs:
+    - name: format
+      glob: "*.{js,mjs,cjs,ts,tsx,json,jsonc,css,md,mdx,yml,yaml}"
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    - name: comments
+      glob: "*.{ts,tsx,js,mjs,cjs,css}"
+      run: node scripts/check-comments.mjs {staged_files}
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  jobs:
+    - name: preflight
+      run: ./scripts/preflight.sh --fast
