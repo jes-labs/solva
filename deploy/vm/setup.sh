@@ -114,6 +114,8 @@ $(sed 's/^/        /' "$VMDIR/reserve-source.pkcs8.pem")
       ORCH_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org"
       ORCH_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
       ORCH_SCHEDULER_ENABLED: "false"
+      ORCH_RESERVE_SOURCES: "${ORCH_RESERVE_SOURCES:-}"
+      ORCH_ONCHAIN_HOLDINGS: "${ORCH_ONCHAIN_HOLDINGS:-}"
       ORCH_RESERVE_PUBLIC_KEY_PEM: |
 $(sed 's/^/        /' "$VMDIR/reserve-source.pub.pem")
     ports:

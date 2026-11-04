@@ -44,8 +44,11 @@ type Config struct {
 	ReserveAccounts []string
 	// ReserveClientID is the OAuth client id the adapter authenticates with. Empty
 	// disables auth, which the adapter unit tests rely on.
-	ReserveClientID string
-	APIToken        string
+	ReserveClientID   string
+	APIToken          string
+	ReserveSources    []string
+	OnChainHorizonURL string
+	OnChainHoldings   []string
 	// CycleInterval is how often the scheduler triggers a cycle per tenant.
 	CycleInterval time.Duration
 	// SchedulerEnabled controls whether the background cron scheduler starts.
@@ -77,6 +80,9 @@ func Load() (Config, error) {
 		ReserveAccounts:          splitList(env("ORCH_RESERVE_ACCOUNTS", "acct-anchor,acct-beacon,acct-cedar")),
 		ReserveClientID:          env("ORCH_RESERVE_CLIENT_ID", "solva-orchestrator"),
 		APIToken:                 env("ORCH_API_TOKEN", ""),
+		ReserveSources:           splitList(env("ORCH_RESERVE_SOURCES", "")),
+		OnChainHorizonURL:        env("ORCH_ONCHAIN_HORIZON_URL", "https://horizon-testnet.stellar.org"),
+		OnChainHoldings:          splitList(env("ORCH_ONCHAIN_HOLDINGS", "")),
 		SchedulerEnabled:         env("ORCH_SCHEDULER_ENABLED", "false") == "true",
 		LogLevel:                 env("ORCH_LOG_LEVEL", "info"),
 		ProverTLS:                env("ORCH_PROVER_TLS", "false") == "true",
