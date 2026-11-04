@@ -16,6 +16,7 @@ export type SubmissionAction<F extends string> = (
 ) => Promise<SubmissionState<F>>;
 
 export interface OutgoingMessage {
+  to: string;
   subject: string;
   text: string;
   replyTo: string;
