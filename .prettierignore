@@ -5,3 +5,4 @@ packages/contract-bindings/
 **/.wrangler/
 **/dist/
 target/
+apps/website/src/lib/cn-tables.ts

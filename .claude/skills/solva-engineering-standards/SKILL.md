@@ -10,7 +10,7 @@ The rules live in the repository, not in this skill, so every agent and every hu
 Before any change, read these in full:
 
 1. `AGENTS.md`: the directives, the lifecycle and the pre-review audit.
-2. `docs/engineering-standards.md`: principles, TypeScript, React and hooks, data, styling, Lighthouse, accessibility, Rust, Go, Noir, testing, comments, cleanup, security, documentation.
+2. `docs/engineering-standards.md`: principles, TypeScript, React and hooks, data, styling, performance, accessibility, Rust, Go, Noir, testing, comments, cleanup, security, documentation.
 3. `docs/architecture.md`: the repository tiers, their boundaries, and the layer rules inside each Next.js app.
 
 Then read the code you will change, its callers and its tests, and the current docs for the APIs involved.
@@ -24,5 +24,5 @@ Non-negotiables to keep in view while working:
 - A replaced implementation is deleted in the same change, with its packages.
 - No package is added before the code that uses it.
 - Public text claims only what the code does today.
-- Every website route scores 98 to 100 in every Lighthouse category on mobile.
+- Every website route works at phone and desktop width, in light and dark mode, with a keyboard.
 - `./scripts/preflight.sh` passes before you call anything done.

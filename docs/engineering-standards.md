@@ -2,7 +2,7 @@
 
 The coding bar for this repository. The TypeScript, React and web sections apply to every TypeScript workspace; the Rust, Go and Noir sections apply to their tiers. It binds every contributor, human or AI. Where a rule can be checked by a machine, it is, and the check is named next to the rule. The rest is enforced in review.
 
-Contents: [Before you start](#before-you-start) · [Principles](#principles) · [TypeScript](#typescript) · [Components](#components) · [Hooks](#hooks) · [Custom hooks](#custom-hooks) · [Data and server code](#data-and-server-code) · [Styling and UI kit](#styling-and-ui-kit) · [Performance and Lighthouse](#performance-and-lighthouse) · [Accessibility](#accessibility) · [Errors](#errors) · [Testing](#testing) · [Comments](#comments) · [Naming](#naming) · [Dependencies and cleanup](#dependencies-and-cleanup) · [Security](#security) · [Rust](#rust) · [Go](#go) · [Noir circuits](#noir-circuits) · [Documentation](#documentation)
+Contents: [Before you start](#before-you-start) · [Principles](#principles) · [TypeScript](#typescript) · [Components](#components) · [Hooks](#hooks) · [Custom hooks](#custom-hooks) · [Data and server code](#data-and-server-code) · [Styling and UI kit](#styling-and-ui-kit) · [Performance](#performance) · [Accessibility](#accessibility) · [Errors](#errors) · [Testing](#testing) · [Comments](#comments) · [Naming](#naming) · [Dependencies and cleanup](#dependencies-and-cleanup) · [Security](#security) · [Rust](#rust) · [Go](#go) · [Noir circuits](#noir-circuits) · [Documentation](#documentation)
 
 ---
 
@@ -134,19 +134,17 @@ How to write one:
 - Motion: the registry components use `motion` (Framer Motion). Load it with `LazyMotion` and the `m` component so only the features used are shipped, and respect `prefers-reduced-motion` (`useReducedMotion`). Animate `transform` and `opacity` only.
 - Dark mode uses the `.dark` class and the `.dark` token block. Every component works in both.
 
-## Performance and Lighthouse
-
-Every page of the public website (`apps/website`) scores **98 to 100 in Performance, Accessibility, Best Practices and SEO** in a Lighthouse mobile run. Below 98 in any category fails CI; aim for 100. CI enforces it (`pnpm --filter @solva/website lighthouse`, see the app's `lighthouserc.json`); add each new route to its URL list.
+## Performance
 
 - Server Components first. Client JavaScript is the main cost on a mid-range phone; ship as little as possible.
 - No client component above a layout boundary unless the whole subtree needs it.
 - Heavy client code (charts, editors, motion-heavy sections) loads with `next/dynamic` or after interaction.
-- The system font stack is the default. A web font costs about 30 KB on the LCP path; add one only through `next/font`, with `display: "swap"`, and only with a Lighthouse run in the PR proving the page still scores 98 or more.
+- The system font stack is the default. A web font costs about 30 KB on the LCP path; add one only through `next/font`, with `display: "swap"`.
 - Images through `next/image` with explicit `width`/`height` or `fill` plus `sizes`; `priority` only on the largest above-the-fold image. Decide the Cloudflare image strategy in an ADR before the first raster image.
 - No layout shift: reserve space for anything that loads late, including Suspense fallbacks.
 - Third-party scripts through `next/script` with `lazyOnload` or `afterInteractive`, and only after an ADR.
 - No barrel files that re-export a whole library. A feature's `index.ts` exports only its public API.
-- Measure before optimising. Use the Chrome DevTools MCP or `pnpm lighthouse` to prove a change.
+- Measure before optimising. Use the Chrome DevTools MCP performance trace to prove a change.
 
 ## Accessibility
 

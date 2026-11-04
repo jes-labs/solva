@@ -1,37 +1,19 @@
 import type { MetadataRoute } from "next";
-import { siteUrl } from "@/lib/site";
-import { getPostSlugs } from "@/lib/blog/posts";
+import { routes } from "@/config/navigation";
+import { site } from "@/config/site";
+import { listPosts } from "@/features/blog/server";
 
-// The marketing routes that currently have a page. New pages are added here as
-// they land, so the sitemap never lists a route that 404s. The whitepaper is an
-// external link, not a page, so it is intentionally absent.
-const staticPaths = [
-  "/",
-  "/how-it-works",
-  "/solutions",
-  "/developers",
-  "/security",
-  "/solvency-oracle",
-  "/pricing",
-  "/blog",
-  "/about",
-  "/request-a-demo",
-  "/legal",
-  "/status",
-];
+function postPaths(): string[] {
+  return listPosts()
+    .map((post) => `${routes.blog}/${post.slug}`)
+    .sort();
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticEntries = staticPaths.map((path) => ({
-    url: new URL(path, siteUrl).toString(),
-    changeFrequency: "monthly" as const,
+  const paths = [...Object.values(routes), ...postPaths()];
+  return paths.map((path) => ({
+    url: path === "/" ? site.url : `${site.url}${path}`,
+    changeFrequency: path.startsWith(routes.blog) ? "weekly" : "monthly",
     priority: path === "/" ? 1 : 0.7,
   }));
-
-  const postEntries = getPostSlugs().map((slug) => ({
-    url: new URL(`/blog/${slug}`, siteUrl).toString(),
-    changeFrequency: "yearly" as const,
-    priority: 0.5,
-  }));
-
-  return [...staticEntries, ...postEntries];
 }

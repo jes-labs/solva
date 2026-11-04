@@ -37,4 +37,4 @@ What we will do, stated plainly.
 
 ## Verification
 
-How we will know it works: tests, metrics, Lighthouse, a manual check.
+How we will know it works: tests, metrics, a manual check.

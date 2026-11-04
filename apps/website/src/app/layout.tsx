@@ -1,83 +1,64 @@
 import type { Metadata, Viewport } from "next";
-import { fontVariables } from "@solva/brand/fonts";
-import { siteUrl, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
-import { themeScript } from "@/lib/theme-script";
-import { ThemeProvider } from "@/components/theme-provider";
-import { SmoothScroll } from "@/components/motion";
-import { SiteNav } from "@/components/nav/site-nav";
-import { SiteFooter } from "@/components/footer/site-footer";
-import "@solva/brand/tokens.css";
-import "lenis/dist/lenis.css";
+import type { ReactNode } from "react";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteHeader } from "@/components/layout/site-header";
+import { BackToTop } from "@/components/layout/back-to-top";
+import { MotionDirector } from "@/components/layout/motion-director";
+import { SmoothScroll } from "@/components/layout/smooth-scroll";
+import { ThemeProvider } from "@/components/layout/theme-provider";
+import { MOTION_GATE_SCRIPT } from "@/lib/motion-gate";
+import { site } from "@/config/site";
+import { body, display, mono } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  // Base URL for resolving every relative metadata field below into an absolute
-  // URL. Without this, Open Graph and Twitter image paths fall back to localhost.
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: SITE_NAME,
-    template: "%s · Solva",
-  },
-  description: SITE_DESCRIPTION,
-  applicationName: SITE_NAME,
-  // Brand favicons and the PWA manifest from the design kit (public/).
-  icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon/favicon-16.png", sizes: "16x16", type: "image/png" },
-    ],
-    apple: "/favicon/apple-touch-icon-180.png",
-  },
-  manifest: "/manifest.json",
-  // Default social card from the kit; pages with their own image (blog posts)
-  // override it.
+  metadataBase: new URL(site.url),
+  title: { default: site.title, template: "%s | Solva" },
+  description: site.description,
+  applicationName: site.name,
   openGraph: {
     type: "website",
-    siteName: SITE_NAME,
-    title: SITE_NAME,
-    description: SITE_DESCRIPTION,
-    url: "/",
-    locale: "en_US",
-    images: [{ url: "/social/og-image-1200x630.png", width: 1200, height: 630, alt: SITE_NAME }],
+    siteName: site.name,
+    title: site.title,
+    description: site.description,
+    url: site.url,
   },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_NAME,
-    description: SITE_DESCRIPTION,
-    images: ["/social/og-image-1200x630.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
-  },
+  twitter: { card: "summary_large_image", title: site.title, description: site.description },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A0C06",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0c06" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f5ee" },
+  ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={fontVariables} suppressHydrationWarning>
-      <body>
-        {/* Sets the theme before paint so there is no flash. */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: MOTION_GATE_SCRIPT }} />
+      </head>
+      <body className="bg-bg text-text antialiased">
         <ThemeProvider>
-          <a href="#main-content" className="skip-link">
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-btn focus:bg-surface focus:px-4 focus:py-2"
+          >
             Skip to content
           </a>
-          <SiteNav />
-          <SmoothScroll>
-            <div id="site-root">
-              {/* Focus target for the skip link; tabIndex lets it receive focus. */}
-              <div id="main-content" tabIndex={-1}>
-                {children}
-              </div>
-              <SiteFooter />
-            </div>
-          </SmoothScroll>
+          <SmoothScroll />
+          <MotionDirector />
+          <SiteHeader />
+          <main id="main" tabIndex={-1} className="rails site-column outline-none">
+            {children}
+          </main>
+          <SiteFooter />
+          <BackToTop />
         </ThemeProvider>
       </body>
     </html>

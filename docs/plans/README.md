@@ -11,4 +11,4 @@ A plan covers:
 5. **Tests:** what each test proves, including loading, empty and error states.
 6. **UI:** a sketch or screenshot of each state.
 7. **Removal:** what this replaces and the packages that go with it.
-8. **Lighthouse:** the routes affected and how they stay at 98 or more in every category.
+8. **Screens:** the website routes affected and how they will be reviewed at phone and desktop width, in light and dark mode.

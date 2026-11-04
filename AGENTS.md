@@ -71,9 +71,9 @@ Add a dependency (npm, crate or Go module) in the same change that first uses it
 
 Use the hook that fits the job (see the [hook table](docs/engineering-standards.md#hooks)). Stateful logic, effects and subscriptions live in custom hooks, never inline in components (see [Custom hooks](docs/engineering-standards.md#custom-hooks)). Where the React Compiler is on, do not add `useMemo` or `useCallback` by reflex.
 
-## Directive 9: Lighthouse 98 to 100
+## Directive 9: Every website page works on every screen
 
-Every route of the public website (`apps/website`) scores between 98 and 100 in Performance, Accessibility, Best Practices and SEO on a mobile Lighthouse run. A change that drops any category below 98 is not done; aim for 100. Add new routes to the website's `lighthouserc.json`.
+Every route of the public website (`apps/website`) works at phone width (390 px) and at desktop width, in light and dark mode, with a keyboard, and with text that meets WCAG AA contrast. Review each page you change in a real browser at both widths and in both themes before calling it done.
 
 ## Directive 10: Preflight before done
 
@@ -81,7 +81,7 @@ Before you open a pull request or call a task complete, run `./scripts/preflight
 
 ## Directive 11: Use the tools you have
 
-Check which MCP servers and skills your environment provides and use them: Context7 for library docs, the Next.js bundled docs, the shadcn registry (plus `@kokonutui` and `@vengeanceui`) for UI primitives, Chrome DevTools or Playwright for Lighthouse and runtime debugging, the Stellar CLI for contract state. Do not guess at an API a tool can show you.
+Check which MCP servers and skills your environment provides and use them: Context7 for library docs, the Next.js bundled docs, the shadcn registry (plus `@kokonutui` and `@vengeanceui`) for UI primitives, Chrome DevTools or Playwright for performance and runtime debugging, the Stellar CLI for contract state. Do not guess at an API a tool can show you.
 
 ---
 
@@ -114,7 +114,7 @@ Before asking for review, check the change against each item. The PR template re
 5. **Tests.** Behaviour tests for the change, covering loading, empty and error states, and for circuits the true, false, fraud-bound and inclusion cases. Bug fixes were red before green.
 6. **Money.** Amounts in integer base units (`bigint`, `u64`/`i128`, `int64`/`big.Int`), never floats.
 7. **States.** Every async path has a loading state and an error state; nothing freezes.
-8. **Accessibility and Lighthouse.** Keyboard, labels and contrast checked; every touched website route still scores 98 or more in every category.
+8. **Accessibility and screens.** Keyboard, labels and contrast checked; every touched website route reviewed at phone and desktop width, in light and dark mode.
 9. **Comments.** None from an agent; human comments explain why in three lines or fewer.
 10. **Cleanup.** Replaced code, assets, config and packages removed; `pnpm knip` clean.
 11. **Claims.** Public text (website, docs, README) claims only what the code does today.
@@ -122,11 +122,11 @@ Before asking for review, check the change against each item. The PR template re
 
 ## Commands
 
-| Command                            | Purpose                                                                 |
-| ---------------------------------- | ----------------------------------------------------------------------- |
-| `./scripts/preflight.sh`           | Every gate in every tier, including builds and Worker smoke tests       |
-| `./scripts/preflight.sh --fast`    | Everything except builds, smoke tests and Lighthouse (runs on pre-push) |
-| `pnpm lint` / `typecheck` / `test` | TypeScript gates through Turborepo                                      |
-| `pnpm comments:check`              | Comment rules on changed TypeScript, JavaScript and CSS files           |
-| `pnpm knip`                        | Unused files, exports and dependencies                                  |
-| `just lint-check` / `just --list`  | Rust and the other tiers                                                |
+| Command                            | Purpose                                                           |
+| ---------------------------------- | ----------------------------------------------------------------- |
+| `./scripts/preflight.sh`           | Every gate in every tier, including builds and Worker smoke tests |
+| `./scripts/preflight.sh --fast`    | Everything except builds and smoke tests (runs on pre-push)       |
+| `pnpm lint` / `typecheck` / `test` | TypeScript gates through Turborepo                                |
+| `pnpm comments:check`              | Comment rules on changed TypeScript, JavaScript and CSS files     |
+| `pnpm knip`                        | Unused files, exports and dependencies                            |
+| `just lint-check` / `just --list`  | Rust and the other tiers                                          |
