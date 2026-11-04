@@ -11,7 +11,7 @@ func TestResolveTenantContract(t *testing.T) {
 	store := newTestStore(t)
 	q := New(store.pool)
 
-	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Meridian Bank", Plan: "growth"})
+	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Kestrel Anchor", Plan: "growth"})
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
@@ -53,11 +53,11 @@ func TestCreateTenant(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	tenant, err := store.CreateTenant(ctx, "Meridian Bank", "growth")
+	tenant, err := store.CreateTenant(ctx, "Kestrel Anchor", "growth")
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
-	if tenant.Name != "Meridian Bank" || tenant.Plan != "growth" || tenant.ID == "" {
+	if tenant.Name != "Kestrel Anchor" || tenant.Plan != "growth" || tenant.ID == "" {
 		t.Fatalf("created tenant = %+v, want name/plan set and a non-empty id", tenant)
 	}
 
@@ -74,7 +74,7 @@ func TestSetTenantWallet(t *testing.T) {
 	store := newTestStore(t)
 	q := New(store.pool)
 
-	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Meridian Bank", Plan: "growth"})
+	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Kestrel Anchor", Plan: "growth"})
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}

@@ -2,17 +2,35 @@ import Link from "next/link";
 import { appUrl } from "@/lib/shared";
 
 const entries = [
-  { title: "Quickstart", body: "Prove solvency end to end in a few minutes.", href: "/docs/quickstart" },
-  { title: "SDK reference", body: "The @solva/sdk-ts surface: cycles, proofs, inclusion.", href: "/docs/sdk-reference" },
-  { title: "Sandbox", body: "Run against mock open-banking data before you go live.", href: "/docs/sandbox" },
-  { title: "Contract address", body: "The deployed proof-registry contract on Stellar.", href: "/docs/contract-address" },
+  {
+    title: "Quickstart",
+    body: "Prove solvency end to end in a few minutes.",
+    href: "/docs/quickstart",
+  },
+  {
+    title: "SDK reference",
+    body: "The @solva/sdk-ts surface: cycles, proofs, inclusion.",
+    href: "/docs/sdk-reference",
+  },
+  {
+    title: "Sandbox",
+    body: "Run against mock reserve data before you go live.",
+    href: "/docs/sandbox",
+  },
+  {
+    title: "Contract address",
+    body: "The deployed proof-registry contract on Stellar.",
+    href: "/docs/contract-address",
+  },
 ];
 
 export default function HomePage() {
   return (
     <main className="mx-auto w-full max-w-[1200px] px-7 py-20 sm:py-28">
       <div className="text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-fd-primary">Documentation</p>
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-fd-primary">
+          Documentation
+        </p>
         <h1 className="mt-4 text-balance text-[clamp(2.25rem,5vw,3.75rem)] font-bold leading-[1.04] tracking-tight">
           Build on Solva.
         </h1>
@@ -55,7 +73,9 @@ export default function HomePage() {
               {entry.title}
             </h2>
             <p className="mt-1.5 text-sm leading-snug text-fd-muted-foreground">{entry.body}</p>
-            <span className="mt-3 inline-block text-[13px] font-medium text-fd-primary">Open →</span>
+            <span className="mt-3 inline-block text-[13px] font-medium text-fd-primary">
+              Open →
+            </span>
           </Link>
         ))}
       </div>

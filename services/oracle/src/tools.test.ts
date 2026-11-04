@@ -5,11 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Proof, SolvencyResult, AnomalyFlag } from "@solva/shared-types";
-import {
-  SolvencyStatus,
-  AnomalyKind,
-  AnomalySeverity,
-} from "@solva/shared-types";
+import { SolvencyStatus, AnomalyKind, AnomalySeverity } from "@solva/shared-types";
 import type { OracleDeps } from "./tools.js";
 
 // ---------------------------------------------------------------------------
@@ -44,12 +40,7 @@ class StubMcpServer {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function makeProof(
-  id = "p1",
-  R = "1000",
-  L = "800",
-  publishedAt = 1_700_000_000,
-): Proof {
+function makeProof(id = "p1", R = "1000", L = "800", publishedAt = 1_700_000_000): Proof {
   return {
     id,
     proof: "",
@@ -187,8 +178,8 @@ test("get_solvency: passes institution_id through to getLatestProof", async () =
     }),
   );
 
-  await server.call("get_solvency", { institution_id: "bank-xyz" });
-  assert.equal(capturedTenant, "bank-xyz");
+  await server.call("get_solvency", { institution_id: "anchor-xyz" });
+  assert.equal(capturedTenant, "anchor-xyz");
 });
 
 // ---------------------------------------------------------------------------
@@ -204,10 +195,7 @@ test("get_anomalies: returns empty array for stable history", async () => {
     server as never,
     makeDeps({
       async getProofHistory() {
-        return [
-          makeProof("p1", "1000", "500", t0),
-          makeProof("p2", "1010", "505", t0 + 60),
-        ];
+        return [makeProof("p1", "1000", "500", t0), makeProof("p2", "1010", "505", t0 + 60)];
       },
     }),
   );
@@ -246,10 +234,7 @@ test("get_anomalies: flags reserve drift in history", async () => {
   const drift = flags.find((f) => f.kind === AnomalyKind.ReserveDrift);
   assert.ok(drift, "expected a reserve drift flag");
   assert.equal(drift.proofId, "p2");
-  assert.ok(
-    drift.value < 0,
-    "drift value should be negative for a reserve drop",
-  );
+  assert.ok(drift.value < 0, "drift value should be negative for a reserve drop");
 });
 
 test("get_anomalies: flags liability spike in history", async () => {
@@ -304,11 +289,7 @@ test("get_anomalies: returns documented AnomalyFlag shape", async () => {
   assert.ok(flags.length > 0, "should have at least one flag");
   const flag = flags[0]!;
   // Verify all documented fields are present.
-  assert.ok(
-    ["reserve_drift", "liability_spike", "cycle_timing_gap"].includes(
-      flag.kind,
-    ),
-  );
+  assert.ok(["reserve_drift", "liability_spike", "cycle_timing_gap"].includes(flag.kind));
   assert.ok(["info", "warning", "critical"].includes(flag.severity));
   assert.equal(typeof flag.proofId, "string");
   assert.equal(typeof flag.value, "number");
@@ -332,6 +313,6 @@ test("get_anomalies: passes institution_id through to getProofHistory", async ()
     }),
   );
 
-  await server.call("get_anomalies", { institution_id: "bank-abc" });
-  assert.equal(capturedId, "bank-abc");
+  await server.call("get_anomalies", { institution_id: "anchor-abc" });
+  assert.equal(capturedId, "anchor-abc");
 });

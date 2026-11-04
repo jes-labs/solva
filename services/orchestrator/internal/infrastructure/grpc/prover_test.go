@@ -76,8 +76,8 @@ func TestProve_RequestMapping(t *testing.T) {
 	defer stop()
 
 	reserves := []entity.Reserve{
-		{SourceID: "bank-a", Balance: "3000", Currency: "USD"},
-		{SourceID: "bank-b", Balance: "2000", Currency: "USD"},
+		{SourceID: "source-a", Balance: "3000", Currency: "USD"},
+		{SourceID: "source-b", Balance: "2000", Currency: "USD"},
 	}
 	liabilities := []usecase.Liability{
 		{CustomerIDHash: "0xaabbcc", Balance: "1500"},
@@ -96,13 +96,13 @@ func TestProve_RequestMapping(t *testing.T) {
 	if got, want := len(req.Reserves), 2; got != want {
 		t.Errorf("len(Reserves): got %d, want %d", got, want)
 	}
-	if got, want := req.Reserves[0].SourceId, "bank-a"; got != want {
+	if got, want := req.Reserves[0].SourceId, "source-a"; got != want {
 		t.Errorf("Reserves[0].SourceId: got %q, want %q", got, want)
 	}
 	if got, want := req.Reserves[0].Balance, "3000"; got != want {
 		t.Errorf("Reserves[0].Balance: got %q, want %q", got, want)
 	}
-	if got, want := req.Reserves[1].SourceId, "bank-b"; got != want {
+	if got, want := req.Reserves[1].SourceId, "source-b"; got != want {
 		t.Errorf("Reserves[1].SourceId: got %q, want %q", got, want)
 	}
 	if got, want := len(req.Liabilities), 2; got != want {

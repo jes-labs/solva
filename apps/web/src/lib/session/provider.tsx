@@ -27,7 +27,7 @@ function freshInstitution(): Institution {
   return {
     id: `inst_${Date.now().toString(36)}`,
     legalName: "",
-    type: "bank",
+    type: "anchor",
     jurisdiction: "",
     registrationNumber: "",
     contactName: "",

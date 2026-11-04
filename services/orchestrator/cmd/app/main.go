@@ -48,7 +48,7 @@ func run(cfg config.Config, log zerolog.Logger) error {
 	defer cleanup()
 
 	cycle := usecase.NewCycle(
-		deps.banks,
+		deps.sources,
 		deps.prover,
 		deps.stellar,
 		deps.postgres,

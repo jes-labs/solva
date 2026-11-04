@@ -17,8 +17,8 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/jes-labs/solva/services/sandbox/internal/bank"
 	"github.com/jes-labs/solva/services/sandbox/internal/oauth"
+	"github.com/jes-labs/solva/services/sandbox/internal/reserves"
 	"github.com/jes-labs/solva/services/sandbox/internal/signer"
 )
 
@@ -30,7 +30,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	if err != nil {
 		t.Fatalf("signer: %v", err)
 	}
-	srv := New(bank.NewRegistry(), oauth.NewServer(), sgn, zerolog.Nop())
+	srv := New(reserves.NewRegistry(), oauth.NewServer(), sgn, zerolog.Nop())
 	ts := httptest.NewServer(srv.Router())
 	t.Cleanup(ts.Close)
 	return ts
@@ -138,7 +138,7 @@ func fetchPublicKey(t *testing.T, baseURL string) []byte {
 	return pemBytes
 }
 
-// verifyLikeOrchestrator replicates the orchestrator's banks.VerifySignature:
+// verifyLikeOrchestrator replicates the orchestrator's attested.VerifySignature:
 // parse the PKIX PEM key, SHA-256 the canonical payload, and check the ASN.1 DER
 // signature. It is duplicated here because Go's internal/ rules and the separate
 // module prevent importing the orchestrator verifier directly; this is the
@@ -157,7 +157,7 @@ func verifyLikeOrchestrator(pubPEM []byte, body balanceResponse) error {
 		return errors.New("public key is not ECDSA")
 	}
 
-	canonical, err := bank.CanonicalPayload(body.SourceID, body.Balance, body.Currency, body.AsOf)
+	canonical, err := reserves.CanonicalPayload(body.SourceID, body.Balance, body.Currency, body.AsOf)
 	if err != nil {
 		return err
 	}

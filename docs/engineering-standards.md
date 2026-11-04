@@ -234,7 +234,7 @@ Applies to the orchestrator and the sandbox (`services/orchestrator`, `services/
 - Handle every error where it happens and wrap it with context (`fmt.Errorf("...: %w", err)`). Never discard an error with `_`.
 - The orchestrator never hashes for the circuit. That is the prover's job.
 - Amounts are integers in minor units (`int64` or `big.Int`).
-- Keep one shape per kind of component: every bank adapter, every publisher, every repository follows the same pattern.
+- Keep one shape per kind of component: every reserve-source adapter, every publisher, every repository follows the same pattern.
 
 ## Noir circuits
 

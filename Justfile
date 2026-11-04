@@ -69,7 +69,7 @@ prover-image:
 dev-orchestrator:
     cd services/orchestrator && go run ./cmd/app
 
-# Run the mock Open Banking sandbox.
+# Run the mock reserve-source sandbox.
 dev-sandbox:
     cd services/sandbox && go run ./cmd/app
 

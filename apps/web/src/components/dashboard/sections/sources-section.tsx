@@ -14,8 +14,8 @@ export function SourcesSection() {
     <div className="space-y-6">
       <div>
         <p className="text-[14px] leading-relaxed text-sec">
-          Connect the bank accounts and on-chain wallets that back your reserves. Bank balances are
-          read over open banking with your authorization; nothing is moved.
+          Connect the custodian accounts and on-chain wallets that back your reserves. Custodian
+          balances are signed at the source and read with your authorization; nothing is moved.
         </p>
       </div>
       <SourcesPanel sources={data.sources} onConnect={connectSource} canConnect={canConnect} />

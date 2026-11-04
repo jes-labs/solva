@@ -27,8 +27,8 @@ import (
 // contractFunction is the entry point invoked on the proof-registry contract.
 const contractFunction = "publish_proof"
 
-// Defaults for submission retry and result polling. They mirror the bank
-// adapter's transient-failure handling so the orchestrator behaves the same way
+// Defaults for submission retry and result polling. They mirror the attested
+// source adapter's transient-failure handling so the orchestrator behaves the same way
 // across its outbound integrations.
 const (
 	defaultMaxAttempts  = 4

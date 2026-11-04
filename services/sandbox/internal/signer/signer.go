@@ -1,7 +1,7 @@
-// Package signer produces ECDSA signatures over bank balance payloads. The
+// Package signer produces ECDSA signatures over reserve balance payloads. The
 // orchestrator verifies them with the matching public key. The scheme is fixed:
 // P-256, SHA-256 over the canonical JSON payload, ASN.1 DER signature. It must
-// stay in lockstep with the orchestrator's banks.VerifySignature.
+// stay in lockstep with the orchestrator's attested.VerifySignature.
 package signer
 
 import (

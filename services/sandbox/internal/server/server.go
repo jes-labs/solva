@@ -15,21 +15,21 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 
-	"github.com/jes-labs/solva/services/sandbox/internal/bank"
 	"github.com/jes-labs/solva/services/sandbox/internal/oauth"
+	"github.com/jes-labs/solva/services/sandbox/internal/reserves"
 	"github.com/jes-labs/solva/services/sandbox/internal/signer"
 )
 
 // Server holds the sandbox dependencies the routes need.
 type Server struct {
-	registry *bank.Registry
+	registry *reserves.Registry
 	oauth    *oauth.Server
 	signer   *signer.Signer
 	log      zerolog.Logger
 }
 
 // New builds the server.
-func New(registry *bank.Registry, oauthSrv *oauth.Server, sgn *signer.Signer, log zerolog.Logger) *Server {
+func New(registry *reserves.Registry, oauthSrv *oauth.Server, sgn *signer.Signer, log zerolog.Logger) *Server {
 	return &Server{registry: registry, oauth: oauthSrv, signer: sgn, log: log}
 }
 
@@ -125,7 +125,7 @@ func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
 
 	accountID := chi.URLParam(r, "id")
 	acct, err := s.registry.Get(accountID)
-	if errors.Is(err, bank.ErrUnknownAccount) {
+	if errors.Is(err, reserves.ErrUnknownAccount) {
 		writeError(w, http.StatusNotFound, "unknown account")
 		return
 	}
@@ -135,7 +135,7 @@ func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	asOf := time.Now().UTC().Format(time.RFC3339)
-	payload, err := bank.CanonicalPayload(acct.AccountID, acct.Balance, acct.Currency, asOf)
+	payload, err := reserves.CanonicalPayload(acct.AccountID, acct.Balance, acct.Currency, asOf)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not build payload")
 		return
@@ -159,10 +159,10 @@ func (s *Server) balance(w http.ResponseWriter, r *http.Request) {
 func (s *Server) seedScenario(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	err := s.registry.Seed(name)
-	if errors.Is(err, bank.ErrUnknownScenario) {
+	if errors.Is(err, reserves.ErrUnknownScenario) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error":     "unknown scenario",
-			"available": bank.Scenarios(),
+			"available": reserves.Scenarios(),
 		})
 		return
 	}

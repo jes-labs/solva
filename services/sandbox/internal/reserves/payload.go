@@ -1,4 +1,4 @@
-package bank
+package reserves
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 )
 
 // CanonicalPayload serializes the signed balance fields in a fixed key order.
-// It must match the orchestrator's banks.canonicalPayload exactly: keys sorted,
+// It must match the orchestrator's attested.canonicalPayload exactly: keys sorted,
 // the signature field excluded. Any divergence breaks every signature.
 func CanonicalPayload(sourceID, balance, currency, asOf string) ([]byte, error) {
 	signed := struct {

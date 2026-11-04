@@ -1,19 +1,19 @@
 # Hosting the Solva demo on free tiers
 
 This deploys the full Solva stack so judges can open a URL and run the `/sandbox`
-playground live: connect a mock bank, prove reserves cover liabilities, publish a
+playground live: connect a mock custodian, prove reserves cover liabilities, publish a
 proof to Stellar Testnet, and verify it. Nothing here is local-only, and nothing
 here costs money.
 
 ## What runs where
 
-| Component | Host | Why it is free |
-|---|---|---|
-| Postgres | **Neon** | free plan: 0.5 GB, 100 CU-hours/month, no card |
-| Redis | **Upstash** | free plan: 256 MB, 500k commands/month |
-| Prover (Rust + bb) | **Google Cloud Run** | always-free tier, scales to zero, amd64, gRPC |
-| Orchestrator (Go) | **Google Cloud Run** | same always-free tier |
-| Sandbox (Go) | **Google Cloud Run** | same always-free tier |
+| Component                   | Host                   | Why it is free                                          |
+| --------------------------- | ---------------------- | ------------------------------------------------------- |
+| Postgres                    | **Neon**               | free plan: 0.5 GB, 100 CU-hours/month, no card          |
+| Redis                       | **Upstash**            | free plan: 256 MB, 500k commands/month                  |
+| Prover (Rust + bb)          | **Google Cloud Run**   | always-free tier, scales to zero, amd64, gRPC           |
+| Orchestrator (Go)           | **Google Cloud Run**   | same always-free tier                                   |
+| Sandbox (Go)                | **Google Cloud Run**   | same always-free tier                                   |
 | Website / docs / web (Next) | **Cloudflare Workers** | Workers Free plan, see [CLOUDFLARE.md](./CLOUDFLARE.md) |
 
 Why Cloud Run and not Fly.io or AWS: Fly.io removed its free tier for new orgs in
@@ -44,12 +44,12 @@ You need four accounts and a handful of CLIs. All four have real free tiers; onl
 Google Cloud asks for a card, and it is not charged while you stay in the
 always-free allowance.
 
-| Service | Sign up | What it hosts | Card? |
-|---|---|---|---|
+| Service      | Sign up                          | What it hosts                 | Card?                          |
+| ------------ | -------------------------------- | ----------------------------- | ------------------------------ |
 | Google Cloud | https://console.cloud.google.com | prover, orchestrator, sandbox | yes (not charged in free tier) |
-| Neon | https://neon.tech | Postgres | no |
-| Upstash | https://upstash.com | Redis | no |
-| Cloudflare | https://dash.cloudflare.com | website / docs / web | no |
+| Neon         | https://neon.tech                | Postgres                      | no                             |
+| Upstash      | https://upstash.com              | Redis                         | no                             |
+| Cloudflare   | https://dash.cloudflare.com      | website / docs / web          | no                             |
 
 ### Install the CLIs (macOS)
 
@@ -59,6 +59,7 @@ brew install stellar-cli               # stellar
 brew install openssl libpq             # openssl + psql (libpq)
 brew link --force libpq                # put psql on PATH
 ```
+
 On Linux/Windows, follow https://cloud.google.com/sdk/docs/install and
 https://developers.stellar.org/docs/tools/cli. The repo also needs Node 22 and
 `pnpm` (`brew install node pnpm`).
@@ -97,6 +98,7 @@ Create the funded identity that owns the demo contracts (this guide calls it
 stellar keys generate signor --network testnet --fund
 stellar keys address signor          # its G... address
 ```
+
 Top it up any time it runs low:
 `curl "https://friendbot.stellar.org/?addr=$(stellar keys address signor)"`.
 
@@ -143,15 +145,15 @@ done
 
 Create a database, copy the `rediss://…` URL. That is `ORCH_REDIS_URL`.
 
-## 3. A fixed bank signing key
+## 3. A fixed reserve-source signing key
 
 The sandbox signs balances; the orchestrator verifies them. Generate one P-256
 key so the pair stays stable across restarts:
 
 ```bash
-openssl ecparam -genkey -name prime256v1 -noout -out bank.key
-openssl pkcs8 -topk8 -nocrypt -in bank.key -out bank.pkcs8.pem   # SANDBOX_SIGNING_KEY_PEM
-openssl ec -in bank.key -pubout -out bank.pub.pem               # ORCH_BANK_PUBLIC_KEY_PEM
+openssl ecparam -genkey -name prime256v1 -noout -out reserve-source.key
+openssl pkcs8 -topk8 -nocrypt -in reserve-source.key -out reserve-source.pkcs8.pem   # SANDBOX_SIGNING_KEY_PEM
+openssl ec -in reserve-source.key -pubout -out reserve-source.pub.pem               # ORCH_RESERVE_PUBLIC_KEY_PEM
 ```
 
 ## 4. Build the three images (on Google's amd64 builders)
@@ -207,7 +209,7 @@ echo "prover gRPC target: $PROVER_HOST:443"
 cat > sandbox.env.yaml <<YAML
 SANDBOX_HTTP_ADDR: ":8080"
 SANDBOX_SIGNING_KEY_PEM: |
-$(sed 's/^/  /' bank.pkcs8.pem)
+$(sed 's/^/  /' reserve-source.pkcs8.pem)
 YAML
 
 gcloud run deploy solva-sandbox \
@@ -236,13 +238,13 @@ ORCH_REDIS_URL: "rediss://…"
 ORCH_PROVER_ADDR: "$PROVER_HOST:443"
 ORCH_PROVER_TLS: "true"
 ORCH_PROVER_TOKEN: "$PROVER_API_TOKEN"
-ORCH_BANK_BASE_URL: "$SANDBOX_URL"
+ORCH_RESERVE_BASE_URL: "$SANDBOX_URL"
 ORCH_STELLAR_SIGNER_SECRET: "$(stellar keys show signor)"
 ORCH_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org"
 ORCH_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
 ORCH_SCHEDULER_ENABLED: "false"
-ORCH_BANK_PUBLIC_KEY_PEM: |
-$(sed 's/^/  /' bank.pub.pem)
+ORCH_RESERVE_PUBLIC_KEY_PEM: |
+$(sed 's/^/  /' reserve-source.pub.pem)
 YAML
 
 gcloud run deploy solva-orchestrator \
@@ -270,7 +272,7 @@ B=$(stellar contract deploy --wasm target/wasm32v1-none/release/proof_registry.w
 
 psql "$PG" -v ON_ERROR_STOP=1 <<SQL
 INSERT INTO tenants (id, name, plan, contract_id, network) VALUES
-  ('11111111-1111-1111-1111-111111111111','Meridian Bank','growth','$A','testnet'),
+  ('11111111-1111-1111-1111-111111111111','Kestrel Anchor','growth','$A','testnet'),
   ('22222222-2222-2222-2222-222222222222','Solstice Exchange','growth','$B','testnet');
 WITH ins AS (
   INSERT INTO customers (tenant_id, external_ref, id_hash)

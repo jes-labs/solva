@@ -38,7 +38,7 @@ type fakeDeps struct {
 
 func (f *fakeDeps) record(name string) { f.calls = append(f.calls, name) }
 
-// --- BankAdapter ---
+// --- ReserveSource ---
 func (f *fakeDeps) FetchSigned(_ context.Context, tenantID string) (entity.ReserveSnapshot, error) {
 	f.record("FetchSigned")
 	return entity.ReserveSnapshot{

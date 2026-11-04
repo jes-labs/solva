@@ -6,14 +6,14 @@
 #
 # Run from the repo root after cloning:
 #   export SIGNER_SECRET=S...      # signor's Testnet secret (owns the registries)
-#   export CONTRACT_A=C...         # Meridian registry (owned by signor)
+#   export CONTRACT_A=C...         # Kestrel registry (owned by signor)
 #   export CONTRACT_B=C...         # Solstice registry (owned by signor)
 #   bash deploy/vm/setup.sh
 #
 set -euo pipefail
 
 : "${SIGNER_SECRET:?set SIGNER_SECRET to the signer Testnet secret seed}"
-: "${CONTRACT_A:?set CONTRACT_A to the Meridian registry contract id}"
+: "${CONTRACT_A:?set CONTRACT_A to the Kestrel registry contract id}"
 : "${CONTRACT_B:?set CONTRACT_B to the Solstice registry contract id}"
 
 ROOT=$(pwd)
@@ -39,10 +39,10 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 ok "docker present"
 
-log "generating the bank signing key and API tokens"
-openssl ecparam -genkey -name prime256v1 -noout -out "$VMDIR/bank.key" 2>/dev/null
-openssl pkcs8 -topk8 -nocrypt -in "$VMDIR/bank.key" -out "$VMDIR/bank.pkcs8.pem" 2>/dev/null
-openssl ec -in "$VMDIR/bank.key" -pubout -out "$VMDIR/bank.pub.pem" 2>/dev/null
+log "generating the reserve-source signing key and API tokens"
+openssl ecparam -genkey -name prime256v1 -noout -out "$VMDIR/reserve-source.key" 2>/dev/null
+openssl pkcs8 -topk8 -nocrypt -in "$VMDIR/reserve-source.key" -out "$VMDIR/reserve-source.pkcs8.pem" 2>/dev/null
+openssl ec -in "$VMDIR/reserve-source.key" -pubout -out "$VMDIR/reserve-source.pub.pem" 2>/dev/null
 ORCH_API_TOKEN=$(openssl rand -hex 32)
 PROVER_API_TOKEN=$(openssl rand -hex 32)
 echo "$ORCH_API_TOKEN" > "$VMDIR/orch_api_token.txt"
@@ -92,7 +92,7 @@ services:
     environment:
       SANDBOX_HTTP_ADDR: ":8090"
       SANDBOX_SIGNING_KEY_PEM: |
-$(sed 's/^/        /' "$VMDIR/bank.pkcs8.pem")
+$(sed 's/^/        /' "$VMDIR/reserve-source.pkcs8.pem")
     ports:
       - "8090:8090"
     restart: unless-stopped
@@ -109,13 +109,13 @@ $(sed 's/^/        /' "$VMDIR/bank.pkcs8.pem")
       ORCH_PROVER_ADDR: "prover:50051"
       ORCH_PROVER_TLS: "false"
       ORCH_PROVER_TOKEN: "$PROVER_API_TOKEN"
-      ORCH_BANK_BASE_URL: "http://sandbox:8090"
+      ORCH_RESERVE_BASE_URL: "http://sandbox:8090"
       ORCH_STELLAR_SIGNER_SECRET: "$SIGNER_SECRET"
       ORCH_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org"
       ORCH_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
       ORCH_SCHEDULER_ENABLED: "false"
-      ORCH_BANK_PUBLIC_KEY_PEM: |
-$(sed 's/^/        /' "$VMDIR/bank.pub.pem")
+      ORCH_RESERVE_PUBLIC_KEY_PEM: |
+$(sed 's/^/        /' "$VMDIR/reserve-source.pub.pem")
     ports:
       - "8080:8080"
     depends_on:
@@ -150,7 +150,7 @@ ok "schema applied"
 log "seeding the two demo institutions"
 $DC exec -T postgres psql -U solva -d solva -v ON_ERROR_STOP=1 >/dev/null <<SQL
 INSERT INTO tenants (id, name, plan, contract_id, network) VALUES
-  ('11111111-1111-1111-1111-111111111111','Meridian Bank','growth','$CONTRACT_A','testnet'),
+  ('11111111-1111-1111-1111-111111111111','Kestrel Anchor','growth','$CONTRACT_A','testnet'),
   ('22222222-2222-2222-2222-222222222222','Solstice Exchange','growth','$CONTRACT_B','testnet');
 WITH ins AS (
   INSERT INTO customers (tenant_id, external_ref, id_hash)
@@ -169,7 +169,7 @@ SELECT ins.tenant_id, ins.id, v.bal FROM ins JOIN (VALUES
   ('cust-001',4000000::numeric),('cust-002',3000000::numeric),('cust-003',2000000::numeric)
 ) AS v(ref,bal) ON ins.external_ref = v.ref;
 SQL
-ok "seeded Meridian and Solstice"
+ok "seeded Kestrel and Solstice"
 
 log "building and starting the services (first prover build is slow)"
 $DC up -d --build prover sandbox orchestrator

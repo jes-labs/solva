@@ -3,7 +3,7 @@ package entity
 import "time"
 
 // Reserve is a single reserve figure attested by one source, for example a
-// bank balance or an on-chain holding. Balance is a decimal string of integer
+// custodian-signed balance or an on-chain holding. Balance is a decimal string of integer
 // minor units.
 type Reserve struct {
 	// SourceID identifies the reserve source within the tenant.

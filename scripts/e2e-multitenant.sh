@@ -7,7 +7,7 @@
 # layer (tenant_id scoping) AND on-chain (each contract's own LatestId
 # counter, read directly via the Soroban RPC, not just through the API).
 #
-# Institution A (Meridian Bank)      L = 9,000,000   contract A
+# Institution A (Kestrel Anchor)      L = 9,000,000   contract A
 # Institution B (Cedar Credit Union) L = 3,000,000   contract B
 # Both read the same sandbox reserve scenario (R = 16,000,000), so both are
 # solvent; the point of this test is isolation, not the solvency math, which
@@ -186,7 +186,7 @@ if [ "${E2E_SERVICES_RUNNING:-0}" != "1" ]; then
 
   log "starting orchestrator"
   (
-    export ORCH_BANK_PUBLIC_KEY_PEM="$SANDBOX_PUBKEY_PEM"
+    export ORCH_RESERVE_PUBLIC_KEY_PEM="$SANDBOX_PUBKEY_PEM"
     export ORCH_STELLAR_SIGNER_SECRET="$E2E_STELLAR_SIGNER_SECRET"
     export ORCH_SCHEDULER_ENABLED=false
     # No ORCH_ADMIN_TOKEN: the provisioning calls below run with admin auth
@@ -221,8 +221,8 @@ link_contract() { # tenant_id contract_id
   [ "$code" = "200" ] || fail "linking contract for tenant ${tid} returned HTTP ${code}: $(cat /tmp/solva-e2e-mt-link.json)"
 }
 
-log "seeding institution A (Meridian Bank, L=9,000,000)"
-seed_tenant "$TENANT_A" "Meridian Bank"
+log "seeding institution A (Kestrel Anchor, L=9,000,000)"
+seed_tenant "$TENANT_A" "Kestrel Anchor"
 psql_solva >/dev/null <<SQL
 WITH c AS (
   INSERT INTO customers (tenant_id, external_ref, id_hash) VALUES

@@ -1,6 +1,5 @@
 <img width="1280" height="640" alt="github-banner-1280x640" src="https://github.com/user-attachments/assets/febfb492-0587-422f-afb0-69ad50c84c8c" />
 
-
 [![CI](https://github.com/jes-labs/solva/actions/workflows/ci.yml/badge.svg)](https://github.com/jes-labs/solva/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
@@ -13,14 +12,13 @@
 [![gRPC](https://img.shields.io/badge/gRPC-protobuf-244c5a?logo=grpc&logoColor=white)](https://grpc.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 
-
 Solva is a zero-knowledge Proof of Reserves protocol on Stellar. It lets a custodial institution prove that its reserves are greater than or equal to its liabilities, continuously and without revealing any customer balance.
 
-A normal audit samples a few accounts, takes weeks, and ships a report that is already stale. Solva replaces that with a proof. Reserves are attested at the source through signed bank balances or on-chain holdings. Liabilities are committed into a Poseidon2 Merkle Sum Tree. A Noir circuit proves the relation `R >= L`, and a Soroban contract verifies the proof on-chain using the BN254 and Poseidon2 host functions added in Stellar Protocol 25 and 26.
+A normal audit samples a few accounts, takes weeks, and ships a report that is already stale. Solva replaces that with a proof. Reserves are attested at the source through custodian-signed balances or on-chain holdings. Liabilities are committed into a Poseidon2 Merkle Sum Tree. A Noir circuit proves the relation `R >= L`, and a Soroban contract verifies the proof on-chain using the BN254 and Poseidon2 host functions added in Stellar Protocol 25 and 26.
 
 The proof reveals nothing about who owns what. The public sees only the totals and the commitment root. Regulators can be given a viewing key for selective disclosure, and customers can check that their own balance is included in the committed tree.
 
-**Live demo:** run the full flow on Stellar Testnet at **[joinsolva.xyz/sandbox](https://www.joinsolva.xyz/sandbox)** — connect a mock bank, generate a zero-knowledge proof, publish it on-chain, and check a customer's inclusion.
+**Live demo:** run the full flow on Stellar Testnet at **[joinsolva.xyz/sandbox](https://www.joinsolva.xyz/sandbox)** — connect a mock custodian, generate a zero-knowledge proof, publish it on-chain, and check a customer's inclusion.
 
 **Demo video:** [watch the walkthrough](https://www.youtube.com/watch?v=fDMml7nLFHU).
 
@@ -46,10 +44,10 @@ flowchart TB
         INC["Inclusion checker"]
     end
 
-    ORCH["Orchestrator · Go<br/>scheduler · bank adapters · ECDSA verify<br/>Stellar publisher · audit log · idempotency"]
+    ORCH["Orchestrator · Go<br/>scheduler · reserve-source adapters · ECDSA verify<br/>Stellar publisher · audit log · idempotency"]
 
     PROVER["Prover · Rust<br/>Poseidon2 Merkle Sum Tree<br/>Noir / UltraHonk proof generation"]
-    SANDBOX["Sandbox · Go<br/>mock Open Banking<br/>OAuth + ECDSA signed balances"]
+    SANDBOX["Sandbox · Go<br/>mock custodian<br/>OAuth + ECDSA signed balances"]
     CONTRACT["proof-registry · Soroban<br/>UltraHonk verify · BN254 + Poseidon2<br/>registry + inclusion"]
     ORACLE["Oracle · TypeScript<br/>MCP solvency oracle · anomaly agent"]
 
@@ -82,14 +80,14 @@ flowchart TB
 
 Postgres stores proofs, liabilities, and the audit log. Redis caches the latest proof and holds the per-cycle idempotency lock.
 
-| Tier | Language | Role |
-|------|----------|------|
-| Circuits | Noir | Solvency, Merkle Sum, and fraud-bound constraints |
-| Prover | Rust | Poseidon2 tree construction and UltraHonk proof generation |
-| Contract | Rust / Soroban | On-chain proof verification, registry, inclusion check |
-| Orchestrator | Go | Scheduling, bank IO, ECDSA verification, publishing, REST |
-| Sandbox | Go | Mock Open Banking with OAuth and signed balances |
-| Web and oracle | TypeScript | Next.js app, docs, MCP oracle, anomaly agent, SDK |
+| Tier           | Language       | Role                                                                |
+| -------------- | -------------- | ------------------------------------------------------------------- |
+| Circuits       | Noir           | Solvency, Merkle Sum, and fraud-bound constraints                   |
+| Prover         | Rust           | Poseidon2 tree construction and UltraHonk proof generation          |
+| Contract       | Rust / Soroban | On-chain proof verification, registry, inclusion check              |
+| Orchestrator   | Go             | Scheduling, reserve-source IO, ECDSA verification, publishing, REST |
+| Sandbox        | Go             | Mock custodian with OAuth and signed balances                       |
+| Web and oracle | TypeScript     | Next.js app, docs, MCP oracle, anomaly agent, SDK                   |
 
 ## How a proof cycle works
 
@@ -105,9 +103,9 @@ Postgres stores proofs, liabilities, and the audit log. Redis caches the latest 
 
 Solva's cryptographic core is real and runs on Stellar Testnet today: the Noir circuit, the UltraHonk prover, and the Soroban contract that verifies the proof on-chain and stores the result. The `/sandbox` demo generates real proofs and publishes them to Testnet, and each institution publishes to its own contract.
 
-To make that runnable without a real bank, the reserve data comes from a **mock Open Banking sandbox**: a Go service that returns ECDSA-signed balances, standing in for the signed Open Banking feeds or on-chain holdings a production institution would connect. The signatures are real and verified by the orchestrator; only the balance figures are synthetic. The sandbox simulates the reserve-attestation step, not the cryptography.
+To make that runnable without a real custodian, the reserve data comes from a **mock reserve-source sandbox**: a Go service that returns ECDSA-signed balances in USD, standing in for the custodian-signed balances or on-chain holdings a production institution would connect. The signatures are real and verified by the orchestrator; only the balance figures are synthetic. The sandbox simulates the reserve-attestation step, not the cryptography.
 
-The operator console (`apps/web`) is partly illustrative: the passkey wallet, publishing, and tenant provisioning call the real services, while the main dashboard's cycle history and connect-source views use mock data. Real Open Banking and on-chain reserve integration, and a production-data console, are future work.
+The operator console (`apps/web`) is partly illustrative: the passkey wallet, publishing, and tenant provisioning call the real services, while the main dashboard's cycle history and connect-source views use mock data. Real custodian and on-chain reserve integration, and a production-data console, are future work.
 
 ## Passkey smart wallet
 
@@ -143,10 +141,12 @@ On **Windows**, use **WSL2** (Ubuntu) and follow the Linux steps.
 #### Installation guides
 
 **Docker** — runs Postgres and Redis.
+
 - macOS: [Docker Desktop](https://www.docker.com/products/docker-desktop/), or `brew install --cask docker`
 - Linux: `curl -fsSL https://get.docker.com | sh` ([docs](https://docs.docker.com/engine/install/))
 
 **Node 22 + pnpm** — web tier and SDK.
+
 ```bash
 # Node 22 via nvm (https://github.com/nvm-sh/nvm)
 nvm install 22 && nvm use 22
@@ -155,23 +155,28 @@ corepack enable
 ```
 
 **Go 1.25** — orchestrator and sandbox.
+
 - macOS: `brew install go`
 - Linux: follow https://go.dev/doc/install
 
 **Rust 1.91.1** — prover and Soroban contract. `rust-toolchain.toml` pins the
 version and the `wasm32v1-none` target, so rustup installs them for you.
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 **Stellar CLI** — deploys and reads contracts.
+
 ```bash
 brew install stellar-cli        # macOS / Linux with Homebrew
 # or: cargo install --locked stellar-cli
 ```
+
 [Install docs](https://developers.stellar.org/docs/tools/cli/install-cli)
 
 **Noir `nargo` 1.0.0-beta.9** — the circuit toolchain.
+
 ```bash
 curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
 noirup --version 1.0.0-beta.9
@@ -179,6 +184,7 @@ noirup --version 1.0.0-beta.9
 
 **Barretenberg `bb` 0.87.0** — the proving backend. Pick the build for your OS
 and CPU from the [v0.87.0 release](https://github.com/AztecProtocol/aztec-packages/releases/tag/v0.87.0):
+
 ```bash
 mkdir -p ~/.bb
 # Apple Silicon (arm64 Mac):
@@ -190,17 +196,20 @@ source ~/.zshrc
 ```
 
 **Just** — the command runner.
+
 ```bash
 brew install just               # macOS / Linux with Homebrew
 # or: cargo install just
 ```
 
 **Verify everything is installed and on PATH:**
+
 ```bash
 docker --version && node --version && pnpm --version && go version \
   && rustc --version && stellar --version && nargo --version \
   && bb --version && just --version
 ```
+
 `bb --version` must print `0.87.0` and `nargo --version` `1.0.0-beta.9`.
 
 Then install dependencies and create a funded Testnet identity that signs and publishes proofs:
@@ -239,7 +248,7 @@ ORCHESTRATOR_URL=http://localhost:8080 SANDBOX_URL=http://localhost:8090 \
   pnpm --filter @solva/website dev
 ```
 
-Open `http://localhost:3000/sandbox`, connect the mock bank, and run a cycle. Try the three scenarios: `solvent` and `near-breach` publish a proof, `insolvent` is refused on-chain. You can also check a customer's inclusion against the published proof, and open the transaction on the public explorer.
+Open `http://localhost:3000/sandbox`, connect the mock custodian, and run a cycle. Try the three scenarios: `solvent` and `near-breach` publish a proof, `insolvent` is refused on-chain. You can also check a customer's inclusion against the published proof, and open the transaction on the public explorer.
 
 ### Other commands
 
@@ -256,7 +265,7 @@ Protocol overview, quickstart, SDK reference, and the sandbox guide live in [Doc
 
 ## Project status
 
-Built for the Stellar Real-World ZK hackathon. Running on Stellar Testnet today: the Noir/UltraHonk proving pipeline, the Soroban on-chain verifier, per-institution multi-tenancy, and passkey smart-wallet publishing. Try it at [joinsolva.xyz/sandbox](https://www.joinsolva.xyz/sandbox). The reserve source in the demo is a mock Open Banking sandbox, described above in "What is real, and what is simulated". Next: real Open Banking and on-chain reserve integration, a production-data console, a security audit, and Mainnet. Open work is tracked in the [issues](https://github.com/jes-labs/solva/issues).
+Built for the Stellar Real-World ZK hackathon. Running on Stellar Testnet today: the Noir/UltraHonk proving pipeline, the Soroban on-chain verifier, per-institution multi-tenancy, and passkey smart-wallet publishing. Try it at [joinsolva.xyz/sandbox](https://www.joinsolva.xyz/sandbox). The reserve source in the demo is a mock custodian sandbox, described above in "What is real, and what is simulated". Next: real custodian and on-chain reserve integration, a production-data console, a security audit, and Mainnet. Open work is tracked in the [issues](https://github.com/jes-labs/solva/issues).
 
 ## Contact
 

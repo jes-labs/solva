@@ -14,7 +14,7 @@
 #         export ORCH_STELLAR_SIGNER_SECRET=S...
 #
 # Each institution publishes to its own proof-registry contract. Provide them:
-#   export DEMO_CONTRACT_A=C...   # Meridian Bank   (defaults to the shared demo)
+#   export DEMO_CONTRACT_A=C...   # Kestrel Anchor   (defaults to the shared demo)
 #   export DEMO_CONTRACT_B=C...   # Solstice Exchange
 # Both must be owned by ORCH_STELLAR_SIGNER_SECRET. Deploy one with
 # `just provision-tenant <tenant-id>` if you do not have a second yet.
@@ -30,7 +30,7 @@ export PATH="$HOME/.bb:$HOME/.nargo/bin:$PATH"
 
 SANDBOX_URL="http://localhost:8090"
 ORCH_URL="http://localhost:8080"
-TENANT_A="11111111-1111-1111-1111-111111111111" # Meridian Bank
+TENANT_A="11111111-1111-1111-1111-111111111111" # Kestrel Anchor
 TENANT_B="22222222-2222-2222-2222-222222222222" # Solstice Exchange
 CONTRACT_A="${DEMO_CONTRACT_A:-}"
 CONTRACT_B="${DEMO_CONTRACT_B:-}"
@@ -103,9 +103,9 @@ if [ -z "$CONTRACT_A" ] || [ -z "$CONTRACT_B" ]; then
   stellar contract build >/dev/null 2>&1
 fi
 if [ -z "$CONTRACT_A" ]; then
-  log "deploying Meridian Bank's registry (set DEMO_CONTRACT_A to reuse)"
-  CONTRACT_A=$(deploy_registry); [ -n "$CONTRACT_A" ] || fail "could not deploy Meridian's registry"
-  ok "Meridian registry $CONTRACT_A"
+  log "deploying Kestrel Anchor's registry (set DEMO_CONTRACT_A to reuse)"
+  CONTRACT_A=$(deploy_registry); [ -n "$CONTRACT_A" ] || fail "could not deploy Kestrel's registry"
+  ok "Kestrel registry $CONTRACT_A"
 fi
 if [ -z "$CONTRACT_B" ]; then
   log "deploying Solstice Exchange's registry (set DEMO_CONTRACT_B to reuse)"
@@ -157,7 +157,7 @@ SQL
 }
 
 log "seeding demo institutions"
-seed_tenant "$TENANT_A" "Meridian Bank" "$CONTRACT_A"
+seed_tenant "$TENANT_A" "Kestrel Anchor" "$CONTRACT_A"
 seed_tenant "$TENANT_B" "Solstice Exchange" "$CONTRACT_B"
 
 # ---- services -----------------------------------------------------------------
@@ -178,7 +178,7 @@ wait_tcp "localhost" "50051" "prover"
 
 log "starting orchestrator"
 (
-  export ORCH_BANK_PUBLIC_KEY_PEM="$SANDBOX_PUBKEY_PEM"
+  export ORCH_RESERVE_PUBLIC_KEY_PEM="$SANDBOX_PUBKEY_PEM"
   export ORCH_STELLAR_SIGNER_SECRET="$ORCH_STELLAR_SIGNER_SECRET"
   export ORCH_SCHEDULER_ENABLED=false
   cd services/orchestrator && go run ./cmd/app

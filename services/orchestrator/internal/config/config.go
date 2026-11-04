@@ -33,18 +33,18 @@ type Config struct {
 	// StellarSignerSecret is the publisher key that signs publish_proof
 	// invocations. In production this comes from KMS, never a checked-in value.
 	StellarSignerSecret string
-	// BankBaseURL is the sandbox Open Banking base URL.
-	BankBaseURL string
-	// BankPublicKeyPEM is the PEM-encoded P-256 public key used to verify
-	// signed bank balance responses.
-	BankPublicKeyPEM string
-	// BankAccounts is the set of reserve-source account ids read each cycle.
+	// ReserveBaseURL is the attested reserve source's base URL.
+	ReserveBaseURL string
+	// ReservePublicKeyPEM is the PEM-encoded P-256 public key used to verify
+	// signed reserve balance responses.
+	ReservePublicKeyPEM string
+	// ReserveAccounts is the set of reserve-source account ids read each cycle.
 	// Per-tenant resolution from reserve_sources lands later; for now the set
 	// is configured directly.
-	BankAccounts []string
-	// BankClientID is the OAuth client id the adapter authenticates with. Empty
+	ReserveAccounts []string
+	// ReserveClientID is the OAuth client id the adapter authenticates with. Empty
 	// disables auth, which the adapter unit tests rely on.
-	BankClientID string
+	ReserveClientID string
 	// CycleInterval is how often the scheduler triggers a cycle per tenant.
 	CycleInterval time.Duration
 	// SchedulerEnabled controls whether the background cron scheduler starts.
@@ -55,7 +55,7 @@ type Config struct {
 	LogLevel string
 	// AdminToken gates the control-plane provisioning routes (POST /v1/tenants,
 	// PUT /v1/tenants/{id}/contract): a caller must send it as a Bearer token.
-	// Left empty, the check is skipped, matching BankClientID's "empty disables
+	// Left empty, the check is skipped, matching ReserveClientID's "empty disables
 	// it" convention — fine for local dev, never for a real deployment.
 	AdminToken string
 }
@@ -71,10 +71,10 @@ func Load() (Config, error) {
 		StellarRPCURL:            env("ORCH_STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
 		StellarNetworkPassphrase: env("ORCH_STELLAR_NETWORK_PASSPHRASE", network.TestNetworkPassphrase),
 		StellarSignerSecret:      env("ORCH_STELLAR_SIGNER_SECRET", ""),
-		BankBaseURL:              env("ORCH_BANK_BASE_URL", "http://localhost:8090"),
-		BankPublicKeyPEM:         env("ORCH_BANK_PUBLIC_KEY_PEM", ""),
-		BankAccounts:             splitList(env("ORCH_BANK_ACCOUNTS", "acct-anchor,acct-beacon,acct-cedar")),
-		BankClientID:             env("ORCH_BANK_CLIENT_ID", "solva-orchestrator"),
+		ReserveBaseURL:           env("ORCH_RESERVE_BASE_URL", "http://localhost:8090"),
+		ReservePublicKeyPEM:      env("ORCH_RESERVE_PUBLIC_KEY_PEM", ""),
+		ReserveAccounts:          splitList(env("ORCH_RESERVE_ACCOUNTS", "acct-anchor,acct-beacon,acct-cedar")),
+		ReserveClientID:          env("ORCH_RESERVE_CLIENT_ID", "solva-orchestrator"),
 		SchedulerEnabled:         env("ORCH_SCHEDULER_ENABLED", "false") == "true",
 		LogLevel:                 env("ORCH_LOG_LEVEL", "info"),
 		ProverTLS:                env("ORCH_PROVER_TLS", "false") == "true",

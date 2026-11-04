@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ChevronRight, Landmark, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowLeft, ChevronRight, ShieldCheck, Vault, Wallet } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -16,16 +16,18 @@ import type { SourceType } from "@/lib/mock/dashboard";
 const inputClass =
   "w-full rounded-btn border border-hair bg-bg px-3.5 py-[11px] text-[15px] text-fg placeholder:text-sec focus:border-acc-text";
 
-// Mock open-banking providers. A real integration lists the banks an AISP
-// (Plaid, TrueLayer, Tink, ...) supports for the institution's region.
-const BANKS = ["First National Bank", "Meridian Bank", "Northbridge", "Sterling Trust", "Atlas Federal"];
+const CUSTODIANS = [
+  "Kestrel Custody",
+  "Northbridge Custody",
+  "Sterling Reserve",
+  "Atlas Safekeeping",
+  "Harbor Trust Co.",
+];
 
-type Step = "choose" | "banks" | "consent" | "wallet";
+type Step = "choose" | "custodians" | "consent" | "wallet";
 
-// The connect-source flow, shaped like real reserve sourcing: a bank balance is
-// read over open banking with an explicit read-only consent, or an on-chain
-// wallet is added by address. The dialog handles focus, escape, and labelling
-// through the Radix primitive from @solva/ui.
+// A custodian account is read with explicit read-only consent; an on-chain
+// wallet is added by address. Focus, escape and labels come from @solva/ui.
 export function ConnectSourceDialog({
   onConnect,
 }: {
@@ -33,14 +35,14 @@ export function ConnectSourceDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("choose");
-  const [bank, setBank] = useState("");
+  const [custodian, setCustodian] = useState("");
   const [walletLabel, setWalletLabel] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [busy, setBusy] = useState(false);
 
   function reset() {
     setStep("choose");
-    setBank("");
+    setCustodian("");
     setWalletLabel("");
     setWalletAddress("");
     setBusy(false);
@@ -75,15 +77,15 @@ export function ConnectSourceDialog({
             <DialogHeader>
               <DialogTitle>Connect a reserve source</DialogTitle>
               <DialogDescription className="text-sec">
-                Add a bank balance over open banking, or an on-chain wallet.
+                Add a custodian-signed balance, or an on-chain wallet.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
               <ChoiceCard
-                icon={Landmark}
-                title="Bank account"
-                detail="Read balances over open banking. Read-only, with your consent."
-                onClick={() => setStep("banks")}
+                icon={Vault}
+                title="Custodian account"
+                detail="Read signed balances from your custodian. Read-only, with your consent."
+                onClick={() => setStep("custodians")}
               />
               <ChoiceCard
                 icon={Wallet}
@@ -95,16 +97,16 @@ export function ConnectSourceDialog({
           </>
         )}
 
-        {step === "banks" && (
+        {step === "custodians" && (
           <>
-            <BackHeader title="Choose your bank" onBack={() => setStep("choose")} />
+            <BackHeader title="Choose your custodian" onBack={() => setStep("choose")} />
             <div className="max-h-[320px] space-y-1.5 overflow-y-auto">
-              {BANKS.map((name) => (
+              {CUSTODIANS.map((name) => (
                 <button
                   key={name}
                   type="button"
                   onClick={() => {
-                    setBank(name);
+                    setCustodian(name);
                     setStep("consent");
                   }}
                   className="flex w-full items-center justify-between rounded-btn border border-hair px-4 py-3 text-left transition-colors hover:border-hair-strong"
@@ -119,11 +121,11 @@ export function ConnectSourceDialog({
 
         {step === "consent" && (
           <>
-            <BackHeader title="Authorize access" onBack={() => setStep("banks")} />
+            <BackHeader title="Authorize access" onBack={() => setStep("custodians")} />
             <div className="rounded-btn border border-hair bg-bg p-5 text-center">
               <ShieldCheck className="mx-auto size-8 text-acc-text" />
               <p className="mt-3 text-[14.5px] text-fg">
-                Allow Solva to read balances from <span className="font-medium">{bank}</span>.
+                Allow Solva to read balances from <span className="font-medium">{custodian}</span>.
               </p>
               <p className="mx-auto mt-1.5 max-w-[360px] text-[13px] leading-relaxed text-sec">
                 Read-only access to account balances. Solva never moves funds and never sees
@@ -132,7 +134,13 @@ export function ConnectSourceDialog({
             </div>
             <Button
               disabled={busy}
-              onClick={() => finish({ type: "openbanking", label: bank, settings: "read-only balance consent" })}
+              onClick={() =>
+                finish({
+                  type: "attested",
+                  label: custodian,
+                  settings: "read-only balance consent",
+                })
+              }
               className="w-full"
             >
               {busy ? "Connecting…" : "Authorize and connect"}
@@ -166,7 +174,11 @@ export function ConnectSourceDialog({
             <Button
               disabled={busy || !walletLabel.trim() || !walletAddress.trim()}
               onClick={() =>
-                finish({ type: "onchain", label: walletLabel.trim(), settings: walletAddress.trim() })
+                finish({
+                  type: "onchain",
+                  label: walletLabel.trim(),
+                  settings: walletAddress.trim(),
+                })
               }
               className="w-full"
             >
@@ -185,7 +197,7 @@ function ChoiceCard({
   detail,
   onClick,
 }: {
-  icon: typeof Landmark;
+  icon: typeof Vault;
   title: string;
   detail: string;
   onClick: () => void;

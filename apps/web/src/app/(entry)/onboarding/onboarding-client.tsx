@@ -68,13 +68,15 @@ function KybForm({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<KybInput>({ defaultValues: { type: "bank" } });
+  } = useForm<KybInput>({ defaultValues: { type: "anchor" } });
 
   return (
     <div className="w-full max-w-[560px]">
       <div className="mb-6 text-center">
         <p className="eyebrow mb-2 text-acc-text">Onboarding · Step 1 of 1</p>
-        <h1 className="font-display text-[26px] font-bold tracking-tight">Verify your institution</h1>
+        <h1 className="font-display text-[26px] font-bold tracking-tight">
+          Verify your institution
+        </h1>
         <p className="mx-auto mt-2 max-w-[440px] text-sm leading-relaxed text-sec">
           We review every institution before it can publish proofs. A Solva reviewer approves your
           application; this is not automated.
@@ -82,7 +84,10 @@ function KybForm({
       </div>
 
       {rejected && (
-        <p className="mb-4 rounded-btn border border-hair bg-bg px-4 py-3 text-[13.5px] text-amber" role="alert">
+        <p
+          className="mb-4 rounded-btn border border-hair bg-bg px-4 py-3 text-[13.5px] text-amber"
+          role="alert"
+        >
           Your previous application needs changes. Update the details and resubmit.
         </p>
       )}
@@ -96,7 +101,7 @@ function KybForm({
           <Field label="Registered legal name" error={errors.legalName?.message}>
             <input
               {...register("legalName", { required: "Enter the registered legal name" })}
-              placeholder="Meridian Bank plc"
+              placeholder="Kestrel Anchor Ltd"
               className={inputClass}
             />
           </Field>
@@ -144,7 +149,7 @@ function KybForm({
                   pattern: { value: /.+@.+\..+/, message: "Enter a valid email" },
                 })}
                 type="email"
-                placeholder="jordan@meridian.com"
+                placeholder="jordan@kestrel.example"
                 className={inputClass}
               />
             </Field>
@@ -164,7 +169,15 @@ function PendingReview({ onApprove, legalName }: { onApprove: () => void; legalN
     <div className="w-full max-w-[460px] text-center">
       <div className="rounded-card border border-hair bg-surface p-8">
         <span className="mx-auto grid size-12 place-items-center rounded-full border border-hair text-acc-text">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            aria-hidden="true"
+          >
             <circle cx="12" cy="12" r="9" />
             <path d="M12 8v4l3 2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

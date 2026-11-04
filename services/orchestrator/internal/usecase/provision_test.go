@@ -68,7 +68,7 @@ func TestProvisionCreateTenantDefaultsPlan(t *testing.T) {
 	repo := &stubTenantRepo{}
 	p := NewProvision(repo)
 
-	tenant, err := p.CreateTenant(context.Background(), "Meridian Bank", "")
+	tenant, err := p.CreateTenant(context.Background(), "Kestrel Anchor", "")
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}

@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/jes-labs/solva/services/orchestrator/internal/config"
-	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/banks"
+	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/attested"
 	grpcprover "github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/grpc"
 	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/stellar"
 	"github.com/jes-labs/solva/services/orchestrator/internal/repo"
@@ -23,7 +23,7 @@ type deps struct {
 	cache    *repo.RedisCache
 	prover   *grpcprover.ProverClient
 	stellar  *stellar.Publisher
-	banks    *banks.Adapter
+	sources  *attested.Adapter
 }
 
 // buildDeps connects every backing store and adapter. It returns a cleanup
@@ -73,20 +73,20 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		return deps{}, nil, fmt.Errorf("build stellar publisher: %w", err)
 	}
 
-	pubKey, err := banks.ParsePublicKey([]byte(cfg.BankPublicKeyPEM))
+	pubKey, err := attested.ParsePublicKey([]byte(cfg.ReservePublicKeyPEM))
 	if err != nil {
-		// The sandbox public key is required to trust bank balances. Without
+		// The sandbox public key is required to trust reserve balances. Without
 		// it the cycle cannot verify signatures, so refuse to boot.
 		_ = prover.Close()
 		_ = cache.Close()
 		pg.Close()
-		return deps{}, nil, fmt.Errorf("parse bank public key: %w", err)
+		return deps{}, nil, fmt.Errorf("parse reserve source public key: %w", err)
 	}
-	bankAdapter := banks.NewAdapter(banks.Config{
-		BaseURL:  cfg.BankBaseURL,
-		Accounts: cfg.BankAccounts,
+	sourceAdapter := attested.NewAdapter(attested.Config{
+		BaseURL:  cfg.ReserveBaseURL,
+		Accounts: cfg.ReserveAccounts,
 		PubKey:   pubKey,
-		ClientID: cfg.BankClientID,
+		ClientID: cfg.ReserveClientID,
 	})
 
 	cleanup := func() {
@@ -100,7 +100,7 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		cache:    cache,
 		prover:   prover,
 		stellar:  publisher,
-		banks:    bankAdapter,
+		sources:  sourceAdapter,
 	}, cleanup, nil
 }
 
