@@ -26,7 +26,7 @@ export default function PartnersPage() {
       <PageOpening
         label="For partners"
         title="Read coverage before you rely on it."
-        lead="Wallets, lending pools and auditors read each institution's verified totals straight from Stellar, for free, without asking the issuer for permission. A one-call coverage verdict is coming soon."
+        lead="Wallets, lending pools and auditors read each institution's verified totals straight from Stellar, for free, without asking the issuer for permission."
         primary={{ label: "Talk to us", href: contactHref }}
         secondary={{ label: "Read the docs", href: site.docsUrl }}
         figure={<IsCoveredFigure />}

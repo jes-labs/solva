@@ -19,7 +19,7 @@ const ITEMS: readonly { question: string; answer: string }[] = [
   {
     question: "How many customers can one proof cover?",
     answer:
-      "Today a proof covers up to 8 customer balances and 4 reserve figures. Proofs over your full customer list are coming soon, and each proof will then cover every customer you hold the asset for.",
+      "Every customer you hold the asset for. Each balance in the list is counted, none can be dropped once the list is committed, and each customer can check their own. On Testnet today a proof takes up to 8 balances and 4 reserve figures; full-size proofs are coming soon.",
   },
   {
     question: "What does our auditor get?",

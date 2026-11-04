@@ -9,7 +9,7 @@ export function AnchorControl() {
           id="anchor-control-title"
           label="Control"
           title="Your passkey controls your entry."
-          lead="Your passkey controls your registry. Only your team's passkey can own the entry and grant the key that publishes proofs, and it never leaves a team member's own device. Approving changes to reserve sources and listed assets with a passkey is coming soon."
+          lead="Only your team's passkey can own the entry and grant the key that publishes proofs, and it never leaves a team member's own device. Approving changes to reserve sources and listed assets with a passkey is coming soon."
         />
         <div className="min-w-0">
           <PasskeyApprovalFragment

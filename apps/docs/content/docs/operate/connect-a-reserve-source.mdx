@@ -1,18 +1,18 @@
 ---
 title: Connect a reserve source
-description: How a custodian signs reserve balances, how Solva verifies them, and how a reserve source is connected today.
+description: How a custodian signs reserve balances, how Solva reads balances on chain, and how each kind of reserve source is connected today.
 ---
 
-Each cycle, the orchestrator reads your reserve figures from your [reserve source](/docs/overview/reserve-sources). With an attested source, the custodian signs each balance and the orchestrator checks the signature before it uses the figure. For how much each source type asks you to trust, see [Where reserve figures come from](/docs/overview/reserve-sources).
+Each cycle, the orchestrator reads your reserve figures from your [reserve source](/docs/overview/reserve-sources). With an attested source, the custodian signs each balance and the orchestrator checks the signature before it uses the figure. With a read on chain source, the orchestrator reads the balance of your Stellar accounts from the ledger. For how much each kind asks you to trust, see [Where reserve figures come from](/docs/overview/reserve-sources).
 
 ## Source types
 
-| Source                      | How the figure arrives                                        |
-| --------------------------- | ------------------------------------------------------------- |
-| Attested (custodian-signed) | The custodian's service signs each balance it reports.        |
-| On-chain reserves           | Solva reads the balance of a Stellar account from the ledger. |
+| Source                      | Setting value | How the figure arrives                                               |
+| --------------------------- | ------------- | -------------------------------------------------------------------- |
+| Attested (custodian-signed) | `attested`    | The custodian's service signs each balance it reports.               |
+| Read on chain               | `onchain`     | The orchestrator reads the balance of Stellar accounts from Horizon. |
 
-The public demo uses a mock custodian run by Solva for two example institutions; their figures are not real reserves. Its third institution, Harbor Wallet, holds real Testnet USDC read on chain.
+The public demo uses a mock custodian run by Solva for two example institutions, Kestrel Anchor and Solstice Exchange, so their figures are not real reserves. Its third example institution, Harbor Wallet, holds real Testnet USDC read on chain.
 
 ## What the custodian signs
 
@@ -69,9 +69,9 @@ A bad signature fails the whole cycle at once, and the orchestrator does not ret
 
 The orchestrator checks the signature only. It does not check the age of `as_of` or the currency. Make sure every reserve figure and every customer balance use the same asset and the same minor unit, because the proof adds them up as plain numbers.
 
-## Connect a source today
+## Connect an attested source
 
-A reserve source is set in the orchestrator's configuration, not in the console. The engineer who runs the orchestrator sets these values and restarts it:
+A reserve source is set in the orchestrator's configuration, not in the console. A tenant that is not routed to `onchain` (see [Connect a read on chain source](#connect-a-read-on-chain-source)) uses the attested source. The engineer who runs the orchestrator sets these values and restarts it:
 
 | Setting                       | Value                                                                                        |
 | ----------------------------- | -------------------------------------------------------------------------------------------- |
@@ -104,23 +104,31 @@ A reserve source is set in the orchestrator's configuration, not in the console.
 </Steps>
 
 <Callout type="warn">
-  One orchestrator holds one set of reserve settings. Every institution on that orchestrator reads
-  the same accounts with the same key. In the console connection below, each institution has its own
-  sources.
+  One orchestrator holds one set of attested settings. Every institution that uses the attested
+  source on that orchestrator reads the same accounts with the same key. Real custodian connections
+  <ComingSoon /> give each institution its own.
 </Callout>
 
-## Connect on-chain reserves
+## Connect a read on chain source
 
-An institution whose reserves sit in Stellar accounts uses the on-chain source. Two orchestrator settings route it:
+An institution whose reserves sit in Stellar accounts uses the read on chain source. Two orchestrator settings route it. The example is Harbor Wallet's configuration in the demo:
 
 ```bash
 ORCH_RESERVE_SOURCES="33333333-3333-3333-3333-333333333333=onchain"
 ORCH_ONCHAIN_HOLDINGS="33333333-3333-3333-3333-333333333333=GCPBHMM7KSE74LO757SPKBE3PHWYRTKKKVBCVZURBFM6B2GSOPAJAR4R|USDC|GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
 ```
 
-`ORCH_RESERVE_SOURCES` maps a tenant id to `attested` or `onchain`; a tenant not listed uses `attested`. `ORCH_ONCHAIN_HOLDINGS` lists each tenant's accounts as `TENANT_ID=ADDRESS` for XLM or `TENANT_ID=ADDRESS|CODE|ISSUER` for an issued asset. Each balance becomes one reserve figure in stroops. The orchestrator refuses to start if a tenant routed to `onchain` has no holdings.
+| Setting                    | Value                                                                                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ORCH_RESERVE_SOURCES`     | Comma-separated `TENANT_ID=attested` or `TENANT_ID=onchain` entries. A tenant not listed uses `attested`.                                           |
+| `ORCH_ONCHAIN_HOLDINGS`    | Comma-separated holdings, `TENANT_ID=ADDRESS` for XLM or `TENANT_ID=ADDRESS\|CODE\|ISSUER` for an issued asset. A tenant can list several accounts. |
+| `ORCH_ONCHAIN_HORIZON_URL` | The Horizon server to read from. Defaults to `https://horizon-testnet.stellar.org`.                                                                 |
 
-Reserves read on chain move with the ledger. A proof is refused when reserves grow by more than 10% since the last record, so add funds in smaller steps.
+On every cycle the orchestrator reads each holding's account from Horizon in parallel and takes the balance of the named asset. Each balance becomes one reserve figure in the asset's seven-decimal unit, so 10 USDC is `100000000`. Load customer balances in the same unit. A network error or a 5xx answer from Horizon is retried up to three times. An account that does not hold the named asset fails the cycle.
+
+The orchestrator refuses to start if an entry is malformed, if an address is not a valid `G...` account, or if a tenant routed to `onchain` has no holdings.
+
+Reserves read on chain move with the ledger. A proof is refused when reserves grow by more than 10 percent since the last record, so add funds in smaller steps.
 
 ## Connect a source in the console
 
@@ -133,6 +141,6 @@ Each connected source appears on the **Sources** page. The dialog runs with exam
 
 ## Result
 
-The orchestrator reads your reserve accounts each cycle and uses only figures whose signatures verify.
+The orchestrator reads your reserve accounts each cycle. From an attested source it uses only figures whose signatures verify. From a read on chain source it uses the balances the ledger shows.
 
 **Next:** [Load what is owed](/docs/operate/load-what-is-owed).

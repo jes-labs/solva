@@ -27,8 +27,8 @@ export default async function AnchorsPage() {
     <>
       <PageOpening
         label="For anchors"
-        title="Show your token is backed, every day."
-        lead="Your token supply is already public on Stellar. Connect your reserves, and Solva proves whether they cover what you owe, checked by a contract on Stellar. A public page for your holders is coming soon."
+        title="Show that your token is backed."
+        lead="Your token supply is already public on Stellar. Solva proves your reserves cover what you owe, a contract on Stellar checks every proof, and each holder can confirm their own balance was counted."
         primary={{ label: "Talk to us", href: contactHref }}
         secondary={{ label: "See it work", href: routes.demo }}
         figure={<AnchorAssetPage />}

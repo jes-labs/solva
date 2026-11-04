@@ -60,7 +60,7 @@ export function Sandbox() {
             id="run-title"
             label="Run it"
             title="Six steps, all of them real."
-            lead="Pick an institution, then run the steps one at a time. Kestrel and Solstice use a mock custodian with three scenarios. Harbor Wallet's reserves are real Testnet USDC, read from Stellar on every run. Every published proof lands on Stellar Testnet, where you can open it."
+            lead="Pick an institution, then run the steps one at a time. Kestrel and Solstice use a stand-in custodian run by Solva, with three scenarios. Harbor Wallet's reserves are real Testnet USDC, read from Stellar on every run. Every published proof lands on Stellar Testnet, where you can open it."
           />
           <SealInstrument
             mode="progress"
@@ -263,7 +263,7 @@ export function Sandbox() {
             sandbox.institution.reserves.kind === "onchain"
               ? "Reserve source: Testnet USDC read from Stellar"
               : "Reserve source: Solva's sandbox, signed balances",
-            "A small fixed list of balances",
+            "Example customer balances",
           ]}
           className="mt-8"
         />

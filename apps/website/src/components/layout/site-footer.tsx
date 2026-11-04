@@ -43,8 +43,9 @@ export function SiteFooter() {
           <div>
             <BrandLockup className="h-9" />
             <p className="mt-6 max-w-xs text-body text-sec">
-              A public record that an anchor or custodial app on Stellar holds what it owes, checked
-              by a contract on Stellar. Live on Testnet; daily publishing coming soon.
+              A public record that the reserves of an anchor or custodial app on Stellar cover what
+              it owes, checked by a contract on Stellar. Live on Testnet; daily publishing coming
+              soon.
             </p>
             <ul className="mt-7 flex gap-2.5">
               {SOCIAL.map(({ label, href, Icon }) => (

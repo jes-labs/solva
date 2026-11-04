@@ -8,12 +8,12 @@ const FIELDS = [
   {
     label: "Owed",
     value:
-      "Today, a stored list of holder balances that add up to the supply. Reading the supply from Stellar at the proof's ledger is coming soon.",
+      "Today, a stored list of holder balances. Reading the supply from Stellar at the proof's ledger is coming soon.",
   },
   {
     label: "Held",
     value:
-      "The balance of your reserve accounts, signed by the account that holds them. This is the one figure you report.",
+      "The balance of your reserve accounts, signed by the custodian that holds them, or read from Stellar for reserves held there.",
   },
   { label: "Coverage", value: "Held divided by owed, never rounded up." },
   {
@@ -25,7 +25,7 @@ const FIELDS = [
 
 const YOUR_PART = [
   "Tell Solva where the reserves for each asset are held.",
-  "Report the signed reserve balance on the schedule you agree with us.",
+  "Have your custodian sign the reserve balance, or name the Stellar accounts that hold your reserves.",
   "Own your entry with your team's passkey.",
 ] as const;
 
@@ -39,8 +39,8 @@ export function AnchorSupply({ snapshot }: AnchorSupplyProps) {
       <ChapterHead
         id="supply-title"
         label="Supply and reserves"
-        title="Supply is read from the ledger. Reserves are attested."
-        lead="What you owe is the token supply, which is already public on Stellar. What you hold is the signed balance of your reserve accounts. Solva proves that the second covers the first and writes the result where anyone can read it. Using the supply read from Stellar in the proof is coming soon; today a pilot loads holder balances that add up to it."
+        title="Supply is public on Stellar. The record adds your reserves."
+        lead="What you owe is the token supply, which is already public on Stellar. What you hold is the balance of your reserve accounts, signed by your custodian or read from Stellar. Solva proves that the second covers the first and writes the result where anyone can read it. Using the supply read from Stellar in the proof is coming soon; today what is owed is a stored list of holder balances."
       />
       <div className="mt-14 grid gap-10 lg:grid-cols-[1.25fr_0.75fr] lg:items-start lg:gap-14">
         <div className="flex min-w-0 flex-col gap-6">
@@ -48,8 +48,8 @@ export function AnchorSupply({ snapshot }: AnchorSupplyProps) {
           <p className="max-w-[44rem] text-body text-sec">
             Fiat tokens issued on Stellar today, with the supply the ledger reports for each. That
             is the half of the question anyone can already answer. The record adds the other half:
-            whether signed reserves cover that supply. The record below is an example of what that
-            looks like.
+            whether reserves cover that supply. The record below is an example of what that looks
+            like.
           </p>
           <RecordDocument record={exampleRecords[0]} className="bg-bg" />
         </div>

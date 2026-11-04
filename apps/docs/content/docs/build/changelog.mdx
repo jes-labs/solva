@@ -7,6 +7,14 @@ Changes to Solva and these docs, newest first.
 
 ## 2026-11-04
 
+**Reserves read on chain.** An institution's reserve source is chosen per institution: `attested` (a custodian-signed balance) or `onchain`, where the orchestrator reads the balance of its Stellar accounts from Horizon on every cycle. See [Connect a reserve source](/docs/operate/connect-a-reserve-source).
+
+**The demo reads the contract.** The demo's record step reads `get_latest_proof` from the institution's registry on Stellar, and the holder step runs `verify_inclusion` on the contract. A third example institution, Harbor Wallet, holds real Testnet USDC read from Stellar.
+
+**Cycle trigger requires the API token.** `POST /v1/cycles` returns 401 without the orchestrator's API token. Reads stay public. See [REST API](/docs/build/rest-api).
+
+**Waitlist.** Joining the waitlist on joinsolva.xyz saves the address once and sends a confirmation.
+
 **Documentation rebuilt.** The docs are reorganized by reader into Overview, Operate, Verify and Build. Every page is rewritten and checked against the code. Build adds a contract reference with errors 1 to 6 and the published event, a REST API reference for every orchestrator route, and pages for the proof format and the oracle tools. Every page is available as Markdown, with `llms.txt` and `llms-full.txt` (see [AI tools](/docs/build/ai-tools)).
 
 **Reserve source renamed and priced in USD.** The code uses one name for where reserve figures come from: a reserve source, either `attested`, where a custodian signs each balance, or `onchain`. The orchestrator's adapter is `infrastructure/attested` and its port is `ReserveSource`. The sandbox's mock custodians live in `internal/reserves` and report balances in `USD`. See [Sandbox](/docs/build/sandbox).

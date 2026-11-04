@@ -13,8 +13,7 @@ If you are new to Solva, start with [What is Solva](/docs/overview/what-is-solva
 
 <Cards>
   <Card title="I run an anchor or a custodial app" href="/docs/operate/before-you-start">
-    How setup works with the Solva team, how a reserve source is connected, and how your first
-    record is published.
+    What setup needs, how a reserve source is connected, and how your first record is published.
   </Card>
   <Card title="I build on Solva" href="/docs/build/quickstart">
     Run the full pipeline locally, then read the contract, REST API and SDK references.
@@ -30,13 +29,13 @@ If you hold a token or keep money in a custodial app, you can [check that your b
 
 <Cards>
   <Card title="How Solva works" href="/docs/overview/how-solva-works">
-    From a signed reserve balance to a record on Stellar, in plain steps.
+    From a reserve balance to a record on Stellar, in plain steps.
   </Card>
   <Card title="What a record shows" href="/docs/overview/records">
     The fields of a record, and what a record proves and does not prove.
   </Card>
   <Card title="Where reserve figures come from" href="/docs/overview/reserve-sources">
-    How reserve balances are attested, and what you trust when you read one.
+    How reserve balances are attested or read on chain, and what you trust in each case.
   </Card>
   <Card title="Security" href="/docs/overview/security">
     What is verified on Stellar, who can publish, and how keys are held.
@@ -45,4 +44,4 @@ If you hold a token or keep money in a custodial app, you can [check that your b
 
 ## See it work
 
-The demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo) runs the real pipeline on Stellar Testnet. It uses two example institutions, Kestrel Anchor and Solstice Exchange, and publishes a proof to a registry you can open on a Stellar explorer.
+The demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo) runs the real pipeline on Stellar Testnet. It uses three fictional example institutions. Kestrel Anchor and Solstice Exchange take their reserves from a sandbox that stands in for a custodian. Harbor Wallet holds real Testnet USDC, read from Stellar on every run. Each publishes to its own registry, which you can open on a Stellar explorer.

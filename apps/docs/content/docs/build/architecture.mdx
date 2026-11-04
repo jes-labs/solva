@@ -9,15 +9,15 @@ A [cycle](/docs/overview/how-solva-works) moves through every tier: it reads the
 
 ## The tiers
 
-| Tier         | Path                       | Language            | What it does                                                                                                                         |
-| ------------ | -------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Circuits     | `circuits/`                | Noir                | States the coverage claim `R >= L`, the commitment to the liabilities, and the growth bound, as constraints a proof must satisfy.    |
-| Prover       | `services/prover`          | Rust                | Builds the Poseidon2 Merkle sum tree, writes the circuit witness and produces the UltraHonk proof. Serves one gRPC method, `Prove`.  |
-| Contract     | `contracts/proof-registry` | Rust, Soroban       | Verifies each proof on chain, stores the record, and answers the inclusion check. One contract per institution.                      |
-| Orchestrator | `services/orchestrator`    | Go                  | Runs cycles, reads and verifies signed reserve balances, calls the prover, publishes to Stellar, stores proofs, serves the REST API. |
-| Sandbox      | `services/sandbox`         | Go                  | A mock reserve source: OAuth, accounts and ECDSA-signed balances in `USD`.                                                           |
-| Web          | `apps/web`, `apps/website` | TypeScript, Next.js | The operator console with the passkey wallet, and the public website with the demo.                                                  |
-| Oracle       | `services/oracle`          | TypeScript          | An MCP server with two tools, `get_solvency` and `get_anomalies`.                                                                    |
+| Tier         | Path                       | Language            | What it does                                                                                                                               |
+| ------------ | -------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Circuits     | `circuits/`                | Noir                | States the coverage claim `R >= L`, the commitment to the liabilities, and the growth bound, as constraints a proof must satisfy.          |
+| Prover       | `services/prover`          | Rust                | Builds the Poseidon2 Merkle sum tree, writes the circuit witness and produces the UltraHonk proof. Serves one gRPC method, `Prove`.        |
+| Contract     | `contracts/proof-registry` | Rust, Soroban       | Verifies each proof on chain, stores the record, and answers the inclusion check. One contract per institution.                            |
+| Orchestrator | `services/orchestrator`    | Go                  | Runs cycles, reads reserves from each tenant's reserve source, calls the prover, publishes to Stellar, stores proofs, serves the REST API. |
+| Sandbox      | `services/sandbox`         | Go                  | A mock reserve source: OAuth, accounts and ECDSA-signed balances in `USD`.                                                                 |
+| Web          | `apps/web`, `apps/website` | TypeScript, Next.js | The operator console with the passkey wallet, and the public website with the demo.                                                        |
+| Oracle       | `services/oracle`          | TypeScript          | An MCP server with two tools, `get_solvency` and `get_anomalies`.                                                                          |
 
 Shared code sits in `packages/`: the SDK (`sdk-ts`), the generated contract client (`contract-bindings`) and the wire types (`shared-types`). The gRPC contract between the orchestrator and the prover is `proto/prover.proto`.
 
@@ -39,6 +39,7 @@ One hash implementation per side leaves no seam where two languages could drift 
 | Check                                                               | Where                                           | What happens on failure                                                               |
 | ------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Reserve balance signature (P-256 ECDSA over SHA-256)                | Orchestrator, `infrastructure/attested`         | The cycle fails. A bad signature is never retried.                                    |
+| The account holds the configured asset, read from Horizon           | Orchestrator, `infrastructure/onchain`          | The cycle fails. Network errors and 5xx answers are retried up to three times.        |
 | At most 8 customers, at most 4 reserve figures, balances fit in u64 | Prover, before proving                          | gRPC `InvalidArgument`; the cycle fails.                                              |
 | Reserves cover liabilities (`R >= L`)                               | Prover pre-check, the circuit, and the contract | The prover refuses first, so the orchestrator returns HTTP 422 and nothing is proven. |
 | Root and sums are consistent with the leaves                        | Circuit                                         | No proof can be produced.                                                             |
@@ -50,10 +51,10 @@ One hash implementation per side leaves no seam where two languages could drift 
 
 ## One cycle, end to end
 
-A cycle starts when a caller sends `POST /v1/cycles` with a tenant id, or when the scheduler fires. The scheduler is off unless `ORCH_SCHEDULER_ENABLED=true`. When on, a tenant on the `free` plan runs once a day at 00:00 UTC, and any other plan runs every hour.
+A cycle starts when a caller sends `POST /v1/cycles` with a tenant id and the API token, or when the scheduler fires. The scheduler is off unless `ORCH_SCHEDULER_ENABLED=true`. When on, a tenant on the `free` plan runs once a day at 00:00 UTC, and any other plan runs every hour.
 
 1. **Lock and claim.** The orchestrator takes a per-tenant lock in Redis (15 minute expiry) and claims the request's idempotency key in Postgres. If either is taken, it stops and does no work.
-2. **Read reserves.** It runs the OAuth handshake with the reserve source, reads every configured account in parallel, and verifies each signature. Today the accounts are a fixed list in `ORCH_RESERVE_ACCOUNTS`, verified with one public key in `ORCH_RESERVE_PUBLIC_KEY_PEM`. It records the snapshot in the audit log.
+2. **Read reserves.** `infrastructure/reservesource` routes the tenant to its source, set in `ORCH_RESERVE_SOURCES`. For `attested`, the default, it runs the OAuth handshake with the source, reads every account in `ORCH_RESERVE_ACCOUNTS` in parallel, and verifies each signature with the one public key in `ORCH_RESERVE_PUBLIC_KEY_PEM`. For `onchain`, it reads the tenant's holdings in `ORCH_ONCHAIN_HOLDINGS` from Horizon in parallel. It records the snapshot in the audit log.
 3. **Load liabilities.** It loads the tenant's customer balances from Postgres. Each balance is an integer in minor units with a Poseidon2 `customer_id_hash`.
 4. **Find the previous total.** It reads the reserve total of the tenant's last stored proof. On the first cycle there is none, so it sets `R_prev = R`.
 5. **Prove.** It sends reserves, liabilities and `R_prev` to the prover. The prover checks the limits, refuses if `R < L`, builds the tree, runs `nargo execute` and `bb prove`, and returns the proof, the four public inputs and the serialized tree.
@@ -70,7 +71,7 @@ The witness, meaning each customer's id hash and balance and each reserve figure
 
 The orchestrator does keep customer balances in its Postgres database, because it loads them for each cycle. They never go on chain.
 
-Privacy comes from balances never being public inputs. The proof system's zero-knowledge hiding setting <ComingSoon /> also keeps the proof data from revealing the private inputs. Today's proofs are not hiding proofs.
+Privacy comes from balances never being public inputs. The proof system's zero-knowledge hiding setting, in development, also keeps the proof data from revealing the private inputs. Today's proofs are not hiding proofs.
 
 ## Security status
 

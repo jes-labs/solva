@@ -6,11 +6,11 @@ import { exampleRecords } from "@/lib/example-records";
 const DIFFERENCES = [
   {
     title: "Your own reserve source",
-    body: "A pilot will read the signed balance of the accounts that hold your reserves. On this page the sandbox stands in for that source. Everything after it is the same code.",
+    body: "Reserves held in Stellar accounts are read from the ledger today, as Harbor Wallet's are on this page. Connecting a real custodian that signs your reserve balance is coming soon; on this page the sandbox stands in for one. Everything after the reserve source is the same code.",
   },
   {
     title: "Supply read from Stellar",
-    body: "For an anchor, what is owed will be the token's supply at the ledger of the check, read straight from Stellar. Today a pilot loads holder balances that add up to the supply.",
+    body: "For an anchor, what is owed will be the token's supply at the ledger of the check, read straight from Stellar. Today what is owed is a stored list of holder balances.",
   },
   {
     title: "Every day, on a schedule",

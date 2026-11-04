@@ -9,7 +9,7 @@ import { TRUST_VERSION, TrustDocument } from "@/features/company";
 export const metadata: Metadata = {
   title: "Trust",
   description:
-    "What a Solva coverage record proves, what rests on a signature, what no record claims, who has to be honest, and the verifier contract on Stellar Testnet.",
+    "What a Solva coverage record proves, what comes from outside the proof, what no record claims, who has to be honest, and the verifier contract on Stellar Testnet.",
   alternates: { canonical: routes.trust },
 };
 

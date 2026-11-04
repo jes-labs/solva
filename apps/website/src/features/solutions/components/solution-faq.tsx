@@ -21,12 +21,12 @@ export function SolutionFaq({ id, index, title, items }: SolutionFaqProps) {
             title={title}
             lead={
               <>
-                Not here?{" "}
+                For anything else,{" "}
                 <Link
                   href={routes.contact}
                   className="text-text underline decoration-link-line underline-offset-4"
                 >
-                  Ask us directly
+                  ask us directly
                 </Link>
                 , and a person will reply within one working day.
               </>

@@ -207,12 +207,13 @@ The account that submits `publish_proof` pays its fee. In the demo that is the o
 
 ## Deployed contracts on Testnet
 
-Kestrel Anchor and Solstice Exchange are fictional example institutions used by the demo. Both registries run the current contract build, with errors 1 to 6.
+Kestrel Anchor, Solstice Exchange and Harbor Wallet are fictional example institutions used by the demo. All three registries run the current contract build, with errors 1 to 6.
 
 | Contract                   | Address                                                    |
 | -------------------------- | ---------------------------------------------------------- |
 | Kestrel Anchor registry    | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
 | Solstice Exchange registry | `CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW` |
+| Harbor Wallet registry     | `CBOA5AJEMTQ5CSMHE6WFWWBIYYMNSUQGKWE6FCFB2KKNJSJPHBWSCSJK` |
 | Standalone verifier        | `CA3KQYYAGUEIURJSB5CSWVMNIY2FF2EG3YTM7SBBRSN7DQWZXCCXWXN3` |
 
 The standalone verifier is not a registry. It is the reference UltraHonk verifier, deployed on its own to measure the verification cost. A known-good proof verified on it at ledger 3191042, on protocol 27.
@@ -231,9 +232,8 @@ The contract and the vendored verifier are unaudited. Mainnet <ComingSoon /> and
 
 The interface is read only and follows the pattern of SEP-40, the Stellar oracle interface:
 
-- `is_covered() -> bool` returns `true` when the registry's latest record shows reserves covering liabilities.
-- A coverage ratio read returns reserves relative to liabilities.
-- Every result carries the record's ledger time, so the caller can decide how old a record it accepts.
+- `is_covered(issuer, asset)` returns the asset's status: covered, short or stale.
+- Every answer carries the ledger the asset was checked at, so the caller can decide how old a record it accepts.
 
 SEP-40 itself covers price feeds only. Solva follows its read-only design; it does not implement SEP-40.
 

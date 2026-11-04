@@ -3,7 +3,7 @@ import { Chapter, ChapterHead } from "@/components/ui/ledger";
 const PROMISES = [
   {
     title: "Solva never holds your funds",
-    body: "Your reserves stay in your own reserve accounts, wherever you keep them. Solva works from the signed reserve balance, and has no way to move money.",
+    body: "Your reserves stay in your own reserve accounts, wherever you keep them. Solva works from the reserve balance, signed by your custodian or read from Stellar, and has no way to move money.",
   },
   {
     title: "Solva never publishes a customer's balance",

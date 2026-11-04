@@ -47,7 +47,7 @@ export function BalancesDetail() {
         {
           label: "For an anchor",
           value:
-            "What is owed is a stored list of holder balances that add up to the supply. Reading the token supply straight from Stellar at the record's ledger is coming soon.",
+            "What is owed is a stored list of holder balances. Reading the token supply straight from Stellar at the record's ledger is coming soon.",
         },
         {
           label: "For a custodial app",
@@ -93,7 +93,7 @@ export function ProofDetail() {
         {
           label: "What it proves",
           value:
-            "Every balance on the list was counted, none is negative, and the total is at most the signed balance of the reserve accounts.",
+            "Every balance on the list was counted, none is negative, and the total is at most the reserve balance.",
         },
         {
           label: "What it publishes",

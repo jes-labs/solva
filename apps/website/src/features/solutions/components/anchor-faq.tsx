@@ -4,7 +4,7 @@ const ITEMS: readonly { question: string; answer: string }[] = [
   {
     question: "Do we report our token supply?",
     answer:
-      "Not once supply reads launch: Solva will read it from Stellar, where it is already public. That is coming soon. Today, a pilot loads holder balances that add up to the supply.",
+      "Not the supply itself. Today what is owed is a stored list of holder balances. Reading the supply from Stellar, where it is already public, is coming soon.",
   },
   {
     question: "How often is a result made?",

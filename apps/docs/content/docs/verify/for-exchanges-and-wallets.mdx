@@ -70,6 +70,6 @@ A wallet can show the status beside a token balance. Show short and stale as pla
 
 `is_covered` <ComingSoon /> is a read on the registry that returns the status directly, covered, short or stale, with the ledger the asset was checked at. It takes the issuer and the asset, so a contract or a back-end job gets one answer per asset without working out freshness itself. A swap, a listing gate or an alert can call it before acting.
 
-Without `is_covered`, read the latest record and apply your own freshness rule, as in the treasury check above. Solva's oracle for AI agents <ComingSoon />, with the tools `get_solvency` and `get_anomalies`, will read records and flag a reserve drop of 10 percent, a rise in what is owed of 15 percent, or a gap of more than 26 hours between cycles.
+Without `is_covered`, read the latest record and apply your own freshness rule, as in the treasury check above. Solva's [oracle for AI agents](/docs/build/ai-tools) has two tools, `get_solvency` and `get_anomalies`. With answers from a live orchestrator <ComingSoon />, it reads records and flags a reserve drop of 10 percent or more, a rise in what is owed of 15 percent or more, or a gap of more than 26 hours between cycles.
 
 **Next:** [For lenders and risk teams](/docs/verify/for-lenders-and-risk-teams).

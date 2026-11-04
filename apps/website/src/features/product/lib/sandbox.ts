@@ -216,7 +216,7 @@ export function publishedLines(proof: ProofDTO, institution: Institution): LogLi
   return [
     { kind: "info", text: "Committing what is owed…" },
     { kind: "data", text: `commitment  0x${(proof.root_hash ?? "").replace(/^0x/, "")}` },
-    { kind: "info", text: "Generating the zero-knowledge proof…" },
+    { kind: "info", text: "Generating the proof…" },
     {
       kind: "data",
       text: `proven totals  R=${amount(proof.reserves_total, institution)}  L=${amount(proof.liabilities_total, institution)}`,

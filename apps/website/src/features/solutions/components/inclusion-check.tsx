@@ -91,7 +91,8 @@ export function InclusionCheck() {
       </form>
 
       <p className="mt-6 text-small text-sec">
-        In a pilot this check runs against the contract with verify_inclusion.
+        In a pilot, and in the holder step of the demo, this check runs against the contract on
+        Stellar with verify_inclusion.
       </p>
       <Provenance
         className="mt-3"

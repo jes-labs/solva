@@ -17,7 +17,7 @@ Read three things from each record:
 | Coverage | Reserves divided by what is owed                 | How much room there is before the next cycle is short |
 | Age      | The current time minus the record's `timestamp`  | How far you are relying on an old answer              |
 
-To read them from Stellar, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar). The registry stores no status. Public record pages <ComingSoon /> will report it for you.
+To read them from Stellar, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar). The registry stores no status. Public record pages <ComingSoon /> report it for you.
 
 ## A collateral rule
 
@@ -40,13 +40,13 @@ A **haircut** is the discount you apply to collateral's value when you lend agai
 - raise it further, or stop counting the collateral, once the record is older than your limit,
 - stop counting the collateral while the asset is short.
 
-Set the age limit from the institution's schedule. Solva is designed for a record every day, and today an institution runs cycles on request or on a daily or hourly schedule. A gap of more than 26 hours after a daily cycle is a sign worth acting on.
+Set the age limit from the institution's schedule. Solva is designed for a record every day. Today cycles run on request, and the orchestrator's scheduler, when turned on, runs them daily or hourly. A gap of more than 26 hours after a daily cycle is a sign worth acting on.
 
 A short day leaves no new record on chain, because a cycle with reserves below what is owed is refused. From the contract alone, a short day looks like a stale one, so your rule handles both the same way until a new record arrives.
 
 ## What a record does not cover
 
-A record proves the arithmetic of coverage at one ledger. It rests on the custodian's signed reserve figure, and it does not show whether the same reserves also back something else. See [What a record shows](/docs/overview/records) and [Where reserve figures come from](/docs/overview/reserve-sources) before you set how much weight a record carries.
+A record proves the arithmetic of coverage at one ledger. It rests on the reserve figure from the institution's reserve source, and it does not show whether the same reserves also back something else. See [What a record shows](/docs/overview/records) and [Where reserve figures come from](/docs/overview/reserve-sources) before you set how much weight a record carries.
 
 ## is_covered for contracts
 

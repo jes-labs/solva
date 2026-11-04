@@ -35,12 +35,12 @@ export function RecordSheet() {
     {
       label: "Owed",
       value: <span data-count>{formatAmount(record.owed, record.decimals)}</span>,
-      note: "Today, the total of a stored list of balances: an anchor's holder balances, which add up to the supply, or a custodial app's customer balances. Reading an anchor's supply from Stellar at the ledger named below is coming soon.",
+      note: "Today, the total of a stored list of balances: an anchor's holder balances or a custodial app's customer balances. Reading an anchor's supply from Stellar at the ledger named below is coming soon.",
     },
     {
       label: "Held",
       value: <span data-count>{formatAmount(record.held, record.decimals)}</span>,
-      note: "The balance of the reserve accounts, signed by the account that holds them.",
+      note: "The balance of the reserve accounts, signed by the custodian that holds them or read from Stellar.",
     },
     {
       label: "Coverage",
@@ -80,7 +80,7 @@ export function RecordSheet() {
         id="sheet-title"
         label="Field by field"
         title="Ten lines, and what stands behind each."
-        lead="Reserves are signed by the account that holds them, and a contract on Stellar checks the proof before the result is written. This example shows the full record as designed; states, supply read from Stellar and the daily schedule are coming soon."
+        lead="Reserves are signed by the custodian that holds them or read from Stellar, and a contract on Stellar checks the proof before the result is written. This example shows the full record as designed; states, supply read from Stellar and the daily schedule are coming soon."
         align="end"
       />
       <Ruled marks className="mt-14 bg-bg">

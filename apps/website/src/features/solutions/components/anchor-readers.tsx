@@ -27,7 +27,7 @@ export function AnchorReaders() {
         id="anchor-readers-title"
         label="What holders and partners see"
         title="One answer for everyone who holds your token."
-        lead="Every holder asks the same question: is this token backed? The page answers it, with the proof behind the answer, and wallets, lending pools and auditors read the same record without asking you."
+        lead="Every holder wants to know whether the token is backed. Each record answers that, with the proof behind the answer, and wallets, lending pools and auditors read the same record without asking you."
         align="end"
       />
       <div data-rows className="mt-14 grid border border-line lg:grid-cols-3">

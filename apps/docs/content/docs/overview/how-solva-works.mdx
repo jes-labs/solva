@@ -1,15 +1,15 @@
 ---
 title: How Solva works
-description: The five steps from a signed reserve balance to a coverage record on Stellar, in plain words.
+description: The five steps from a reserve balance to a coverage record on Stellar, in plain words.
 ---
 
-A **cycle** is one full run that turns a signed reserve balance into a record anyone can read. Following it needs no cryptography. The [Build section](/docs/build/architecture) covers the construction in detail.
+A **cycle** is one full run that turns the reserve balances into a record anyone can read. Following it needs no cryptography. The [Build section](/docs/build/architecture) covers the construction in detail.
 
 ## The two sides
 
 Every record compares [reserves and what is owed](/docs/overview/what-is-solva).
 
-- Reserves sit in reserve accounts at a **custodian**, the firm that holds the money.
+- Reserves sit in reserve accounts, at a **custodian**, the firm that holds the money, or in accounts on Stellar.
 - For an anchor, what is owed is the token holders' balances, whose total is the token supply that Stellar already publishes. For a custodial app, it is the balances the app holds for its customers. Technical pages call what is owed the **liabilities**.
 
 Coverage holds when reserves are at least what is owed.
@@ -18,17 +18,18 @@ Coverage holds when reserves are at least what is owed.
 
 | Step | Who                     | What happens                                               | What becomes public       |
 | ---- | ----------------------- | ---------------------------------------------------------- | ------------------------- |
-| 1    | Custodian               | Signs the balance of each reserve account                  | Nothing yet               |
+| 1    | Reserve source          | Reports the balance of each reserve account                | Nothing yet               |
 | 2    | Orchestrator and prover | Commit the list of customer balances as one value          | Nothing yet               |
 | 3    | Prover                  | Builds a zero-knowledge proof that reserves cover the list | Nothing yet               |
 | 4    | Stellar                 | A contract checks the proof and writes the record          | Totals and the commitment |
 | 5    | Anyone                  | Reads the record, and any holder checks their own balance  | Nothing more              |
 
-### 1. The custodian signs the reserve balance
+### 1. The reserve source reports the balances
 
-Solva asks the institution's [reserve source](/docs/overview/reserve-sources) for the balance of each reserve account. The custodian signs each balance with its private key. Solva's **orchestrator**, the service that runs each cycle, checks every signature against the custodian's public key. A balance with a bad signature stops the cycle.
+Solva's **orchestrator**, the service that runs each cycle, asks the institution's [reserve source](/docs/overview/reserve-sources) for the balance of each reserve account. Each institution uses one of two kinds:
 
-The signature shows who stated the balance and that nobody changed it on the way. It does not show that the money exists, so that trust sits with the custodian.
+- **Attested.** The custodian signs each balance with its private key, and the orchestrator checks every signature against the custodian's public key. A balance with a bad signature stops the cycle. The signature shows who stated the balance and that nobody changed it on the way. It does not show that the money exists, so that trust sits with the custodian.
+- **Read on chain.** For reserves held in Stellar accounts, the orchestrator reads each account's balance from the Stellar ledger. No custodian reports the figure.
 
 ### 2. The list of what is owed is committed
 

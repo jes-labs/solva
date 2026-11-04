@@ -17,11 +17,14 @@ Solva runs on Stellar Testnet, and on Mainnet <ComingSoon />.
 | A passkey on a device          | Signs you in to the console and controls your institution's wallet.                                       | A device with Face ID, Touch ID, Windows Hello or a similar built-in authenticator, in a browser over https. |
 | The right people               | Each part has an owner. See [Who does what](#who-does-what).                                              | One signed-in owner per institution in the console.                                                          |
 
-### A reserve source that signs its balances
+### A reserve source
 
-Solva reads reserves from an [attested source](/docs/overview/reserve-sources), a custodian's service that signs each balance it reports. Ask your custodian if it can sign balance statements with a P-256 (secp256r1) key. The exact format is in [Connect a reserve source](/docs/operate/connect-a-reserve-source).
+Solva reads reserves from one of two kinds of [reserve source](/docs/overview/reserve-sources):
 
-For reserves held in Stellar accounts, a reserve source that reads the balance from the ledger removes the custodian from the path.
+- **Attested.** A custodian's service signs each balance it reports. Ask your custodian if it can sign balance statements with a P-256 (secp256r1) key.
+- **Read on chain.** For reserves held in Stellar accounts, the orchestrator reads each balance from the ledger, with no custodian in the path. List the accounts and the asset they hold.
+
+The settings for both are in [Connect a reserve source](/docs/operate/connect-a-reserve-source).
 
 ### An export of customer balances
 
@@ -54,7 +57,7 @@ The console signs in one owner per institution. Team roles <ComingSoon /> (owner
   <Step>Pick the Stellar account whose home domain will carry your `stellar.toml`.</Step>
   <Step>
     Confirm with your custodian that it signs balance statements, and get its public key as a PEM
-    file.
+    file. For reserves on Stellar, list the account addresses and the asset code and issuer.
   </Step>
   <Step>
     Produce a test export of customer balances in minor units, and check the total against your

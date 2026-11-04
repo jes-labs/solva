@@ -43,7 +43,7 @@ No two institutions share a registry, so one institution cannot publish into ano
 
     Select **Submit for review**. The contact receives a confirmation email, and the console shows **under review** in this browser.
 
-    Reviewed KYB <ComingSoon /> comes with self-serve onboarding: a Solva reviewer checks the details, then approves the institution or asks for changes. An approval email follows, and the console opens. If the reviewer asks for changes, the form returns with a notice, and you resubmit.
+    With reviewed KYB <ComingSoon />, a Solva reviewer checks the details, then approves the institution or asks for changes. An approval email follows, and the console opens. If the reviewer asks for changes, the form returns with a notice, and you resubmit.
 
     <Callout type="warn">
       The review is a stand-in. The console shows **Simulate reviewer approval**, which approves the institution in your browser only. Use it to continue on Testnet.
@@ -65,7 +65,7 @@ No two institutions share a registry, so one institution cannot publish into ano
     just provision-tenant <tenant-id> <wallet-address> testnet signor
     ```
 
-    The command builds the registry contract, deploys it with your wallet as owner and the circuit's verifying key, and records the contract id on your tenant. The last argument is the funded Stellar account that signs and pays for the deploy, about 0.021 XLM on Testnet. It prints the new contract id:
+    The command builds the registry contract, deploys it with your wallet as owner and the circuit's verifying key, and records the contract id on your tenant. The last argument is the funded Stellar account that signs and pays for the deploy, about 0.021 XLM on Testnet, plus about 1.66 XLM once to upload a new contract build. It prints the new contract id:
 
     ```bash
     deployed registry for tenant <tenant-id> owned by <wallet-address>: C...

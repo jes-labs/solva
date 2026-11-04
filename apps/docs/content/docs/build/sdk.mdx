@@ -191,7 +191,7 @@ These four methods wrap orchestrator routes. Their request and response shapes d
 
 ### `connectSource`
 
-`connectSource` <ComingSoon /> connects a reserve source for the tenant: `attested`, where a custodian signs each balance, or `onchain`, where the balance is read from a Stellar account. Today reserve sources are configured on the orchestrator with `ORCH_RESERVE_ACCOUNTS`, and the orchestrator has no route for this method.
+`connectSource` <ComingSoon /> connects a reserve source for the tenant: `attested`, where a custodian signs each balance, or `onchain`, where the balance is read from a Stellar account. Today reserve sources are configured on the orchestrator with `ORCH_RESERVE_SOURCES`, `ORCH_RESERVE_ACCOUNTS` and `ORCH_ONCHAIN_HOLDINGS`, and the orchestrator has no route for this method. See [Connect a reserve source](/docs/operate/connect-a-reserve-source).
 
 ## Errors
 

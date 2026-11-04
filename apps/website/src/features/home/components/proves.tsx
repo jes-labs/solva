@@ -9,16 +9,16 @@ const COLUMNS = [
     items: [
       "Every balance in the list was counted, and none was negative.",
       "The total of the list is at most the reserve balance in the proof.",
-      "The record was written at the ledger it names.",
+      "The record was written by the contract, stamped with the time of the ledger that accepted it.",
       "A holder's own balance is in the list, when they check.",
     ],
   },
   {
     label: "Attested",
-    note: "Signed by the institution's reserve source",
+    note: "Supplied from outside the proof",
     items: [
-      "The reserve balance comes from a signed statement of the reserve accounts.",
-      "For an anchor, what is owed is a stored list of holder balances that add up to the supply. Reading the supply from Stellar is coming soon.",
+      "The reserve balance comes from the reserve source: a statement signed by the custodian, or the balance of Stellar accounts read from the ledger.",
+      "For an anchor, what is owed is a stored list of holder balances. Reading the supply from Stellar is coming soon.",
       "For a custodial app, what is owed is the list it committed for that proof.",
     ],
   },
@@ -26,7 +26,7 @@ const COLUMNS = [
     label: "Not proven",
     note: "What a record does not say",
     items: [
-      "That cash in a reserve account exists beyond the signed statement.",
+      "That reserves held with a custodian exist beyond its signed statement.",
       "Anything about a day with no record. Showing a missed day as stale is coming soon.",
       "That an institution is sound in any other sense. A record shows coverage at one ledger; it is evidence for an auditor, never an audit.",
     ],
@@ -42,8 +42,8 @@ export function Proves() {
         title="Every issuer says it is backed. Here is what you can check."
         lead={
           <>
-            A record is precise about its own limits. This is what the proof establishes, what rests
-            on a signature, and what no record claims. The full version is on the{" "}
+            A record is precise about its own limits. This is what the proof establishes, what comes
+            from outside it, and what no record claims. The full version is on the{" "}
             <Link
               href={routes.trust}
               className="text-text underline decoration-link-line underline-offset-4"

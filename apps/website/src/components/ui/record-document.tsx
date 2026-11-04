@@ -26,8 +26,8 @@ export function RecordDocument({
   const owedLabel = record.kind === "anchor" ? "Owed to holders" : "Owed to customers";
   const owedNote =
     record.kind === "anchor"
-      ? "Holder balances that add up to the token supply"
-      : "Customer balances, committed to the tree";
+      ? "Holder balances, committed as one value"
+      : "Customer balances, committed as one value";
 
   return (
     <article
@@ -84,7 +84,8 @@ export function RecordDocument({
           )}
           {variant === "full" ? (
             <p className="mt-2 text-small text-sec">
-              {owedNote}. Reserves are the signed balance of the reserve accounts.
+              {owedNote}. Reserves are the balance of the reserve accounts, signed by the custodian
+              or read from Stellar.
             </p>
           ) : null}
         </div>

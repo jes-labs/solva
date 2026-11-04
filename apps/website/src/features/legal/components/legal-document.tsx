@@ -8,7 +8,7 @@ import { TeamEmail } from "./team-email";
 const PROCESSORS: readonly { name: string; role: string; data: string }[] = [
   {
     name: "Resend",
-    role: "Delivers the emails our forms send to the team",
+    role: "Delivers the emails our forms send, and keeps the waitlist",
     data: "Everything you type into a form",
   },
   {
@@ -111,7 +111,7 @@ export function LegalDocument() {
           </LegalSection>
 
           <LegalSection id="what-we-collect" title="What our forms collect">
-            <p>This site has two forms. Each one sends us only what you type into it:</p>
+            <p>This site has two forms. Each one collects only what you type into it:</p>
             <ul>
               <li>
                 <strong className="font-medium">Talk to us</strong>: your name, work email,
@@ -132,8 +132,8 @@ export function LegalDocument() {
           <LegalSection id="why-and-how-long" title="Why we use it and how long we keep it">
             <p>
               We use what you send to reply to you, to plan a pilot with you, and to invite you to
-              the console when it opens to your organisation. We do not sell it, and we do not add
-              you to a marketing list.
+              publish when publishing opens to your organisation. We do not sell it, and we do not
+              add you to a marketing list.
             </p>
             <ul>
               <li>
@@ -141,7 +141,7 @@ export function LegalDocument() {
                 months of our last exchange.
               </li>
               <li>
-                Waitlist requests are kept until the console opens to you or you ask to leave the
+                Waitlist requests are kept until publishing opens to you or you ask to leave the
                 list.
               </li>
             </ul>
@@ -182,8 +182,8 @@ export function LegalDocument() {
               </table>
             </div>
             <p>
-              Our own team reads form messages in our email inbox. Nobody outside Solva sees them
-              unless the law requires it.
+              Our own team reads form messages in our email inbox. Apart from the two services
+              above, nobody outside Solva sees them unless the law requires it.
             </p>
           </LegalSection>
 

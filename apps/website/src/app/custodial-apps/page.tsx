@@ -24,8 +24,8 @@ export default function CustodialAppsPage() {
     <>
       <PageOpening
         label="For custodial apps and exchanges"
-        title="Prove you can repay every customer."
-        lead="Show that your reserves cover the balances you hold for customers, and let each customer confirm their own was counted, without publishing a list of balances. Today a proof covers up to 8 balances; proofs over your full customer list are coming soon."
+        title="Prove your reserves cover every customer."
+        lead="Show that your reserves cover the balances you hold for customers, and let each customer confirm their own was counted, without publishing a list of balances."
         primary={{ label: "Talk to us", href: contactHref }}
         secondary={{ label: "See it work", href: routes.demo }}
         figure={<InclusionCheck />}

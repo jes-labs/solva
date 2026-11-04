@@ -10,13 +10,13 @@ A **record** is one entry in an institution's registry on Stellar, written only 
 | Field             | What it means                                                                                                                    |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Proof id          | The record's number in the registry. The first record is 1, and each new record adds one.                                        |
-| Reserves total    | The sum of the signed reserve figures, in the asset's smallest unit.                                                             |
+| Reserves total    | The sum of the reserve figures from the institution's reserve source, in the asset's smallest unit.                              |
 | Liabilities total | The sum of every customer balance in the committed list, which is what is owed, in the same unit.                                |
 | Commitment root   | One value that stands for the whole customer list and its total. Holders check their balance against it.                         |
 | Previous reserves | The reserves total of the record before this one. The proof uses it for the growth bound, and the registry checks it matches.    |
 | Ledger and time   | The Stellar ledger that included the record, and that ledger's close time. The time comes from the network, not the institution. |
 
-Amounts are whole numbers in the asset's smallest unit, never fractions. For a dollar token with two decimal places, `1000000` means 10,000.00.
+Amounts are whole numbers in the asset's smallest unit, never fractions. For a dollar token with two decimal places, `1000000` means 10,000.00. Assets on Stellar have seven decimal places, so for Testnet USDC `100000000` means 10 USDC.
 
 The registry stores the proof id, both totals, the commitment root and the time. The previous reserves figure is checked when the record is written and equals the reserves total of the record before it. The ledger is part of the publishing transaction on Stellar.
 
@@ -32,7 +32,7 @@ Public record pages <ComingSoon /> show the status, the percentage and the histo
 
 Coverage as a percentage is reserves divided by what is owed, cut off at two decimal places and never rounded up. Reserves of 99,996.00 against 100,000.00 owed read as 99.99 percent, which is short.
 
-A cycle whose reserves are below what is owed is refused and nothing is written, so there is no proof that day and the last record stays as it was. On record pages, short will report that refused cycle with the size of the gap.
+A cycle whose reserves are below what is owed is refused and nothing is written, so there is no proof that day and the last record stays as it was. On record pages, short reports that refused cycle with the size of the gap.
 
 Stale follows a fixed rule: no record inside the expected window. Today you apply that rule yourself from the record's time. How old a record may be before you stop relying on it is your own decision. A missed day is never filled in later.
 
@@ -51,22 +51,23 @@ A contract on Stellar checked the proof behind every record. That proof establis
 
 | A record does not prove                          | Why                                                                                                           |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| That the custodian's signed figure is honest     | The proof takes the signed balance as given. If the custodian signs a wrong figure, the record is wrong.      |
-| Who holds the reserves' private keys             | A signed balance says what an account holds, not who controls it.                                             |
+| That an attested reserve figure is honest        | The proof takes the signed balance as given. If the custodian signs a wrong figure, the record is wrong.      |
+| Who holds the reserves' private keys             | A balance says what an account holds, not who controls it.                                                    |
 | That the customer list is complete               | The institution supplies the list. A left-out customer fails the inclusion check, which is how the gap shows. |
 | That reserves are free of other claims           | A balance does not show if the same money also backs something else.                                          |
 | Anything about a day with no record              | A missed day has no proof. It says nothing either way.                                                        |
 | That the institution is sound in any other sense | A record shows coverage at one ledger. It is not an audit.                                                    |
 
-The reserve figure rests on the custodian's signature. See [Where reserve figures come from](/docs/overview/reserve-sources).
+The reserve figure rests on the reserve source: the custodian's signature, or the Stellar ledger for reserves read on chain. See [Where reserve figures come from](/docs/overview/reserve-sources).
 
 ## See a record on Testnet
 
-Two example registries run on Stellar Testnet. Kestrel Anchor and Solstice Exchange are fictional institutions made up for the demo.
+Three example registries run on Stellar Testnet. Kestrel Anchor, Solstice Exchange and Harbor Wallet are fictional institutions made up for the demo.
 
-| Example institution | Registry contract                                          |
-| ------------------- | ---------------------------------------------------------- |
-| Kestrel Anchor      | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
-| Solstice Exchange   | `CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW` |
+| Example institution | Reserve source | Registry contract                                          |
+| ------------------- | -------------- | ---------------------------------------------------------- |
+| Kestrel Anchor      | Attested       | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
+| Solstice Exchange   | Attested       | `CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW` |
+| Harbor Wallet       | Read on chain  | `CBOA5AJEMTQ5CSMHE6WFWWBIYYMNSUQGKWE6FCFB2KKNJSJPHBWSCSJK` |
 
 To read one yourself, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).

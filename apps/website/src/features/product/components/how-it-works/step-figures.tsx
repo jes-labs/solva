@@ -173,7 +173,7 @@ export function ProofFigure() {
     <svg
       viewBox="0 0 320 208"
       role="img"
-      aria-label="One proof, built from the commitment and the signed reserve balance, with no balance published"
+      aria-label="One proof, built from the commitment and the reserve balance, with no balance published"
       className={figureClass}
     >
       <rect x={16} y={24} width={14} height={14} className="fill-text" />

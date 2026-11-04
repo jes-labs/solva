@@ -45,7 +45,7 @@ const READERS = [
   {
     title: "Anchors",
     line: "Show holders and partners the token is backed.",
-    body: "You issue a fiat token on Stellar, and its supply is already public. Solva puts your signed reserve balance beside what you owe and proves the reserves cover it, so the question of backing gets an answer you did not write yourself. Daily records are coming soon.",
+    body: "You issue a fiat token on Stellar, and its supply is already public. Solva puts your reserve balance, signed by your custodian or read from Stellar, beside what you owe and proves the reserves cover it, so the question of backing gets an answer you did not write yourself. Daily records are coming soon.",
     figure: <RecordDocument record={exampleRecords[0]} variant="compact" />,
     href: routes.anchors,
   },

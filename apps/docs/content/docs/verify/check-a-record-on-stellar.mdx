@@ -59,12 +59,12 @@ The values above are the real output on 4 November 2026. Your output shows whate
 
 | Field       | Meaning                                                                                                                                 |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `r`         | Reserves, the total of the signed reserve figures, in the asset's smallest unit.                                                        |
+| `r`         | Reserves, the total of the reserve figures, in the asset's smallest unit.                                                               |
 | `l`         | What is owed, the total of every customer balance in the committed list, in the same unit.                                              |
 | `root_h`    | The [commitment root](/docs/overview/how-solva-works), which a holder checks their balance against.                                     |
 | `timestamp` | The close time of the ledger that wrote the record, in Unix seconds (UTC). It comes from the Stellar network, not from the institution. |
 
-Amounts are whole numbers in the asset's smallest unit, never fractions. The example registries count US dollars in cents, so `16000000` is 160,000.00 and `9000000` is 90,000.00. The timestamp `1793803080` is 14:38:00 UTC on 4 November 2026.
+Amounts are whole numbers in the asset's smallest unit, never fractions. The Kestrel Anchor and Solstice Exchange registries count US dollars in cents, so `16000000` is 160,000.00 and `9000000` is 90,000.00. Harbor Wallet's registry counts USDC in its seven-decimal unit, so `200000000` is 20 USDC. The timestamp `1793803080` is 14:38:00 UTC on 4 November 2026.
 
 [Coverage](/docs/overview/what-is-solva) here is 16,000,000 divided by 9,000,000, or 177.77 percent, cut off at two decimal places.
 
@@ -82,7 +82,7 @@ Public record pages <ComingSoon /> show an asset in one of three [statuses](/doc
 
 Set the expected window from the institution's schedule, such as a day for daily cycles or an hour for hourly ones. Subtract the record's `timestamp` from the current time. If the gap is longer than the window you accept, treat coverage as unknown.
 
-From the contract alone, a short day and a missed day look the same, because in both the latest record gets older. Treat both as not covered for that day. Public record pages will show short with the size of the gap, taken from the refused cycle.
+From the contract alone, a short day and a missed day look the same, because in both the latest record gets older. Treat both as not covered for that day. Public record pages show short with the size of the gap, taken from the refused cycle.
 
 ## Read the latest record with the SDK
 

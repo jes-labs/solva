@@ -34,7 +34,7 @@ Stellar gives deterministic finality. A proof we publish is settled within secon
 
 The part that matters most is the last one. The verifier is a public Soroban contract. Its code is open and it lives on the chain. It checks every proof before storing it, so a proof that fails never becomes a record. Anyone can read the stored result and check their own balance against it, with no Solva server involved. We could not fake a result if we wanted to, because the result is whatever the contract computes.
 
-That is what lets us name exactly what you trust. The reserve figure comes from a custodian-signed balance, and Solva checks the signature. The proof checks the arithmetic and the commitment, not that the money exists. Real custodian connections are coming soon, and reserves read on chain are in development. For the arithmetic, you trust a contract you can read yourself.
+That is what lets us name exactly what you trust. The reserve figure comes from outside the proof: either a custodian-signed balance, whose signature Solva checks, or the balance of Stellar accounts read straight from the ledger. The proof checks the arithmetic and the commitment, not that the money exists. Real custodian connections are coming soon. For the arithmetic, you trust a contract you can read yourself.
 
 ```text
 let record = registry.get_latest_proof();

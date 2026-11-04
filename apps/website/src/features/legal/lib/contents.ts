@@ -18,4 +18,4 @@ export const LEGAL_CONTENTS: readonly ContentsEntry[] = [
   { id: "changes", title: "Changes to this page" },
 ];
 
-export const LAST_UPDATED = { iso: "2026-11-02", label: "2 November 2026" } as const;
+export const LAST_UPDATED = { iso: "2026-11-04", label: "4 November 2026" } as const;

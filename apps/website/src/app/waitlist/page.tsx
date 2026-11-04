@@ -19,7 +19,7 @@ export default function WaitlistPage() {
       <PageOpening
         label="Waitlist"
         title="Join the waitlist."
-        lead="Publishing a coverage record opens to pilot partners first. Leave three details, and we will hold your place and write to you when publishing opens to your organisation."
+        lead="Publishing a coverage record opens to pilot partners first. Leave three details. We send a confirmation straight away, and write again when publishing opens to your organisation."
         primary={{ label: "Join the waitlist", href: "#join" }}
         secondary={{ label: "Ask about a pilot", href: routes.contact }}
         figure={

@@ -7,7 +7,7 @@ const NOTES = [
   },
   {
     title: "Connect the reserve source",
-    body: "Solva holds no credentials for your reserve source. For a custodian, it runs a standard authorisation handshake, then reads balances with a short-lived token. For reserves held on Stellar, nothing needs authorising: account balances are public.",
+    body: "Solva holds no credentials for your reserve source. For a custodian, it runs a standard authorisation handshake, then reads balances with a short-lived token; on this page the custodian is Solva's sandbox. For reserves held on Stellar, nothing needs authorising: account balances are public.",
   },
   {
     title: "Read the reserve balance",
