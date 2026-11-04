@@ -40,3 +40,15 @@ func TestLoadIgnoresRemovedBankSettings(t *testing.T) {
 		t.Errorf("ReserveBaseURL read the removed ORCH_BANK_BASE_URL")
 	}
 }
+
+func TestLoadReadsAPIToken(t *testing.T) {
+	t.Setenv("ORCH_API_TOKEN", "api-token-test")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.APIToken != "api-token-test" {
+		t.Errorf("APIToken = %q", cfg.APIToken)
+	}
+}
