@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
-import { ORCHESTRATOR_URL, orchestratorHeaders } from "@/lib/sandbox-backend";
+import { ORCHESTRATOR_URL, orchestratorHeaders, unreachable } from "@/lib/sandbox-backend";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/sandbox/inclusion?tenant=<id>&id_hash=<hex> resolves a customer's
-// inclusion path in the institution's latest proof. The path is what the
-// contract's verify_inclusion recomputes the root from, so a customer can prove
-// their balance is committed without seeing anyone else's.
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const tenant = params.get("tenant");
@@ -29,17 +25,17 @@ export async function GET(request: Request) {
     }
 
     const ref = `${proof.id}:${idHash}`;
-    const inc = await fetch(
+    const inclusion = await fetch(
       `${ORCHESTRATOR_URL}/v1/proofs/inclusion/${encodeURIComponent(ref)}`,
       { headers: orchestratorHeaders() },
     );
-    if (inc.status === 404) {
-      return NextResponse.json({ included: false, reason: "customer not in this proof" });
+    if (inclusion.status === 404) {
+      return NextResponse.json({ included: false, reason: "holder not in this proof" });
     }
-    if (!inc.ok) {
+    if (!inclusion.ok) {
       return NextResponse.json({ error: "inclusion lookup failed" }, { status: 502 });
     }
-    const data = (await inc.json()) as {
+    const data = (await inclusion.json()) as {
       proof_id?: string;
       customer_id_hash?: string;
       balance?: string;
@@ -54,7 +50,7 @@ export async function GET(request: Request) {
       rootHash: data.root_hash,
       pathLength: Array.isArray(data.path) ? data.path.length : 0,
     });
-  } catch (err) {
-    return NextResponse.json({ error: `backend unreachable: ${String(err)}` }, { status: 502 });
+  } catch (error) {
+    return NextResponse.json(unreachable(error), { status: 502 });
   }
 }

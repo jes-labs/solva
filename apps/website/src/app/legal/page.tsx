@@ -1,25 +1,36 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { LegalShell } from "@/components/legal/legal-shell";
+import { PageOpening } from "@/components/layout/page-opening";
+import { RecordDocument } from "@/components/ui/record-document";
+import { exampleRecords } from "@/lib/example-records";
+import { PictureCredits } from "@/components/layout/picture-credits";
+import { LegalDocument } from "@/features/legal";
 
 export const metadata: Metadata = {
-  title: "Legal",
+  title: "Terms and privacy",
   description:
-    "Solva's privacy policy, terms of service, and security policy. Plain-language templates covering the limited data we collect and our security commitments.",
+    "The terms for using joinsolva.xyz, what our forms collect, why we keep it, for how long, and who processes it for us.",
   alternates: { canonical: "/legal" },
-  openGraph: { title: "Legal", url: "/legal" },
 };
-
-// Rendered per request so the ?doc= deep link resolves to the right policy on the
-// server, not just after hydration.
-export const dynamic = "force-dynamic";
 
 export default function LegalPage() {
   return (
-    <main className="relative z-[1]">
-      <Suspense>
-        <LegalShell />
-      </Suspense>
-    </main>
+    <>
+      <PageOpening
+        label="Legal"
+        title="Terms and privacy."
+        lead="How you may use this site, what our two forms collect, why we keep it, for how long, and who handles it for us."
+        primary={{ label: "See what our forms collect", href: "#what-we-collect" }}
+        figure={
+          <RecordDocument
+            record={exampleRecords[3]}
+            variant="compact"
+            caption="Example, a stale day"
+          />
+        }
+        provenance={["Plain English", "No analytics, no tracking cookies"]}
+      />
+      <LegalDocument />
+      <PictureCredits />
+    </>
   );
 }
