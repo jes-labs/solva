@@ -60,7 +60,10 @@ func run(cfg config.Config, log zerolog.Logger) error {
 	provision := usecase.NewProvision(deps.postgres)
 
 	handler := controllerhttp.NewHandler(cycle, query, provision, cfg.AdminToken, log)
-	router := controllerhttp.Router(handler, log)
+	if cfg.APIToken == "" {
+		log.Warn().Msg("ORCH_API_TOKEN is empty: anyone can trigger a proof cycle. Set it before public hosting.")
+	}
+	router := controllerhttp.Router(handler, cfg.APIToken, log)
 
 	// Start the per-tenant cron scheduler if enabled via config flag. The
 	// scheduler runs in a background goroutine and is cancelled with the

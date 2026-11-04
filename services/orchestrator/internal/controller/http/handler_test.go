@@ -75,7 +75,7 @@ func (s *stubProvision) SetTenantWallet(_ context.Context, _, _ string) error {
 func TestGetInclusionDecodesEncodedRef(t *testing.T) {
 	q := &stubQuery{}
 	h := NewHandler(stubCycle{}, q, &stubProvision{}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	uuid := "ab31f400-d433-4af0-bbda-80e26a2a1a05"
@@ -102,7 +102,7 @@ func TestGetInclusionDecodesEncodedRef(t *testing.T) {
 // tenant has no contract yet.
 func TestGetTenantContract(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Get(srv.URL + "/v1/tenants/tenant-1/contract")
@@ -117,7 +117,7 @@ func TestGetTenantContract(t *testing.T) {
 
 func TestGetTenantContractNotProvisioned(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{resolveErr: repo.ErrTenantNotProvisioned}, &stubProvision{}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Get(srv.URL + "/v1/tenants/tenant-1/contract")
@@ -135,7 +135,7 @@ func TestGetTenantContractNotProvisioned(t *testing.T) {
 func TestCreateTenant(t *testing.T) {
 	p := &stubProvision{}
 	h := NewHandler(stubCycle{}, &stubQuery{}, p, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Post(srv.URL+"/v1/tenants", "application/json",
@@ -155,7 +155,7 @@ func TestCreateTenant(t *testing.T) {
 // POST /v1/tenants requires the configured admin bearer token.
 func TestCreateTenantRequiresAdminToken(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "s3cr3t", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	// No Authorization header: rejected.
@@ -185,7 +185,7 @@ func TestCreateTenantRequiresAdminToken(t *testing.T) {
 // PUT /v1/tenants/{id}/contract records the contract once deployed.
 func TestSetTenantContract(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/contract",
@@ -204,7 +204,7 @@ func TestSetTenantContract(t *testing.T) {
 // An invalid network is rejected with a 400, not silently recorded.
 func TestSetTenantContractInvalidNetwork(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{setErr: usecase.ErrInvalidNetwork}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/contract",
@@ -223,7 +223,7 @@ func TestSetTenantContractInvalidNetwork(t *testing.T) {
 // PUT /v1/tenants/{id}/wallet records the tenant's passkey smart-wallet account.
 func TestSetTenantWallet(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/wallet",
@@ -242,7 +242,7 @@ func TestSetTenantWallet(t *testing.T) {
 // A non-contract wallet is rejected with a 400.
 func TestSetTenantWalletInvalid(t *testing.T) {
 	h := NewHandler(stubCycle{}, &stubQuery{}, &stubProvision{setErr: usecase.ErrInvalidWallet}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	req, _ := http.NewRequest(http.MethodPut, srv.URL+"/v1/tenants/tenant-1/wallet",
@@ -262,7 +262,7 @@ func TestSetTenantWalletInvalid(t *testing.T) {
 // callers can tell insolvency apart from a real failure (#179).
 func TestTriggerCycleInsolvent(t *testing.T) {
 	h := NewHandler(stubCycle{err: usecase.ErrInsolvent}, &stubQuery{}, &stubProvision{}, "", zerolog.Nop())
-	srv := httptest.NewServer(Router(h, zerolog.Nop()))
+	srv := httptest.NewServer(Router(h, "", zerolog.Nop()))
 	defer srv.Close()
 
 	res, err := http.Post(srv.URL+"/v1/cycles", "application/json",
