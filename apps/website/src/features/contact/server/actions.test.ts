@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const send = vi.hoisted(() => vi.fn());
+const getContact = vi.hoisted(() => vi.fn());
+const createContact = vi.hoisted(() => vi.fn());
 
 vi.mock("resend", () => ({
   Resend: class {
     emails = { send };
+    contacts = { get: getContact, create: createContact };
   },
 }));
 
@@ -30,8 +33,23 @@ function contactForm(overrides: Record<string, string> = {}) {
   return formData;
 }
 
+const notFound = {
+  data: null,
+  error: { name: "not_found", message: "Contact not found", statusCode: 404 },
+  headers: null,
+};
+
 beforeEach(() => {
   vi.stubEnv("RESEND_API_KEY", "re_test");
+  vi.stubEnv("RESEND_WAITLIST_SEGMENT_ID", "seg_waitlist");
+  getContact.mockReset();
+  getContact.mockResolvedValue(notFound);
+  createContact.mockReset();
+  createContact.mockResolvedValue({
+    data: { object: "contact", id: "c_1" },
+    error: null,
+    headers: null,
+  });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   send.mockReset();
   send.mockResolvedValue({ data: { id: "email_1" }, error: null, headers: null });
@@ -126,31 +144,122 @@ describe("sendContact", () => {
   });
 });
 
-describe("joinWaitlist", () => {
-  it("sends a waitlist request through the same pipeline", async () => {
-    const formData = new FormData();
-    formData.set("email", "ops@kestrel.example");
-    formData.set("organisation", "Kestrel Anchor");
-    formData.set("role", "Anchor");
+function waitlistForm(overrides: Record<string, string> = {}) {
+  const formData = new FormData();
+  const values = {
+    email: "ops@kestrel.example",
+    organisation: "Kestrel Anchor",
+    role: "Anchor",
+    website: "",
+    ...overrides,
+  };
+  for (const [key, value] of Object.entries(values)) {
+    formData.set(key, value);
+  }
+  return formData;
+}
 
-    const state = await joinWaitlist({ status: "idle" }, formData);
+describe("joinWaitlist", () => {
+  it("saves a new address to the waitlist segment and confirms to that address only", async () => {
+    const state = await joinWaitlist(idle, waitlistForm());
 
     expect(state).toEqual({ status: "sent", email: "ops@kestrel.example" });
+    expect(getContact).toHaveBeenCalledWith({ email: "ops@kestrel.example" });
+    expect(createContact).toHaveBeenCalledWith({
+      email: "ops@kestrel.example",
+      properties: { organisation: "Kestrel Anchor", role: "Anchor" },
+      segments: [{ id: "seg_waitlist" }],
+    });
+    expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ subject: "Waitlist request: Kestrel Anchor (Anchor)" }),
+      expect.objectContaining({
+        from: "Solva <hello@send.joinsolva.xyz>",
+        to: "ops@kestrel.example",
+        replyTo: "hello@joinsolva.xyz",
+        subject: "You are on the Solva waitlist",
+      }),
     );
   });
 
-  it("rejects a missing role", async () => {
-    const formData = new FormData();
-    formData.set("email", "ops@kestrel.example");
-    formData.set("organisation", "Kestrel Anchor");
+  it("refuses an address that is already on the waitlist", async () => {
+    getContact.mockResolvedValue({
+      data: { object: "contact", id: "c_1", email: "ops@kestrel.example" },
+      error: null,
+      headers: null,
+    });
 
-    const state = await joinWaitlist({ status: "idle" }, formData);
+    const state = await joinWaitlist(idle, waitlistForm());
+
+    expect(state).toMatchObject({
+      status: "invalid",
+      errors: { email: "This email is already on the waitlist." },
+      values: { email: "ops@kestrel.example" },
+    });
+    expect(createContact).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("reports a delivery failure when the lookup fails", async () => {
+    getContact.mockResolvedValue({
+      data: null,
+      error: { name: "internal_server_error", message: "down", statusCode: 500 },
+      headers: null,
+    });
+
+    const state = await joinWaitlist(idle, waitlistForm());
+
+    expect(state).toMatchObject({ status: "failed", reason: "delivery" });
+    expect(createContact).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("reports a delivery failure when the contact cannot be created", async () => {
+    createContact.mockResolvedValue({
+      data: null,
+      error: { name: "validation_error", message: "bad", statusCode: 422 },
+      headers: null,
+    });
+
+    const state = await joinWaitlist(idle, waitlistForm());
+
+    expect(state).toMatchObject({ status: "failed", reason: "delivery" });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("keeps the person on the list when only the confirmation fails", async () => {
+    send.mockRejectedValue(new Error("network down"));
+
+    const state = await joinWaitlist(idle, waitlistForm());
+
+    expect(state).toEqual({ status: "sent", email: "ops@kestrel.example" });
+    expect(createContact).toHaveBeenCalledTimes(1);
+  });
+
+  it("never claims success when the segment id is missing", async () => {
+    vi.stubEnv("RESEND_WAITLIST_SEGMENT_ID", "");
+
+    const state = await joinWaitlist(idle, waitlistForm());
+
+    expect(state).toMatchObject({ status: "failed", reason: "unconfigured" });
+    expect(getContact).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("drops a submission with a filled honeypot without calling Resend", async () => {
+    const state = await joinWaitlist(idle, waitlistForm({ website: "https://spam.example" }));
+
+    expect(state.status).toBe("sent");
+    expect(getContact).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing role", async () => {
+    const state = await joinWaitlist(idle, waitlistForm({ role: "" }));
 
     expect(state).toMatchObject({
       status: "invalid",
       errors: { role: "Choose the option that fits you best." },
     });
+    expect(getContact).not.toHaveBeenCalled();
   });
 });

@@ -16,7 +16,8 @@ function InclusionFigure() {
         <LeaderRow label="Result" value="Counted" tone="signal" />
       </div>
       <p className="mt-4 font-sans text-small text-sec">
-        No other balance is revealed by this check.
+        No other customer is named. The path shows unnamed subtotals, including one neighbouring
+        balance.
       </p>
     </div>
   );
@@ -43,22 +44,22 @@ function PolicyFigure() {
 const READERS = [
   {
     title: "Anchors",
-    line: "Show holders and partners the token is backed, every day.",
-    body: "You issue a fiat token on Stellar, and its supply is already public. Solva puts your signed reserve balance beside that supply and proves the reserves cover it, so the question of backing gets a daily answer you did not write yourself.",
+    line: "Show holders and partners the token is backed.",
+    body: "You issue a fiat token on Stellar, and its supply is already public. Solva puts your signed reserve balance beside what you owe and proves the reserves cover it, so the question of backing gets an answer you did not write yourself. Daily records are coming soon.",
     figure: <RecordDocument record={exampleRecords[0]} variant="compact" />,
     href: routes.anchors,
   },
   {
     title: "Custodial apps",
-    line: "Prove you can repay every customer, and let each one check.",
-    body: "You hold customer money and move it over Stellar. You commit the list of balances as one value and prove that the total is covered. Every customer can then confirm their balance was counted, without seeing anyone else's.",
+    line: "Prove your reserves cover what you owe customers, and let each one check.",
+    body: "You hold customer money and move it over Stellar. You commit the list of balances as one value and prove that the total is covered. Every customer can then confirm their balance was counted, without any other customer being named.",
     figure: <InclusionFigure />,
     href: routes.custodialApps,
   },
   {
     title: "Partners",
     line: "Wallets, lending pools and auditors read coverage for free.",
-    body: "A lending pool asks one question before it accepts an asset as collateral. A wallet shows the state next to a balance. An auditor downloads a year of daily evidence. None of them needs the issuer's permission.",
+    body: "A lending pool reads the latest verified totals before it accepts an asset as collateral. A wallet shows them next to a balance. An auditor reads each dated proof. None of them needs the issuer's permission. A one-call verdict and a daily evidence export are coming soon.",
     figure: <PolicyFigure />,
     href: routes.partners,
   },

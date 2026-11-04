@@ -3,7 +3,7 @@ export const site = {
   url: "https://joinsolva.xyz",
   title: "Solva | Reserve coverage for Stellar anchors and custodial apps",
   description:
-    "A public record, per asset, that an anchor or custodial app on Stellar holds what it owes. Proven every day, checked on Stellar, free for anyone to read.",
+    "A public record that an anchor or custodial app on Stellar holds what it owes. Each proof is checked by a contract on Stellar and free for anyone to read. Live on Stellar Testnet.",
   docsUrl: "https://docs.joinsolva.xyz",
   githubUrl: "https://github.com/jes-labs/solva",
   xUrl: "https://x.com/joinsolva",

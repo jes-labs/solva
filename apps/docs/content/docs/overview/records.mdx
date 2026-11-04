@@ -22,21 +22,19 @@ The registry stores the proof id, both totals, the commitment root and the time.
 
 ## The statuses
 
-Solva describes the state of an asset with one of three statuses: covered, short or stale.
+Public record pages <ComingSoon /> show the status, the percentage and the history for each institution and asset. A status is one of three: covered, short or stale. The registry stores no status. It holds the record's totals and time, and a reader works out the state from those.
 
 | Status  | Meaning                                                                     | What a reader does                                                  |
 | ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | Covered | The latest record shows reserves at or above what is owed, and it is recent | Relies on it for that ledger, and checks again after the next cycle |
 | Short   | The latest cycle found reserves below what is owed                          | Treats the asset as not covered until a new record shows it covered |
-| Stale   | No new record arrived inside the expected window, daily by default          | Treats coverage as unknown until the next record lands              |
+| Stale   | No new record arrived inside the expected window                            | Treats coverage as unknown until the next record lands              |
 
-Coverage as a percentage is reserves divided by what is owed, cut off at two decimal places and never rounded up. Reserves of 99,996.00 against 100,000.00 owed read as 99.99 percent, and the status is short.
+Coverage as a percentage is reserves divided by what is owed, cut off at two decimal places and never rounded up. Reserves of 99,996.00 against 100,000.00 owed read as 99.99 percent, which is short.
 
-The registry itself never stores a short result. When reserves are below what is owed, the contract refuses the proof and writes nothing, so the last record stays as it was. Short is how Solva reports that refused cycle, with the size of the gap.
+A cycle whose reserves are below what is owed is refused and nothing is written, so there is no proof that day and the last record stays as it was. On record pages, short will report that refused cycle with the size of the gap.
 
-Stale is applied by rule, with no judgement. A missed day stays stale and is never filled in later. How old a record may be before you stop relying on it is your own decision.
-
-Public record pages <ComingSoon /> show the status, the percentage and the history for each institution and asset.
+Stale follows a fixed rule: no record inside the expected window. Today you apply that rule yourself from the record's time. How old a record may be before you stop relying on it is your own decision. A missed day is never filled in later.
 
 ## What a record proves
 
@@ -57,7 +55,7 @@ A contract on Stellar checked the proof behind every record. That proof establis
 | Who holds the reserves' private keys             | A signed balance says what an account holds, not who controls it.                                             |
 | That the customer list is complete               | The institution supplies the list. A left-out customer fails the inclusion check, which is how the gap shows. |
 | That reserves are free of other claims           | A balance does not show if the same money also backs something else.                                          |
-| Anything about a day with no record              | A missed day is stale. It says nothing either way.                                                            |
+| Anything about a day with no record              | A missed day has no proof. It says nothing either way.                                                        |
 | That the institution is sound in any other sense | A record shows coverage at one ledger. It is not an audit.                                                    |
 
 The reserve figure rests on the custodian's signature. See [Where reserve figures come from](/docs/overview/reserve-sources).

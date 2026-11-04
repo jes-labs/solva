@@ -26,7 +26,7 @@ export function RecordDocument({
   const owedLabel = record.kind === "anchor" ? "Owed to holders" : "Owed to customers";
   const owedNote =
     record.kind === "anchor"
-      ? "Token supply, read from Stellar"
+      ? "Holder balances that add up to the token supply"
       : "Customer balances, committed to the tree";
 
   return (
@@ -95,7 +95,7 @@ export function RecordDocument({
           parts={[
             ledgerLabel(record.ledger),
             record.provenAgo,
-            record.state === "stale" ? "No proof today" : "Proof checked on Stellar",
+            record.state === "stale" ? "No proof today" : "Example, not read from a contract",
           ]}
         />
       </footer>

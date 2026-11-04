@@ -1,5 +1,6 @@
 import { ArrowUpRightIcon } from "@phosphor-icons/react/ssr";
 import { Cell, Provenance, RuledGrid, ledgerLabel } from "@/components/ui/ledger";
+import { StatusTag } from "@/components/ui/status-tag";
 import { explorer, shortHash, verifierEvidence } from "@/config/evidence";
 import { ResultMeanings } from "./result-meanings";
 import { UpdateCadence } from "./update-cadence";
@@ -46,7 +47,7 @@ export function BalancesDetail() {
         {
           label: "For an anchor",
           value:
-            "What is owed is the token supply, read from Stellar at the ledger the record names.",
+            "What is owed is a stored list of holder balances that add up to the supply. Reading the token supply straight from Stellar at the record's ledger is coming soon.",
         },
         {
           label: "For a custodial app",
@@ -55,7 +56,7 @@ export function BalancesDetail() {
         {
           label: "Published",
           value:
-            "Nothing from the list. The balances stay on the institution's side and never leave it.",
+            "Nothing from the list. Today Solva holds the list and passes it to its prover over a private connection; no balance is written anywhere public.",
         },
       ]}
     />
@@ -78,7 +79,7 @@ export function CommitDetail() {
         {
           label: "Holder check",
           value:
-            "A customer can confirm that their own balance sits behind the commitment, without seeing anyone else's.",
+            "A customer can confirm that their own balance sits behind the commitment. No other customer is named; the path shows unnamed subtotals, including one neighbouring balance.",
         },
       ]}
     />
@@ -95,8 +96,9 @@ export function ProofDetail() {
             "Every balance on the list was counted, none is negative, and the total is at most the signed balance of the reserve accounts.",
         },
         {
-          label: "What it hides",
-          value: "Every balance. The proof carries the totals, never the list behind them.",
+          label: "What it publishes",
+          value:
+            "Only the totals and the commitment. No balance is a public input. The proof system's hiding mode is in development.",
         },
         {
           label: "Who checks it",
@@ -151,12 +153,12 @@ export function VerifyDetail() {
           {
             label: "Who is trusted",
             value:
-              "Nobody. The contract checks the proof itself, on the network, and anyone can repeat the check.",
+              "Nobody. The contract checks the proof itself, on the network. Anyone can open the transaction where it was verified and rerun the open-source verifier on the same proof.",
           },
           {
             label: "Outcome",
             value:
-              "A proof that fails to verify writes nothing. A proof that verifies writes covered or short at that ledger.",
+              "A proof that fails to verify writes nothing. Reserves below what is owed produce no proof at all, so a shortfall can never be written as covered. A proof that verifies stores both totals at that ledger.",
           },
         ]}
       />
@@ -172,7 +174,10 @@ export function RecordDetail() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <p className="text-small font-medium text-sec">Three states, nothing in between</p>
+        <p className="flex flex-wrap items-center gap-3 text-small font-medium text-sec">
+          Three states, nothing in between
+          <StatusTag status="coming-soon" />
+        </p>
         <div className="mt-3">
           <ResultMeanings />
         </div>
@@ -180,9 +185,10 @@ export function RecordDetail() {
       <div>
         <p className="text-small font-medium text-sec">Cadence</p>
         <p className="mt-1 text-small text-sec">
-          Daily by default, or on the schedule the institution agrees. Each result names a Stellar
-          ledger, so it carries a time anyone can look up. When a proof does not arrive on schedule,
-          the record turns stale by itself. Nobody has to notice, and nobody can hide it.
+          Designed to run daily by default, or on the schedule the institution agrees. Each result
+          names a Stellar ledger, so it carries a time anyone can look up. When a proof does not
+          arrive on schedule, the record will turn stale by itself. Scheduled publishing and
+          freshness checks are coming soon; on Testnet today a cycle runs on request.
         </p>
         <div className="mt-4">
           <UpdateCadence />

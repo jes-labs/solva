@@ -4,32 +4,32 @@ const ITEMS: readonly { question: string; answer: string }[] = [
   {
     question: "Do we report our token supply?",
     answer:
-      "No. Solva reads it from Stellar, where it is already public. You report your reserve balance and nothing else.",
+      "Not once supply reads launch: Solva will read it from Stellar, where it is already public. That is coming soon. Today, a pilot loads holder balances that add up to the supply.",
   },
   {
     question: "How often is a result made?",
     answer:
-      "Once a day for each asset, on the schedule agreed during the pilot. A day with no proof shows as stale instead of repeating the last result.",
+      "Solva is designed to make one each day, on the schedule agreed during the pilot, with a day that has no proof showing as stale. Scheduled publishing is coming soon; on Testnet today a cycle runs on request.",
   },
   {
     question: "We issue more than one token. How does that work?",
     answer:
-      "Each asset gets its own entry, its own daily result and its own public page. Nothing is blended across tokens.",
+      "One registry per institution today. Separate records and public pages for each asset are coming soon, never a blended figure.",
   },
   {
     question: "What do holders see if we come up short?",
     answer:
-      "The page says short and shows the size of the gap. It returns to covered with the first proof that shows reserves at or above supply again.",
+      "No proof can be made, so nothing is published as covered. The contract only accepts a proof that reserves are at or above what is owed. A short status that shows the size of the gap is coming soon.",
   },
   {
     question: "Can we link the page from our stellar.toml?",
     answer:
-      "Yes. Each asset's page keeps a stable address, so you can link it from your stellar.toml, your site and your exchange listings.",
+      "Yes, once public record pages launch. Each asset's page will keep a stable address for your stellar.toml, your site and your exchange listings. Coming soon.",
   },
   {
     question: "What does our auditor get?",
     answer:
-      "A dated result for every day, each tied to a Stellar ledger: daily evidence to check between reports. Your auditor's own report stays where it is.",
+      "A dated result for every proof, each tied to a Stellar ledger: evidence to check between reports. Daily history and a CSV export are coming soon. Your auditor's own report stays where it is.",
   },
 ];
 

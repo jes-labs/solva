@@ -21,7 +21,7 @@ Two institutions never share a registry, so tokens from several institutions mea
 
 ## Find it in stellar.toml
 
-`stellar.toml` is the file an institution publishes at its own domain to describe itself and its tokens. SEP-1, the Stellar standard that sets its format, gives each currency an `attestation_of_reserve` field that holds a URL to evidence of reserves. An anchor points that field at its Solva record.
+`stellar.toml` is the file an institution publishes at its own domain to describe itself and its tokens. SEP-1, the Stellar standard that sets its format, gives each currency an `attestation_of_reserve` field that holds a URL to evidence of reserves. An anchor points that field at a page that names its registry.
 
 <Steps>
   <Step>
@@ -42,10 +42,10 @@ Two institutions never share a registry, so tokens from several institutions mea
     ```toml title="stellar.toml"
     [[CURRENCIES]]
     code = "ARSK"
-    attestation_of_reserve = "https://joinsolva.xyz/registry/kestrel-anchor/ARSK"
+    attestation_of_reserve = "https://anchor.example/reserves"
     ```
 
-    This example uses the address form of a public record page. An institution can also point the field at a page on its own site that names its registry.
+    This example points the field at a page on the institution's own site that names its registry. Once public record pages are live, an anchor can point the field at its token's page instead.
 
   </Step>
   <Step>

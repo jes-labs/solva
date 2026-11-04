@@ -7,7 +7,7 @@ An auditor reviewing an anchor or a custodial app that publishes coverage can ad
 
 ## What a record gives you
 
-Each record is a dated result, checked on Stellar, that reserves were at least what the institution owed its customers at one ledger. Records arrive daily by default, so between two audits you have a series.
+Each record is a dated result, checked on Stellar, that reserves were at least what the institution owed its customers at one ledger. Records arrive with each cycle, so between two audits you have a series. Cycles run on request, or daily or hourly when the orchestrator's scheduler is turned on.
 
 | What you get                  | Why it helps                                                                                                                                               |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -29,7 +29,7 @@ A record is evidence for your file, not an audit.
 | Prove the reserve figure is honest          | The proof takes the custodian's signed balance as given. See [Where reserve figures come from](/docs/overview/reserve-sources). |
 | Prove the customer list is complete         | The institution supplies the list. A left-out customer shows only when that customer checks.                                    |
 | Show that reserves are free of other claims | A balance does not show if the same funds back something else.                                                                  |
-| Say anything about a day with no record     | A missing day is stale, nothing more.                                                                                           |
+| Say anything about a day with no record     | A missing day has no proof. It says nothing either way.                                                                         |
 
 For how records sit beside audits and attestations, see [Coverage and audits](/docs/overview/coverage-and-audits).
 
@@ -72,7 +72,7 @@ You need the Stellar CLI and a funded Testnet key named `reader` (see [Check a r
   <Step>
     ### Line the records up with the calendar
 
-    Convert each `timestamp` to a date and mark the days with no record. The demo registry above publishes on demand, not daily, so its records bunch together. A registry on a schedule publishes daily by default, and the gaps in its series are the stale days.
+    Convert each `timestamp` to a date and mark the days with no record. The demo registry above publishes on demand, not daily, so its records bunch together. A registry on a schedule publishes daily or hourly, and the gaps in its series are the missed cycles.
 
   </Step>
 </Steps>

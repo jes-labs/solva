@@ -35,9 +35,9 @@ The first line is the coverage claim. The second line is what stops anyone cheat
 
 ## What stays private
 
-The balances go into the prover on the institution's side and never leave it. What is published is the commitment, its total and the reserve figure. A customer who wants to know they were counted can be shown that their own balance sits behind the commitment, without being shown anyone else's.
+The balances go to the prover over a private connection and are never published. Today Solva's orchestrator holds the customer list and sends it to the prover, which runs on Solva's side; running the prover inside the institution's own environment is coming soon. What is published is the commitment, its total and the reserve figure. A customer who wants to know they were counted can be shown that their own balance sits behind the commitment. No name is shown. The check does show unnamed subtotals of nearby entries, including one neighbouring balance; a fully hiding check is in development.
 
-The current build proves a list of eight balances at a time. Larger lists are on the roadmap. The full construction, with the source, is in the documentation.
+The current build proves up to eight customer balances and four reserve figures at a time. Larger proofs are coming soon. The full construction, with the source, is in the documentation.
 
 ## Two details that bite
 
@@ -51,6 +51,6 @@ The second is cost. The commitment has to be something a contract on Stellar can
 
 When this verifies, here is the exact statement you can rely on. At the moment of proving, the prover knew a list of balances whose commitment equals the published one, whose total equals the published total, and reserves were at least that total. Leave a balance out and the commitment moves. Reorder or pad the list and it moves too.
 
-Here is what it does not say. The reserve figure is supplied by the institution. The proof checks the arithmetic and the commitment, not that the money exists. And the proof is not yet in its formally hiding configuration: a customer's own check reveals subtotals of the entries next to theirs. Proving totals without revealing any of those subtotals is planned work, and the trust page will say so when it ships.
+Here is what it does not say. The reserve figure comes from a custodian-signed balance, and Solva checks the signature. The proof checks the arithmetic and the commitment, not that the money exists. And the proof is not yet in its formally hiding configuration: a customer's own check reveals subtotals of the entries next to theirs. Proving totals without revealing any of those subtotals is in development, and the trust page will say so when it ships.
 
 It is a narrow statement, and that is the point. The one number everyone used to keep in a spreadsheet can no longer be fudged without getting caught.

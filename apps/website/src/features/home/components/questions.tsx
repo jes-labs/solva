@@ -7,12 +7,12 @@ const QUESTIONS: readonly { question: string; answer: string }[] = [
   {
     question: "Is Solva an audit?",
     answer:
-      "No. Solva is not an audit, and it does not stand in for one. It is a public record of whether reserves covered what was owed at a given ledger. Your auditor gets daily evidence to check between audits, and the audit itself stays where it is.",
+      "No. Solva is not an audit, and it does not stand in for one. It is a public record of whether reserves covered what was owed at a given ledger. Your auditor gets dated evidence to check between audits, and the audit itself stays where it is.",
   },
   {
     question: "What do we have to share?",
     answer:
-      "Your reserve balance for each asset, signed by the account that holds it. Anchors share nothing else, because the token supply is already public on Stellar. Custodial apps also commit to their customer balances, which are never published one by one.",
+      "Your reserve balance for each asset, signed by the account that holds it. Custodial apps also commit to their customer balances, which are never published one by one. Today anchors do the same with their holder balances; reading the token supply straight from Stellar instead is coming soon.",
   },
   {
     question: "Who can read a result?",
@@ -27,12 +27,12 @@ const QUESTIONS: readonly { question: string; answer: string }[] = [
   {
     question: "What happens if we come up short?",
     answer:
-      "The record says short and shows the size of the gap. Nothing is hidden, and the percentage is never rounded up. It returns to covered with the next proof that shows reserves at or above what is owed.",
+      "No proof can be made, so nothing is published as covered. The contract only accepts a proof that reserves are at or above what is owed. A short status that shows the gap publicly is coming soon.",
   },
   {
     question: "What does stale mean?",
     answer:
-      "No new proof arrived inside the expected window. Readers treat the asset as unknown until the next proof lands.",
+      "No new proof arrived inside the expected window. Readers treat the asset as unknown until the next proof lands. Stale statuses are coming soon; today each record carries its timestamp, so a reader can judge its age.",
   },
   {
     question: "Where does this run today?",
@@ -42,7 +42,7 @@ const QUESTIONS: readonly { question: string; answer: string }[] = [
   {
     question: "How is our entry protected?",
     answer:
-      "Your entry is controlled by a passkey your team holds on its own devices. There is no secret key that could be copied or leaked.",
+      "Your entry is owned by a passkey your team holds on its own devices, with no raw owner key to copy or leak. The passkey grants Solva a publishing key that can publish proofs to your registry only, and can revoke it at any time.",
   },
 ];
 

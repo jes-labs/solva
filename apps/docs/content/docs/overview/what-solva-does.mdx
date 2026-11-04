@@ -1,17 +1,17 @@
 ---
 title: What Solva does
-description: The capabilities of Solva, from the daily coverage record to the reads partners and contracts make.
+description: The capabilities of Solva, from the coverage record to the reads partners and contracts make.
 ---
 
-Solva gives an institution a daily coverage record, and gives the people who rely on it several ways to read and check that record.
+Solva gives an institution a coverage record, designed to be published every day, and gives the people who rely on it several ways to read and check that record.
 
-## A daily coverage record
+## A coverage record each cycle
 
-An institution runs a [cycle](/docs/overview/how-solva-works) for each asset, by default once a day. Each cycle reads the signed reserve balance, takes the list of what the institution owes its customers, builds a proof that the reserves cover that list, and sends the proof to the institution's [registry](/docs/overview/what-is-solva) on Stellar.
+An institution runs a [cycle](/docs/overview/how-solva-works) for each asset. Cycles run on request today. When the orchestrator's scheduler is turned on, it runs them daily on the free plan and hourly on the pro plan. Each cycle reads the signed reserve balance, takes the list of what the institution owes its customers, builds a proof that the reserves cover that list, and sends the proof to the institution's [registry](/docs/overview/what-is-solva) on Stellar.
 
 The registry checks the proof and, if the proof is valid, writes a new record. Each record carries the reserves total, the total owed, a commitment to the customer list and the time it was written. Records are never edited. The next cycle adds the next record.
 
-If reserves fall below what is owed, the contract refuses the proof and writes nothing. A day with no new record shows as stale. See [What a record shows](/docs/overview/records).
+If reserves fall below what is owed, the cycle is refused and nothing is written, so there is no proof that day. The registry stores no status. The statuses covered, short and stale belong to public record pages, described below. See [What a record shows](/docs/overview/records).
 
 ## A check any holder can make
 
@@ -21,7 +21,7 @@ The check reveals nothing about any other customer and needs no account with Sol
 
 ## Reads for partners and contracts
 
-Anyone can read the latest record, or any earlier record by its number, from the registry on Stellar. Reading needs no account and costs nothing. A wallet can show coverage beside a balance. An exchange can check coverage before it lists a token. An auditor can collect a dated record for every day.
+Anyone can read the latest record, or any earlier record by its number, from the registry on Stellar. Reading needs no account and costs nothing. A wallet can show coverage beside a balance. An exchange can check coverage before it lists a token. An auditor can collect a dated record for every cycle.
 
 `is_covered` <ComingSoon /> is a single contract call that answers whether an asset is covered. A lending pool or another contract calls it before it accepts the asset, with no server in between.
 
@@ -35,7 +35,7 @@ Selective disclosure <ComingSoon /> lets an institution give one named party, su
 
 ## Try it
 
-The public demo at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) runs a full cycle on Stellar Testnet. A sandbox stands in for the custodian, so the reserve figures are synthetic. The proof, the check on Stellar and the record are real.
+The public demo at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) runs a full cycle on Stellar Testnet. A sandbox stands in for the custodian, so the reserve figures are synthetic. The proof, its verification on Stellar and the record are real. The demo reads the published totals back from the orchestrator and shows an example holder's inclusion path, which anyone can check on Stellar with `verify_inclusion`.
 
 ## Next
 

@@ -26,7 +26,7 @@ export function PartnerLending() {
             id="lending-title"
             label="Lending pools"
             title="Accept collateral while it is covered."
-            lead="A lending pool checks the verdict before each deposit. Covered assets are accepted. Short or stale assets wait until a new proof shows them covered again."
+            lead="A lending pool will check the verdict before each deposit with one call, is_covered, which is coming soon. Covered assets are accepted; short or stale assets wait until a new proof shows them covered again. Today a pool reads the latest proof's totals from the institution's contract with get_latest_proof."
           />
           <fieldset className="mt-10">
             <legend className="text-small font-medium text-sec">

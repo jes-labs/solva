@@ -135,7 +135,7 @@ export function EvidenceExportFragment() {
         </table>
       </div>
       <div className="border-t border-line px-4 py-3">
-        <Provenance parts={["Example", "One row per day", "Exports as CSV"]} />
+        <Provenance parts={["Example", "One row per day", "CSV export coming soon"]} />
       </div>
     </div>
   );

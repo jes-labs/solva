@@ -72,17 +72,17 @@ The registry writes a record only after the proof behind it passes every check o
 
 ## Tell covered, short and stale
 
-Solva gives an asset one of three [statuses](/docs/overview/records). From the registry alone, you work them out as follows.
+Public record pages <ComingSoon /> show an asset in one of three [statuses](/docs/overview/records). The registry stores no status, so from the registry alone you work them out as follows.
 
-| Status  | What you see in the registry                                                                             |
-| ------- | -------------------------------------------------------------------------------------------------------- |
-| Covered | A record whose `timestamp` falls inside the expected window. Its `r` is always at least its `l`.         |
-| Short   | No new record. The contract refuses a proof where reserves are below what is owed, so it writes nothing. |
-| Stale   | No new record inside the expected window. The latest `timestamp` keeps getting older.                    |
+| Status  | What you see in the registry                                                                     |
+| ------- | ------------------------------------------------------------------------------------------------ |
+| Covered | A record whose `timestamp` falls inside the expected window. Its `r` is always at least its `l`. |
+| Short   | No new record. A cycle with reserves below what is owed is refused, so nothing is written.       |
+| Stale   | No new record inside the expected window. The latest `timestamp` keeps getting older.            |
 
-The expected window is daily by default. Subtract the record's `timestamp` from the current time. If the gap is longer than the window you accept, treat coverage as unknown.
+Set the expected window from the institution's schedule, such as a day for daily cycles or an hour for hourly ones. Subtract the record's `timestamp` from the current time. If the gap is longer than the window you accept, treat coverage as unknown.
 
-From the contract alone, a short day and a missed day look the same, because in both the latest record gets older. Treat both as not covered for that day. Public record pages <ComingSoon /> show short with the size of the gap, taken from the refused cycle.
+From the contract alone, a short day and a missed day look the same, because in both the latest record gets older. Treat both as not covered for that day. Public record pages will show short with the size of the gap, taken from the refused cycle.
 
 ## Read the latest record with the SDK
 

@@ -60,7 +60,7 @@ export function LendingFigure() {
     <Ruled marks className="bg-bg">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
         <p className="text-small font-medium text-sec">{kestrelRecord.asset} collateral rule</p>
-        <p className="text-small text-sec">Checked on Stellar before every deposit</p>
+        <p className="text-small text-sec">Example rule, checked before every deposit</p>
       </div>
       <ul data-rows>
         {RULES.map((rule) => {

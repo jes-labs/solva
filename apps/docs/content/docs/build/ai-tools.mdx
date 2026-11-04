@@ -104,7 +104,7 @@ The field and value names are the tool's API. In these docs the same idea is cal
 
 ### `get_anomalies`
 
-Returns flags raised across an institution's proof history. It compares each proof with the one before it, using only the public totals and timestamps, so it needs no private data.
+Returns flags raised by comparing each of an institution's proofs with the one before it. It uses only the public totals and timestamps, so it needs no private data.
 
 **Input**
 
@@ -148,6 +148,6 @@ The thresholds are `DEFAULT_THRESHOLDS` in `packages/shared-types/src/anomaly.ts
 
 Percent changes are computed on the integer totals with `BigInt` and truncated to two decimal places.
 
-A flag needs two proofs to compare, so `get_anomalies` scans the institution's proof history. The example above shows the shape a flag takes. A move from `solvent` (16,000,000) to `near-breach` (9,500,000) is a 40.62% fall, more than twice the 10% threshold, so it is critical.
+A flag needs two proofs to compare. Today the oracle passes only the latest proof, so `get_anomalies` raises no flag yet. Reading the full proof history comes with answers from a live orchestrator. The example above shows the shape a flag takes. A move from `solvent` (16,000,000) to `near-breach` (9,500,000) is a 40.62% fall, more than twice the 10% threshold, so it is critical.
 
 **Next:** [Changelog](/docs/build/changelog).

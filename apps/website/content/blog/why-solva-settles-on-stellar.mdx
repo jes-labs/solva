@@ -22,27 +22,26 @@ So the question was never which chain is popular. It was which chain lets a publ
 
 Frequent proving only works if re-checking costs almost nothing. We want institutions publishing fresh proofs on a steady schedule, and never rationing them because each verification costs real money. A chain where one verification burns a meaningful fee pushes everyone towards proving less, which is the opposite of what a coverage record needs.
 
-On Stellar, one verification costs about 0.012 XLM, and the fee is predictable. That predictability matters as much as the number. An institution that publishes a proof every day needs to know what a month costs without modelling a fee market. The heavy arithmetic our verifier needs runs as a native operation inside the contract, instead of being emulated instruction by instruction. That is the difference between a verification that fits in a contract call and one that is too expensive to run on a schedule.
+On Stellar, one verification costs about 0.012 XLM, and the fee is predictable. That predictability matters as much as the number. An institution that publishes a proof every day needs to know what a month costs without modelling a fee market. Daily scheduled publishing for live institutions is coming soon; on Testnet today a cycle runs on request. The heavy arithmetic our verifier needs runs as a native operation inside the contract, instead of being emulated instruction by instruction. That is the difference between a verification that fits in a contract call and one that is too expensive to run on a schedule.
 
 ## Finality you can quote
 
 A coverage state is only useful if it is settled. "Probably verified, pending confirmation" is not a state you want a counterparty reading before they move funds.
 
-Stellar gives deterministic finality. A proof we publish is settled within seconds, and after that it stays settled. There is no reorganisation to wait out before a result means anything. That lets us treat a published result as a fact with a ledger number, rather than a transaction we are still nervous about. When a wallet or a lending pool reads the latest result, it reads something the network has already agreed on.
+Stellar gives deterministic finality. A proof we publish is settled within seconds, and after that it stays settled. There is no reorganisation to wait out before a result means anything. That lets us treat a published result as a fact with a ledger number, rather than a transaction we are still nervous about. When a wallet reads the latest result, it reads something the network has already agreed on. A one-call `is_covered` check for other contracts, such as a lending pool, is coming soon.
 
 ## A verifier anyone can call
 
-The part that matters most is the last one. The verifier is a public Soroban contract. Its code is open, it lives on the chain, and anyone can call it. We do not sit in the middle of the check, and we could not fake a result if we wanted to, because the result is whatever the contract computes.
+The part that matters most is the last one. The verifier is a public Soroban contract. Its code is open and it lives on the chain. It checks every proof before storing it, so a proof that fails never becomes a record. Anyone can read the stored result and check their own balance against it, with no Solva server involved. We could not fake a result if we wanted to, because the result is whatever the contract computes.
 
-That is what lets us name exactly what you trust. You trust the institution for the reserve figure it supplies, and you trust a contract you can read and call yourself for the arithmetic.
+That is what lets us name exactly what you trust. The reserve figure comes from a custodian-signed balance, and Solva checks the signature. The proof checks the arithmetic and the commitment, not that the money exists. Real custodian connections are coming soon, and reserves read on chain are in development. For the arithmetic, you trust a contract you can read yourself.
 
 ```text
-// anyone can re-run the check, no Solva involved
-let ok = verifier.verify(proof, public_inputs);
-assert(ok);   // true means reserves >= owed at that commitment
+let record = registry.get_latest_proof();
+let counted = registry.verify_inclusion(id, id_hash, balance, path);
 ```
 
-There is nothing privileged about that call. An auditor can make it. A counterparty can make it. A curious person with a script can make it. They all get the same answer, computed the same way, from a contract none of them has to take our word about.
+The first call returns the totals and the commitment, which the contract verified when the proof was published. The second lets a customer check their own balance against that commitment. Reading a record needs no permission. An auditor can do it. A counterparty can do it. A curious person with a script can do it. They all get the same answer, from a contract none of them has to take our word about. A standalone call to re-run the proof check is coming soon.
 
 ## The plain conclusion
 

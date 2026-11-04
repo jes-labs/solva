@@ -41,7 +41,7 @@ export function StatSentence({ snapshot }: StatSentenceProps) {
         ) : (
           <>
             A token&rsquo;s supply is public on the ledger. What backs it usually is not. A record
-            puts the two side by side, every day.
+            puts the two side by side.
           </>
         )}
       </p>

@@ -1,45 +1,45 @@
 ---
-title: "Telling a supervisor one number"
-excerpt: "Supervision usually trades privacy for assurance: hand over the ledger so someone can check one figure. Here is how a coverage record changes that trade."
-category: "Supervision"
+title: "Telling an auditor one number"
+excerpt: "Assurance usually trades away privacy: hand over the ledger so someone can check one figure. Here is how a coverage record changes that trade."
+category: "Assurance"
 author: "The Solva team"
 date: "2026-05-27"
 cover: "/images/archive/trade-vignette-1600.webp"
 coverAlt: "An engraved vignette of three figures representing trade and agriculture"
 ---
 
-Supervisory conversations tend to follow one pattern. A supervisor needs to confirm one thing. To confirm it, the institution hands over far more than that one thing, because that is the only way anyone knows how to prove it. Everyone ends up holding data nobody wanted them to hold.
+Assurance conversations tend to follow one pattern. An auditor, or a partner's risk team, needs to confirm one thing. To confirm it, the institution hands over far more than that one thing, because that is the only way anyone knows how to prove it. Everyone ends up holding data nobody wanted them to hold.
 
 The part of this work that feels most overdue is making that exchange precise: one question, one answer, and none of the surrounding material.
 
 ## The usual deal: assurance for privacy
 
-Think about what it takes today to answer a single supervisory question. Suppose the rule is that an institution's reserves must cover what it owes its customers. To show it, the institution typically produces ledgers, account-level detail and internal reports. The supervisor reads what they need and inherits everything else.
+Think about what it takes today to answer a single assurance question. Suppose a partner's rule is that an institution's reserves must cover what it owes its customers. To show it, the institution typically produces ledgers, account-level detail and internal reports. The reviewer reads what they need and inherits everything else.
 
-That is a bad trade for both sides. The institution exposes customer data that has nothing to do with the question. The supervisor becomes the custodian of records they did not ask for and now have to secure. The assurance was real, but it was paid for in privacy, and the bill landed on customers who were never part of the conversation.
+That is a bad trade for both sides. The institution exposes customer data that has nothing to do with the question. The reviewer becomes the custodian of records they did not ask for and now have to secure. The assurance was real, but it was paid for in privacy, and the bill landed on customers who were never part of the conversation.
 
 We have all accepted this because the alternative seemed to be taking the institution's word for it.
 
 ## One answer, checked on Stellar
 
-A coverage record already answers one question in public. For each asset, it shows what was held, what was owed, the ledger at which a contract on Stellar checked the proof, and whether the result was covered, short or stale. The customer balances behind the total are committed once, as a single value that also carries their total, and they are never listed one by one.
+A coverage record already answers one question in public. Each record shows what was held, what was owed, and the ledger at which a contract on Stellar checked the proof. A cycle where reserves fall short is refused, so it never becomes a covered record. Records per asset, and covered, short and stale statuses, are coming soon. The customer balances behind the total are committed once, as a single value that also carries their total, and they are never listed one by one.
 
-That changes what a supervisor needs to ask for. The answer to "did reserves cover customer balances for this asset, yesterday and every day before it" is already on the record, and the supervisor can re-run the check without asking anyone. Each customer can also check that their own balance was counted in the total.
+That changes what an auditor needs to ask for. The answer to "did reserves cover customer balances at this ledger" is on the record, checked by the contract before it was stored, and anyone can read it without asking. Daily records for live institutions are coming soon. Each customer can also check that their own balance was counted in the total.
 
 The figure is proven against the same committed data the institution is already standing behind in public. There is no second set of numbers to reconcile.
 
 ## What it does not do yet
 
-It is worth being exact about the limits, because supervision depends on them.
+It is worth being exact about the limits, because assurance depends on them.
 
-The reserve figure is supplied by the institution. Solva checks the arithmetic and the commitment, not whether the money exists. A supervisor still needs the auditor's work on the source of those reserves.
+The reserve figure comes from a custodian-signed balance, and Solva checks the signature. The proof checks the arithmetic and the commitment, not that the money exists. An auditor still does their own work on the source of those reserves. Real custodian connections are coming soon, and reserves read on chain are in development.
 
-The proof is not yet in its formally hiding configuration. A customer's own check reveals subtotals of the entries next to theirs, without names or accounts. Proving totals without revealing any one customer's balance is planned for February 2027.
+The proof is not yet in its formally hiding configuration. A customer's own check reveals unnamed subtotals of nearby entries, including one neighbouring balance. A hiding mode that reveals none of them is in development.
 
-And the record answers one fixed question. Narrower answers for a named supervisor, such as a single ratio shared with one recipient and logged, are an idea we are working through with the people who would use them. They are not built.
+And the record answers one fixed question. Narrower answers for a named auditor, such as a single ratio shared with one recipient and logged, are an idea we are working through with the people who would use them. They are not built.
 
-## Why a supervisor might prefer this
+## Why an auditor might prefer this
 
-It would be easy to read all of this as a way for institutions to show less. That reading is wrong. A supervisor who reads one proven result has less to store, less to protect and less to be liable for. They get a result tied to a ledger on a public chain, which is a firmer basis than a PDF and a cover letter, and they spend their attention on the answer instead of sifting a data dump for it.
+It would be easy to read all of this as a way for institutions to show less. That reading is wrong. An auditor who reads one proven result has less to store, less to protect and less to be liable for. They get a result tied to a ledger on a public chain, which is a firmer basis than a PDF and a cover letter, and they spend their attention on the answer instead of sifting a data dump for it. The audit itself stays where it is; the record is evidence to check between audits.
 
 The old deal asked everyone to choose between assurance and privacy. That was never a necessary choice, only a technical limit we had learned to live with. The coverage record is a first step away from it: one question, answered in public, with the customer data kept off the record.
