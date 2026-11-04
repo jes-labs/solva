@@ -6,10 +6,10 @@ description: How a holder confirms on Stellar that their own balance was in the 
 A record says that reserves covered everything an institution owed its customers. The [inclusion check](/docs/overview/privacy) lets one holder confirm that their own balance was part of that total, on Stellar, without trusting the institution's word.
 
 <Callout type="info">
-  Holders who do not write code can use the institution's app <ComingSoon /> or its public record
-  page <ComingSoon />, which run the check from an account reference. To watch one run end to end,
-  open the demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo), where an example holder is
-  checked on the contract with `verify_inclusion`.
+  Holders who do not write code can run the check in their institution's app, where the app offers
+  it, or on its public record page <ComingSoon />. To watch one run end to end, open the demo at
+  [joinsolva.xyz/demo](https://joinsolva.xyz/demo), where an example holder is checked on the
+  contract with `verify_inclusion`.
 </Callout>
 
 ## What the check proves
@@ -150,6 +150,6 @@ The result names the record it checked against:
 
 ## What a holder still has to trust
 
-The check proves your balance was in the list. It does not prove that the reserves figure is honest, which rests on the custodian's signature. See [Where reserve figures come from](/docs/overview/reserve-sources).
+The check proves your balance was in the list. It does not prove that the reserves figure is honest. That rests on the reserve source: the custodian's signature, or the Stellar ledger for reserves read on chain. See [Where reserve figures come from](/docs/overview/reserve-sources).
 
 **Next:** [For exchanges and wallets](/docs/verify/for-exchanges-and-wallets).

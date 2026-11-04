@@ -11,9 +11,9 @@ Each entry uses the same word as the rest of the docs.
 
 **Attestation.** A report by an independent accountant on an institution's reserves at a date. A coverage record adds regular evidence between attestations and does not replace them.
 
-**Attested reserve source.** A reserve source where the custodian signs each reserve balance. Solva checks the signature, and the trust in the figure sits with the custodian.
+**`attestation_of_reserve`.** A SEP-1 field in an issuer's `stellar.toml` that holds a link to evidence of its reserves. An anchor points it at a page that names its registry.
 
-**`attestation_of_reserve`.** A SEP-1 field in an issuer's `stellar.toml` that holds a link to evidence of its reserves. An anchor points it at its record, on a page of its own site today or on its public record page.
+**Attested reserve source.** A reserve source where the custodian signs each reserve balance. Solva checks the signature, and the trust in the figure sits with the custodian.
 
 **Audit.** An independent examination of an institution's accounts and controls. A record is evidence an auditor can use. It is not an audit.
 
@@ -27,11 +27,13 @@ Each entry uses the same word as the rest of the docs.
 
 **Custodian.** The firm that holds an institution's reserves and, for an attested source, signs the reserve balances.
 
-**Cycle.** One full run that reads the reserves, takes the customer list, builds a proof and publishes it to the registry. Cycles run on request, or on a schedule when the orchestrator's scheduler is turned on: daily for the free plan, hourly for pro.
+**Cycle.** One full run that reads the reserves, takes the customer list, builds a proof and publishes it to the registry. Cycles run on request today. The orchestrator's scheduler, off by default, runs them daily for the free plan and hourly for pro.
 
 **Growth bound.** The rule that reserves may grow by at most 10 percent from one record to the next. The first record must state no growth.
 
 **Holder.** Anyone who holds an anchor's token or keeps a balance with a custodial app.
+
+**Horizon.** The Stellar network's HTTP API for accounts and balances. The read on chain reserve source reads reserve balances from it.
 
 **Inclusion check.** The check a holder runs to confirm that their own balance was counted in a record. The registry on Stellar answers `true` or `false`.
 
@@ -63,7 +65,7 @@ Each entry uses the same word as the rest of the docs.
 
 **Public record page** <ComingSoon />. A web page for each institution and asset that shows its status and history, with a stable address an anchor can link from `stellar.toml`.
 
-**Read on chain reserve source**. A reserve source that reads balances of Stellar accounts from the ledger, through Horizon, on every cycle.
+**Read on chain reserve source.** A reserve source that reads balances of Stellar accounts from the ledger, through Horizon, on every cycle.
 
 **Record.** One entry in a registry, holding the reserves total, the liabilities total, the commitment root, the time and the proof id. It is written after the proof passes every check.
 
@@ -97,4 +99,4 @@ Each entry uses the same word as the rest of the docs.
 
 **What is owed.** See liabilities.
 
-**Zero-knowledge proof.** A short piece of data that shows a statement is true. In Solva, it shows reserves cover what is owed, and no balance is a public input, so a record reveals none. The proof system's hiding setting <ComingSoon /> also keeps the proof data from revealing anything about the private inputs. See [Privacy](/docs/overview/privacy).
+**Zero-knowledge proof.** A short piece of data that shows a statement is true. In Solva, it shows reserves cover what is owed, and no balance is a public input, so a record reveals none. The proof system's hiding setting, in development, also keeps the proof data from revealing anything about the private inputs. See [Privacy](/docs/overview/privacy).

@@ -35,8 +35,9 @@ export function TeamEmail() {
         </div>
       </div>
       <figcaption className="mt-3 max-w-[44rem] text-small text-sec">
-        The whole message our team receives when you send the contact form. A waitlist request
-        carries only the email, organisation and role.
+        The whole message our team receives when you send the contact form. A waitlist request is
+        not emailed to the team: the email, organisation and role are saved once on the waitlist,
+        and a confirmation goes to your address.
       </figcaption>
     </figure>
   );

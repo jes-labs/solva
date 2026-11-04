@@ -7,11 +7,11 @@ Solva gives an institution a coverage record, designed to be published every day
 
 ## A coverage record each cycle
 
-An institution runs a [cycle](/docs/overview/how-solva-works) for each asset. Cycles run on request today. When the orchestrator's scheduler is turned on, it runs them daily on the free plan and hourly on the pro plan. Each cycle reads the signed reserve balance, takes the list of what the institution owes its customers, builds a proof that the reserves cover that list, and sends the proof to the institution's [registry](/docs/overview/what-is-solva) on Stellar.
+An institution runs a [cycle](/docs/overview/how-solva-works) for each asset. Cycles run on request today. Daily scheduled publishing <ComingSoon /> runs them without a request: the orchestrator's scheduler, off by default, runs a cycle daily on the free plan and hourly on the pro plan. Each cycle reads the reserve balances from the institution's [reserve source](/docs/overview/reserve-sources), takes the list of what the institution owes its customers, builds a proof that the reserves cover that list, and sends the proof to the institution's [registry](/docs/overview/what-is-solva) on Stellar.
 
 The registry checks the proof and, if the proof is valid, writes a new record. Each record carries the reserves total, the total owed, a commitment to the customer list and the time it was written. Records are never edited. The next cycle adds the next record.
 
-If reserves fall below what is owed, the cycle is refused and nothing is written, so there is no proof that day. The registry stores no status. The statuses covered, short and stale belong to public record pages, described below. See [What a record shows](/docs/overview/records).
+If reserves fall below what is owed, the cycle is refused and nothing is written, so there is no proof that day. The registry stores no status. For the statuses covered, short and stale, see [What a record shows](/docs/overview/records).
 
 ## A check any holder can make
 

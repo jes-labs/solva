@@ -15,7 +15,7 @@ Each cycle proves that your reserves cover the total of your customer balances, 
 
 ### Balances in minor units
 
-A balance is a whole number in the smallest unit of the asset. For a dollar token with two decimals, USD 40,000.00 is `4000000`. Never use decimals or floating-point numbers. Each balance must fit in an unsigned 64-bit integer, which is at most 18,446,744,073,709,551,615 minor units. Use the same asset and unit as your reserve figures.
+A balance is a whole number in the smallest unit of the asset. For a dollar token with two decimals, USD 40,000.00 is `4000000`. For reserves read on chain, use the asset's seven-decimal unit, so 4 USDC is `40000000`. Never use decimals or floating-point numbers. Each balance must fit in an unsigned 64-bit integer, which is at most 18,446,744,073,709,551,615 minor units. Use the same asset and unit as your reserve figures.
 
 ### Why identities never reach the record
 
@@ -35,7 +35,7 @@ A cycle with more than 8 customer balances or more than 4 reserve figures fails 
 
 ## Load the balances
 
-Balance upload <ComingSoon /> will let you send the list from the console or the API. Today an engineer loads the balances into the orchestrator's database, in two tables: `customers` holds each customer reference and its id hash, and `liabilities` holds each balance.
+Balance upload <ComingSoon /> sends the list from the console or the API. Today an engineer loads the balances into the orchestrator's database, in two tables: `customers` holds each customer reference and its id hash, and `liabilities` holds each balance.
 
 <Steps>
   <Step>

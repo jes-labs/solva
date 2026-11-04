@@ -35,12 +35,12 @@ export const headerGroups: readonly NavGroup[] = [
       {
         label: "For anchors",
         href: routes.anchors,
-        description: "Show holders and partners that your token is backed, every day.",
+        description: "Show holders and partners that your token is backed.",
       },
       {
         label: "For custodial apps",
         href: routes.custodialApps,
-        description: "Prove you can repay every customer, and let each one check for themselves.",
+        description: "Prove your reserves cover what you owe customers, and let each one check.",
       },
       {
         label: "For partners",

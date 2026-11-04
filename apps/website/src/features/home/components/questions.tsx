@@ -12,7 +12,7 @@ const QUESTIONS: readonly { question: string; answer: string }[] = [
   {
     question: "What do we have to share?",
     answer:
-      "Your reserve balance for each asset, signed by the account that holds it. Custodial apps also commit to their customer balances, which are never published one by one. Today anchors do the same with their holder balances; reading the token supply straight from Stellar instead is coming soon.",
+      "Your reserve balance for each asset, signed by the custodian that holds it, or read from Stellar for reserves held there. Custodial apps also commit to their customer balances, which are never published one by one. Today anchors do the same with their holder balances; reading the token supply straight from Stellar instead is coming soon.",
   },
   {
     question: "Who can read a result?",
@@ -57,12 +57,12 @@ export function Questions() {
             title="What institutions ask first."
             lead={
               <>
-                Not here?{" "}
+                For anything else,{" "}
                 <Link
                   href={routes.contact}
                   className="text-text underline decoration-link-line underline-offset-4"
                 >
-                  Ask us directly
+                  ask us directly
                 </Link>
                 , and a person will reply within one working day.
               </>

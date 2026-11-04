@@ -9,15 +9,15 @@ No SEP standardises reserve coverage today. SEP-1 has a field that links to evid
 
 ## Summary
 
-| Standard | Subject                                      | Solva today                                             |
-| -------- | -------------------------------------------- | ------------------------------------------------------- |
-| SEP-1    | `stellar.toml`, the issuer's info file       | Relates. An anchor can link its record from it.         |
-| SEP-41   | Soroban token interface                      | Relates. Shapes how token balances are read.            |
-| SEP-40   | Oracle consumer interface                    | Relates. `is_covered` follows its read pattern.         |
-| SEP-10   | Web authentication for Stellar accounts      | Relates. Not used for sign-in today.                    |
-| SEP-45   | Web authentication for contract accounts     | Relates. The passkey wallet does not use it today.      |
-| SEP-23   | Strkeys, the text form of keys and addresses | Uses. Every address Solva shows or accepts is a strkey. |
-| SEP-53   | Sign and verify messages                     | Relates. Reserve signatures use a different scheme.     |
+| Standard | Subject                                      | Solva today                                                    |
+| -------- | -------------------------------------------- | -------------------------------------------------------------- |
+| SEP-1    | `stellar.toml`, the issuer's info file       | Relates. An anchor can link its record from it.                |
+| SEP-41   | Soroban token interface                      | Relates. Shapes how token balances are read.                   |
+| SEP-40   | Oracle consumer interface                    | Relates. `is_covered` <ComingSoon /> follows its read pattern. |
+| SEP-10   | Web authentication for Stellar accounts      | Relates. Not used for sign-in today.                           |
+| SEP-45   | Web authentication for contract accounts     | Relates. The passkey wallet does not use it today.             |
+| SEP-23   | Strkeys, the text form of keys and addresses | Uses. Every address Solva shows or accepts is a strkey.        |
+| SEP-53   | Sign and verify messages                     | Relates. Reserve signatures use a different scheme.            |
 
 ## SEP-1: stellar.toml
 
@@ -26,19 +26,19 @@ No SEP standardises reserve coverage today. SEP-1 has a field that links to evid
 Two parts of it touch reserves:
 
 - **`attestation_of_reserve`** is a URL field for each token, defined as a link to an attestation or other evidence of reserves. It takes any URL and has no fixed format. An anchor sets it to the token's public record page <ComingSoon />, so wallets and exchanges find the record where they already look.
-- **The collateral fields** `collateral_addresses`, `collateral_address_messages` and `collateral_address_signatures` list the accounts that hold the reserves for an anchored crypto token, with a signed statement from each. They prove control of those accounts and carry no balances. The read on chain reserve source <ComingSoon /> uses them to tie Stellar reserve accounts to a token. See [Where reserve figures come from](/docs/overview/reserve-sources).
+- **The collateral fields** `collateral_addresses`, `collateral_address_messages` and `collateral_address_signatures` list the accounts that hold the reserves for an anchored crypto token, with a signed statement from each. They prove control of those accounts and carry no balances. The read on chain reserve source reads the balance of Stellar reserve accounts today. Verification of these signatures <ComingSoon /> ties those accounts to the token on each cycle. See [Where reserve figures come from](/docs/overview/reserve-sources).
 
 ## SEP-41: Soroban token interface
 
 [SEP-41](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md) is the standard interface for tokens on Soroban, which the Stellar Asset Contract also implements. It has a `balance` call for an account. It has no call for a token's total supply.
 
-Solva relates to it. A reserve held in a SEP-41 token is a balance the read on chain reserve source can read from the ledger. Amounts in SEP-41 are whole numbers in the token's smallest unit, which matches how Solva handles every amount.
+Solva relates to it. The read on chain reserve source reads XLM and issued assets, such as USDC, from Horizon. Through the Stellar Asset Contract those assets are also SEP-41 tokens, with the same balances. Amounts in SEP-41 are whole numbers in the token's smallest unit, which matches how Solva handles every amount.
 
 ## SEP-40: Oracle consumer interface
 
 [SEP-40](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0040.md) defines how contracts read price feeds. It covers prices only and states that other oracle types are outside its scope.
 
-Solva does not implement SEP-40. `is_covered` <ComingSoon /> follows the same read pattern: a read-only call that any contract can make, with a time on every answer so the caller can judge freshness.
+Solva does not implement SEP-40. `is_covered` follows the same read pattern: a read-only call that any contract can make, with a time on every answer so the caller can judge freshness.
 
 ## SEP-10 and SEP-45: Web authentication
 

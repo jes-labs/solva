@@ -32,11 +32,11 @@ The figure is proven against the same committed data the institution is already 
 
 It is worth being exact about the limits, because assurance depends on them.
 
-The reserve figure comes from a custodian-signed balance, and Solva checks the signature. The proof checks the arithmetic and the commitment, not that the money exists. An auditor still does their own work on the source of those reserves. Real custodian connections are coming soon, and reserves read on chain are in development.
+The reserve figure comes from outside the proof: either a custodian-signed balance, whose signature Solva checks, or the balance of Stellar accounts read from the ledger, which an auditor can look up independently. The proof checks the arithmetic and the commitment, not that the money exists. An auditor still does their own work on the source of those reserves. Real custodian connections are coming soon.
 
 The proof is not yet in its formally hiding configuration. A customer's own check reveals unnamed subtotals of nearby entries, including one neighbouring balance. A hiding mode that reveals none of them is in development.
 
-And the record answers one fixed question. Narrower answers for a named auditor, such as a single ratio shared with one recipient and logged, are an idea we are working through with the people who would use them. They are not built.
+And the record answers one fixed question. Narrower answers for a named auditor, such as a single ratio shared with one recipient and logged, are coming soon.
 
 ## Why an auditor might prefer this
 

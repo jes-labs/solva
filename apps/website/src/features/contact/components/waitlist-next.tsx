@@ -2,8 +2,8 @@ import { NextSteps, type NextStep } from "./next-steps";
 
 const STEPS: readonly NextStep[] = [
   {
-    title: "We read every request",
-    body: "A person on the team replies from hello@joinsolva.xyz, usually to arrange a short call.",
+    title: "You get a confirmation",
+    body: "Your address is saved once on the waitlist, and a confirmation goes to it straight away. Reply to that email to talk about a pilot sooner.",
   },
   {
     title: "Pilot partners open first",
@@ -21,7 +21,7 @@ export function WaitlistNext() {
       id="next"
       label="Next"
       title="What happens after you join."
-      lead="Your request goes straight to the team. When publishing opens to your organisation, we write to the address you gave us. Nobody else sees it."
+      lead="We keep your address on the waitlist and use it only to invite you to publish. When publishing opens to your organisation, we write to it."
       steps={STEPS}
     />
   );

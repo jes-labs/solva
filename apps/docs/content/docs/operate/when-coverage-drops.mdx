@@ -23,7 +23,7 @@ When the orchestrator's scheduler is turned on, a scheduled cycle that is refuse
   <Step>
     ### Confirm the result
 
-    Check the `422` response or the orchestrator's logs. Then check the two totals yourself: the sum of the signed reserve figures, and the sum of the customer balances you loaded.
+    Check the `422` response or the orchestrator's logs. Then check the two totals yourself: the sum of the reserve figures, and the sum of the customer balances you loaded.
 
   </Step>
   <Step>
@@ -35,7 +35,7 @@ When the orchestrator's scheduler is turned on, a scheduled cycle that is refuse
   <Step>
     ### Fix the cause, not the data
 
-    If reserves are short, restore them at the custodian. If the data is wrong, correct it to match your books. Never remove a customer or lower a balance to pass a cycle. A customer who was left out fails the inclusion check, and that failure is visible to them.
+    If reserves are short, restore them at the custodian or in your Stellar reserve accounts. If the data is wrong, correct it to match your books. Never remove a customer or lower a balance to pass a cycle. A customer who was left out fails the inclusion check, and that failure is visible to them.
 
   </Step>
   <Step>

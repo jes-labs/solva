@@ -57,7 +57,7 @@ const STEPS: readonly Step[] = [
     id: "proof",
     title: "Proof",
     lead: "A proof shows the total is covered.",
-    body: "The proof takes the commitment and the signed reserve balance and shows that what is owed is at most what the reserve accounts hold. No balance is a public input, so none is published. It is small enough for a contract on Stellar to check in one call. The proof system's hiding mode is in development.",
+    body: "The proof takes the commitment and the reserve balance and shows that what is owed is at most what the reserve accounts hold. No balance is a public input, so none is published. It is small enough for a contract on Stellar to check in one call. The proof system's hiding mode is in development.",
     figure: <ProofFigure />,
     provenance: ["Example", "No balance published", "Totals public"],
     detail: <ProofDetail />,

@@ -7,7 +7,7 @@ A [cycle](/docs/overview/how-solva-works) proves that your reserves cover what i
 
 ## What a cycle does
 
-1. Reads every configured reserve account and verifies each signature.
+1. Reads every reserve account from your reserve source. From an attested source it verifies each signature. From a read on chain source it reads each balance from Horizon.
 2. Loads the customer balances for your institution.
 3. Takes the reserves total of your last record as the previous total. On your first cycle there is none, so the previous total equals the current one.
 4. Sends the reserves, the balances and the previous total to the prover. The prover builds the Merkle sum tree and the proof.
@@ -68,7 +68,7 @@ A used key is never run again, even if its cycle failed. To retry a failed cycle
 
 ## Schedule cycles
 
-The orchestrator can run cycles on a schedule. The schedule depends on your institution's plan:
+Daily scheduled publishing <ComingSoon /> runs your cycles without a request. The orchestrator already has a scheduler, off by default. When an engineer turns it on, the schedule depends on your institution's plan:
 
 | Plan      | Schedule                                                  |
 | --------- | --------------------------------------------------------- |
@@ -78,7 +78,7 @@ The orchestrator can run cycles on a schedule. The schedule depends on your inst
 
 The scheduler wakes every hour and runs each institution that is due. A failed scheduled cycle is retried up to 3 times, with a delay of 1, 2 and 4 seconds. If all attempts fail, the next due run tries again.
 
-The scheduler is off unless the orchestrator starts with `ORCH_SCHEDULER_ENABLED=true`. An engineer turns it on. The plan is set when the institution is created.
+The scheduler is off unless the orchestrator starts with `ORCH_SCHEDULER_ENABLED=true`. Solva's hosted orchestrator runs with it off, so cycles there run on request. The plan is set when the institution is created.
 
 ## Refused cycles
 
@@ -90,6 +90,7 @@ A refused cycle publishes nothing. Your registry keeps its last record, and that
 | Growth bound                | Reserves rose more than 10 percent since the last record. The proof requires `10 × R <= 11 × R_prev`.                                                                                   | `500`    | Check the reserve figures. A real jump of more than 10 percent cannot be published in one cycle.                                |
 | Previous reserves mismatch  | The previous total sent with the proof is not the reserves total of the last record on chain. The contract refuses with error 6, `PrevReservesMismatch`.                                | `500`    | The orchestrator's history and your registry disagree, for example after a publish from elsewhere. An engineer reconciles them. |
 | Bad signature               | A reserve figure's signature did not verify against the configured key.                                                                                                                 | `500`    | Check that `ORCH_RESERVE_PUBLIC_KEY_PEM` matches the custodian's current key.                                                   |
+| Reserve source unavailable  | The custodian or Horizon did not answer after three attempts, or a Stellar account does not hold the configured asset.                                                                  | `500`    | Check the source's status and the account and asset in `ORCH_ONCHAIN_HOLDINGS`.                                                 |
 | Too many balances           | More than 8 customer balances or more than 4 reserve figures.                                                                                                                           | `500`    | Reduce the list to the limits in [Load what is owed](/docs/operate/load-what-is-owed).                                          |
 | Registry not recorded       | The institution has no registry on record.                                                                                                                                              | `500`    | Finish [Set up your institution](/docs/operate/set-up-your-institution).                                                        |
 

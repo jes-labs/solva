@@ -9,7 +9,7 @@ import { RealCheck, Sandbox, StepNotes } from "@/features/product";
 export const metadata: Metadata = {
   title: "See it work",
   description:
-    "Run a real proof of reserve coverage on Stellar Testnet, step by step: signed reserve balance, commitment, proof, contract check and the inclusion path a holder uses to confirm they were counted.",
+    "Run a real proof of reserve coverage on Stellar Testnet, step by step: reserve balance, commitment, proof, contract check and the inclusion path a holder uses to confirm they were counted.",
   alternates: { canonical: routes.demo },
 };
 
@@ -35,7 +35,7 @@ export default function DemoPage() {
       <PageOpening
         label="See it work"
         title="Run a real proof on Stellar."
-        lead="A signed reserve balance, a commitment to what is owed, a proof, a contract on Stellar Testnet that checks it, and the inclusion path a holder uses to confirm they were counted. Two example institutions use Solva's sandbox as the custodian; a third, Harbor Wallet, holds real Testnet USDC read from Stellar. Everything after the reserve source is the same code a pilot runs."
+        lead="A real run, end to end: a reserve balance, signed by a custodian or read from Stellar; a commitment to what is owed; a proof; a contract on Stellar Testnet that checks it; and the inclusion path a holder uses to confirm they were counted. Two example institutions use Solva's sandbox as the custodian; a third, Harbor Wallet, holds real Testnet USDC read from Stellar. Everything after the reserve source is the same code a pilot runs."
         primary={{ label: "Start the run", href: "#run" }}
         secondary={{ label: "Talk to us about a pilot", href: routes.contact }}
         figure={<RunFigure />}

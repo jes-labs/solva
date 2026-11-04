@@ -73,13 +73,14 @@ You can also look the contract up on a Stellar explorer, such as `https://stella
 
 ## Example registries on Testnet
 
-Solva runs on Stellar Testnet. Two example registries hold records from the public demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo). Kestrel Anchor and Solstice Exchange are fictional institutions made up for the demo, and their reserves come from Solva's sandbox, a stand-in for a real custodian.
+Solva runs on Stellar Testnet. Three example registries hold records from the public demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo). Kestrel Anchor, Solstice Exchange and Harbor Wallet are fictional institutions made up for the demo. The reserves of the first two come from Solva's sandbox, a stand-in for a real custodian. Harbor Wallet's reserves are real Testnet USDC, read from Stellar.
 
-| Example institution | Kind          | Registry contract                                          |
-| ------------------- | ------------- | ---------------------------------------------------------- |
-| Kestrel Anchor      | Anchor        | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
-| Solstice Exchange   | Custodial app | `CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW` |
+| Example institution | Kind          | Reserve source | Registry contract                                          |
+| ------------------- | ------------- | -------------- | ---------------------------------------------------------- |
+| Kestrel Anchor      | Anchor        | Attested       | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
+| Solstice Exchange   | Custodial app | Attested       | `CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW` |
+| Harbor Wallet       | Custodial app | Read on chain  | `CBOA5AJEMTQ5CSMHE6WFWWBIYYMNSUQGKWE6FCFB2KKNJSJPHBWSCSJK` |
 
-The examples in the Verify section use these two registries, and every command works against them as written.
+The examples in the Verify section use the Solstice Exchange registry. Every command works as written, and against the other two once you swap in their contract id.
 
 **Next:** [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).

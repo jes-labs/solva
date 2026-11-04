@@ -16,7 +16,7 @@ const STEPS = [
   },
   {
     title: "Proof",
-    body: "A proof shows that the total behind the commitment is at most the signed balance of the reserve accounts. No balance is a public input, so none is published.",
+    body: "A proof shows that the total behind the commitment is at most the reserve balance, signed by a custodian or read from Stellar. No balance is a public input, so none is published.",
   },
   {
     title: "Verify",

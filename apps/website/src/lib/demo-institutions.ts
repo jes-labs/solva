@@ -23,7 +23,7 @@ export const DEMO_INSTITUTIONS: readonly DemoInstitution[] = [
   {
     name: "Kestrel",
     kind: "Anchor",
-    owes: "Holder balances, which add up to the token supply",
+    owes: "Holder balances, committed as one value",
     tenantId: "11111111-1111-1111-1111-111111111111",
     reserves: { kind: "attested" },
   },

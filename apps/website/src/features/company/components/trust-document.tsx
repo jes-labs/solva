@@ -8,7 +8,7 @@ export const TRUST_VERSION = { number: 2, iso: "2026-11-04", label: "4 November 
 
 const TRUST_CONTENTS: readonly TrustEntry[] = [
   { id: "proven", title: "What the proof establishes" },
-  { id: "attested", title: "What rests on a signature" },
+  { id: "attested", title: "What comes from outside the proof" },
   { id: "not-proven", title: "What no record claims" },
   { id: "assumptions", title: "Who has to be honest" },
   { id: "verifier", title: "The verifier on Stellar" },
@@ -71,9 +71,8 @@ export function TrustDocument() {
           />
           <p>
             Today, for every institution, the list is a stored list of balances. For an anchor, it
-            is the balances of the token holders, which add up to the supply Stellar already
-            publishes. For a custodial app, it is its customer balances. Using an anchor&apos;s
-            supply read from Stellar in the proof is coming soon.
+            is the balances of the token holders. For a custodial app, it is its customer balances.
+            Using an anchor&apos;s supply read from Stellar in the proof is coming soon.
           </p>
           <p>
             One point of precision about the words zero-knowledge. The prover and verifier running
@@ -83,27 +82,29 @@ export function TrustDocument() {
           </p>
         </Section>
 
-        <Section id="attested" title="What rests on a signature">
+        <Section id="attested" title="What comes from outside the proof">
           <p>
-            A proof is only as good as its inputs. Two inputs come from outside the proof. They are
-            attested by a signature, and the proof cannot vouch for them:
+            A proof is only as good as its inputs. Two inputs come from outside the proof, and the
+            proof cannot vouch for them:
           </p>
           <Rows
             items={[
-              "The reserve balance. It is a statement from the accounts that hold the reserves, signed by that source and read at the time of the proof. Solva records which source signed, and when.",
+              "The reserve balance. For reserves held with a custodian, it is a statement from the accounts that hold them, signed by that source and read at the time of the proof; Solva records which source signed, and when. For reserves held in Stellar accounts, Solva reads the balance from the ledger itself, which anyone can check.",
               "The committed list. The institution supplies it, and today Solva's orchestrator holds it and passes it to the prover. The proof guarantees that the list was counted in full, but it cannot know whether a balance was left out before the list reached the prover. That is what the holder check is for.",
             ]}
           />
           <p>
-            Today the reserve source in the public sandbox is a stand-in run by Solva. A record from
-            the sandbox is labelled as such.
+            In the public demo, the custodian is a stand-in run by Solva, except for Harbor Wallet,
+            whose reserves are read from its Stellar account. The demo names the reserve source on
+            every run.
           </p>
         </Section>
 
         <Section id="not-proven" title="What no record claims">
           <Rows
             items={[
-              "That cash exists beyond the signed statement of the reserve accounts.",
+              "That reserves held with a custodian exist beyond its signed statement.",
+              "For reserves read from Stellar, anything beyond the balance of the account. The record does not judge the asset held in it.",
               "That an institution is sound in any sense other than coverage at one ledger. A record is evidence for your auditor. It does not replace an audit, and it never will.",
               "Anything about a day with no record. Writing a missed day as stale is coming soon.",
               "That the reserve figure is private. No balance in the list is published, but the reserve total and the result are public by design.",
@@ -119,8 +120,10 @@ export function TrustDocument() {
             own infrastructure is coming soon.
           </p>
           <p>
-            The reserve source has to be. If the signed reserve statement is wrong, the record is
-            wrong. That is why every record names the source and the time.
+            The reserve source has to be. If a custodian&apos;s signed statement is wrong, the
+            record is wrong, which is why Solva logs which source signed, and when. Reserves held in
+            Stellar accounts are read from the ledger, so anyone can compare that balance with the
+            record.
           </p>
           <p>
             The list has to be complete. An institution could leave a customer out of the list
@@ -185,8 +188,8 @@ export function TrustDocument() {
             items={[
               "Everything on this site runs on Stellar Testnet. No mainnet contract is deployed.",
               "The proof system, the prover and the contract have not had a security audit. Mainnet comes after the audit, never before it.",
-              "The public sandbox proves against a stand-in reserve source run by Solva and a small fixed list of balances. Pilot records with real reserve sources are agreed with each institution.",
-              "Example records on this site are labelled as examples. They are not read from any contract.",
+              "In the public demo, two example institutions prove against a stand-in custodian run by Solva, and a third, Harbor Wallet, proves against real Testnet USDC read from its Stellar account. The customer lists in the demo are example data. Pilot records with real reserve sources are agreed with each institution.",
+              "Example records on this site are labelled as examples and are not read from any contract. The demo is the exception: its record step and holder check run against each institution's contract on Stellar Testnet.",
             ]}
           />
         </Section>
@@ -197,7 +200,7 @@ export function TrustDocument() {
               "An institution's entry is owned by a passkey its team holds, with no raw owner key to copy or leak. The passkey grants Solva's orchestrator a scoped publishing key that can publish proofs to that registry only. The passkey stays the owner and can revoke that key at any time.",
               "No customer balance is ever written anywhere public. Today the customer list is held by Solva's orchestrator and passed to the prover, which runs on Solva's side, over a private connection. Only the proof, the commitment and the totals reach Stellar.",
               "Every line of the prover, the contract and this site is open source under Apache 2.0.",
-              `Found a problem? Write to ${site.securityEmail}. We answer every report and credit the reporter.`,
+              `To report a security problem, write to ${site.securityEmail}. We answer every report and credit the reporter.`,
             ]}
           />
         </Section>
