@@ -16,7 +16,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "knip": "knip",
-    "build:cloudflare": "opennextjs-cloudflare build",
+    "build:cloudflare": "pnpm --filter \"@solva/website^...\" build && opennextjs-cloudflare build",
     "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "smoke:worker": "../../scripts/worker-smoke.sh website"

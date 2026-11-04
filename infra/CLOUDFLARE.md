@@ -15,7 +15,7 @@ The Worker name in the Cloudflare dashboard must equal `name` in the app's
 
 ## Build and check locally
 
-From the repo root. `build:cloudflare` on `web` also builds its workspace
+From the repo root. `build:cloudflare` on `web` and `website` also builds its workspace
 packages (`sdk-ts`, `shared-types`, `contract-bindings`).
 
 ```bash
