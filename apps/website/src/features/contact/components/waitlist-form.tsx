@@ -18,10 +18,13 @@ export function WaitlistForm() {
   if (state.status === "sent") {
     return (
       <FormCard>
-        <SentPanel title="You are on the list">
+        <SentPanel
+          title="You are on the list"
+          provenance={["Confirmation sent", "Invited by email"]}
+        >
           <p>
-            We will write to <strong className="font-medium">{state.email}</strong> when the console
-            opens to you.
+            We sent a confirmation to <strong className="font-medium">{state.email}</strong>, and we
+            will write there when publishing opens to your organisation.
           </p>
           <p className="mt-4">
             <Link

@@ -1,3 +1,4 @@
+import { site } from "@/config/site";
 import type { OutgoingMessage } from "../types";
 import type { ContactSubmission, WaitlistSubmission } from "./schema";
 
@@ -12,23 +13,30 @@ export function contactMessage(data: ContactSubmission): OutgoingMessage {
     data.message,
   ];
   return {
+    to: site.contactEmail,
     subject: `Contact: ${data.organisation} (${data.role})`,
     text: lines.join("\n"),
     replyTo: data.email,
   };
 }
 
-export function waitlistMessage(data: WaitlistSubmission): OutgoingMessage {
+export function waitlistConfirmation(data: WaitlistSubmission): OutgoingMessage {
   const lines = [
-    "A request to join the Solva console waitlist.",
+    "Hello,",
     "",
-    `Email: ${data.email}`,
-    `Organisation: ${data.organisation}`,
-    `Role: ${data.role}`,
+    `You are on the Solva waitlist for ${data.organisation}.`,
+    "",
+    "Publishing a coverage record opens to pilot partners first. We will write to this address when publishing opens to your organisation.",
+    "",
+    "If you want to talk about a pilot sooner, reply to this email.",
+    "",
+    "The Solva team",
+    site.url,
   ];
   return {
-    subject: `Waitlist request: ${data.organisation} (${data.role})`,
+    to: data.email,
+    subject: "You are on the Solva waitlist",
     text: lines.join("\n"),
-    replyTo: data.email,
+    replyTo: site.contactEmail,
   };
 }

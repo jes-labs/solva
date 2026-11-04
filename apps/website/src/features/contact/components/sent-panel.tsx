@@ -4,9 +4,12 @@ import { Provenance } from "@/components/ui/ledger";
 interface SentPanelProps {
   title: string;
   children: ReactNode;
+  provenance?: readonly string[];
 }
 
-export function SentPanel({ title, children }: SentPanelProps) {
+const TEAM_REPLIES = ["Sent", "A person on the team replies"] as const;
+
+export function SentPanel({ title, children, provenance = TEAM_REPLIES }: SentPanelProps) {
   return (
     <div role="status" className="flex min-h-80 flex-col justify-center">
       <span
@@ -25,7 +28,7 @@ export function SentPanel({ title, children }: SentPanelProps) {
       </span>
       <p className="mt-6 font-display text-h2">{title}</p>
       <div className="mt-3 max-w-sm text-body text-text">{children}</div>
-      <Provenance parts={["Sent", "A person on the team replies"]} className="mt-8" />
+      <Provenance parts={provenance} className="mt-8" />
     </div>
   );
 }
