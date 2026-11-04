@@ -42,7 +42,7 @@ export default function WaitlistPage() {
         title="Three details are enough."
         body="We use them to invite you to publish, and for nothing else. We do not ask for customer data or balances."
         record={exampleRecords[1]}
-        caption="What you will publish"
+        caption="Example: what you will publish"
       >
         <WaitlistForm />
       </WriteSection>

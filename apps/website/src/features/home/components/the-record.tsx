@@ -5,10 +5,10 @@ import { CalendarField, calendarTotals } from "./calendar-field";
 
 const FIELDS = [
   { label: "Institution and asset", value: "Who owes, and in what" },
-  { label: "Owed", value: "Token supply from Stellar, or customer balances committed" },
+  { label: "Owed", value: "Holder or customer balances, committed" },
   { label: "Held", value: "The signed balance of the reserve accounts" },
   { label: "Coverage", value: "Held divided by owed, never rounded up" },
-  { label: "State", value: "Covered, short or stale" },
+  { label: "State", value: "Covered, short or stale (coming soon)" },
   { label: "Ledger", value: "Where and when the proof was checked" },
 ] as const;
 

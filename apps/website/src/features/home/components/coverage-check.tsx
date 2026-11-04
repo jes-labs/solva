@@ -20,7 +20,7 @@ const STATES = [
   },
   {
     state: "short",
-    body: "Reserves are below what is owed. The record shows the gap in full and never rounds it away.",
+    body: "Reserves are below what is owed. The record will show the gap in full and never round it away.",
     effect: "Lending pools pause new borrowing against it.",
   },
   {
@@ -48,7 +48,7 @@ export function CoverageCheck() {
           id="check-title"
           label="Check it yourself"
           title="Three answers: covered, short or stale."
-          lead="Move the reserves up and down and watch the record change, the way a holder, a wallet or a lending pool would see it."
+          lead="Move the reserves up and down and watch an example record change, the way a holder, a wallet or a lending pool would see it. Covered, short and stale statuses on live records are coming soon."
         />
 
         <div className="mt-14 grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">

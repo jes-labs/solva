@@ -49,16 +49,16 @@ Against the Solstice Exchange example registry, a run printed:
 { fresh: true, ageSeconds: 9241, coverageBasisPoints: 17777n }
 ```
 
-`17777n` basis points is 177.77 percent. The 26-hour limit is a daily cycle plus a two-hour grace period, the same gap Solva's oracle flags by default. Set your own limit to match the cadence you expect from the institution.
+`17777n` basis points is 177.77 percent. The 26-hour limit is a daily cycle plus a two-hour grace period. Set your own limit to match the cadence you expect from the institution.
 
 ## What to watch
 
-| Sign                          | What it means                                                                                                                                         | What to do                                                            |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| The latest record is too old  | The record is **stale**. No new proof arrived inside the expected window. The cycle may have been refused for a shortfall, or it may not have run.    | Treat coverage as unknown. Never show the last result as current.     |
-| A refused cycle               | The record is **short**. Reserves were below what is owed. The registry refuses the proof and writes nothing, so on chain it looks like a missed day. | Treat the asset as not covered until a new record shows it covered.   |
-| Coverage close to 100 percent | Reserves barely cover what is owed. A small drop in reserves or a rise in what is owed makes the next cycle short.                                    | Read more often, and decide in advance what you do if it turns short. |
-| Gaps in the history           | Days with no record. Each one says nothing either way.                                                                                                | Weigh the pattern, not one day.                                       |
+| Sign                          | What it means                                                                                                                                      | What to do                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| The latest record is too old  | The record is **stale**. No new proof arrived inside the expected window. The cycle may have been refused for a shortfall, or it may not have run. | Treat coverage as unknown. Never show the last result as current.     |
+| A refused cycle               | The record is **short**. Reserves were below what is owed. The cycle is refused and nothing is written, so on chain it looks like a missed day.    | Treat the asset as not covered until a new record shows it covered.   |
+| Coverage close to 100 percent | Reserves barely cover what is owed. A small drop in reserves or a rise in what is owed makes the next cycle short.                                 | Read more often, and decide in advance what you do if it turns short. |
+| Gaps in the history           | Days with no record. Each one says nothing either way.                                                                                             | Weigh the pattern, not one day.                                       |
 
 The registry limits how fast reserves can rise. Each record's reserves can be at most 10 percent above the record before, so reserves moved in shortly before a cycle cannot lift the figure by more than that. There is no limit on how fast reserves can fall.
 
@@ -70,6 +70,6 @@ A wallet can show the status beside a token balance. Show short and stale as pla
 
 `is_covered` <ComingSoon /> is a read on the registry that returns the status directly, covered, short or stale, with the ledger the asset was checked at. It takes the issuer and the asset, so a contract or a back-end job gets one answer per asset without working out freshness itself. A swap, a listing gate or an alert can call it before acting.
 
-Without `is_covered`, read the latest record and apply your own freshness rule, as in the treasury check above. Solva's oracle tools `get_solvency` and `get_anomalies` also read records for AI agents, and flag a reserve drop of 10 percent, a rise in what is owed of 15 percent, or a gap of more than 26 hours between cycles.
+Without `is_covered`, read the latest record and apply your own freshness rule, as in the treasury check above. Solva's oracle for AI agents <ComingSoon />, with the tools `get_solvency` and `get_anomalies`, will read records and flag a reserve drop of 10 percent, a rise in what is owed of 15 percent, or a gap of more than 26 hours between cycles.
 
 **Next:** [For lenders and risk teams](/docs/verify/for-lenders-and-risk-teams).

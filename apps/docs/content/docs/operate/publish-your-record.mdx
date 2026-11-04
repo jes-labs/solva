@@ -47,7 +47,7 @@ Use the address of your registry on a Stellar explorer. Public record pages <Com
 
 ## Link it from your site
 
-Put the same link where holders look for backing: your token page, your transparency or reserves page, and your exchange listings. Say what the record is in one line, for example: "A daily proof on Stellar that our reserves cover what we owe customers. No customer balance is shown."
+Put the same link where holders look for backing: your token page, your transparency or reserves page, and your exchange listings. Say what the record is in one line, for example: "A proof on Stellar, published each cycle, that our reserves cover what we owe customers. The record shows totals only, never a customer's balance."
 
 Tell holders they can [check that their own balance was counted](/docs/verify/check-a-balance-was-counted). The check needs the record's id, the holder's id hash and balance, and their path through the tree. The orchestrator returns these for one customer at `GET /v1/proofs/inclusion/{proof-uuid}:{id-hash}`, and the registry's `verify_inclusion` confirms them on chain.
 
@@ -60,7 +60,7 @@ Send each partner, such as a wallet, an exchange, a lender or your auditor:
 | Registry contract  | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
 | Network            | Stellar Testnet                                            |
 | Tokens covered     | ARSK                                                       |
-| Cycle schedule     | Once a day, after 00:00 UTC                                |
+| Cycle schedule     | Your schedule, for example once a day after 00:00 UTC      |
 | Unit of the totals | Minor units of ARS, two decimals                           |
 
 A partner reads the latest record from the registry, with no account at Solva:

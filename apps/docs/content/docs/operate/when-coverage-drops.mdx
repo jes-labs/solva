@@ -13,9 +13,9 @@ When the reserves total is below the total owed, no proof can be made:
 2. Nothing is published. A proof made some other way fails too, because the registry refuses any proof where reserves are below what is owed, with error 4, `InsolventBound`.
 3. Your registry keeps its last record, with its older time.
 
-Your status is [short](/docs/overview/records) for that cycle. If no new record arrives inside the expected window, daily by default, the record becomes [stale](/docs/overview/records). Readers see the time of your last record and can tell that no newer one exists.
+There is no proof that day. Readers see the time of your last record and can tell that no newer one exists. The registry stores no status. On public record pages <ComingSoon />, the refused cycle shows as [short](/docs/overview/records), and a record with nothing newer inside the expected window shows as [stale](/docs/overview/records).
 
-A scheduled cycle that is refused is retried up to 3 times, then again at the next due run. It succeeds as soon as reserves cover what is owed again.
+When the orchestrator's scheduler is turned on, a scheduled cycle that is refused is retried up to 3 times, then again at the next due run. It succeeds as soon as reserves cover what is owed again.
 
 ## Respond
 
@@ -77,7 +77,7 @@ Do not describe a short or stale day as covered. Partners read the record's time
 
 ## Early warning signals
 
-The oracle tool `get_anomalies` compares each record with the one before it and flags changes that often come before a shortfall. It uses only the public totals and times, never a customer balance.
+Early warning signals <ComingSoon /> come from the oracle tool `get_anomalies`, which compares each record with the one before it and flags changes that often come before a shortfall. It uses only the public totals and times, never a customer balance.
 
 | Signal           | Kind               | Flags when                                                        | Critical at        |
 | ---------------- | ------------------ | ----------------------------------------------------------------- | ------------------ |

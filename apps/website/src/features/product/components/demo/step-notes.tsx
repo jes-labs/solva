@@ -19,11 +19,11 @@ const NOTES = [
   },
   {
     title: "Check it on Stellar",
-    body: "Anyone can read the latest proof back from the contract. The record carries the reserve total, the committed total and the proof number, and nothing about any single balance.",
+    body: "Anyone can read the latest proof from the contract with get_latest_proof. This page reads the same published totals from Solva's index of the registry. The record carries the reserve total, the committed total and the proof number, and nothing about any single balance.",
   },
   {
     title: "A holder checks they were counted",
-    body: "A holder presents their account reference. Their balance is checked against the commitment, so they learn that it was counted without learning anyone else's.",
+    body: "A holder presents their account reference, and this page looks up their inclusion path for the published proof. Checking that path against the contract with verify_inclusion from this page is coming soon. No other customer is named; the path shows unnamed subtotals, including one neighbouring balance.",
   },
 ] as const;
 

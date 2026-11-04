@@ -51,8 +51,8 @@ export function UpdateCadence() {
       </table>
       <div className="border-t border-line px-5 py-4">
         <p className="text-small text-sec">
-          The next proof is due on 3 November 2026 at 06:00 UTC. If it does not arrive, the record
-          turns stale by itself.
+          In this example the next proof is due at 06:00 UTC, and if it does not arrive the record
+          turns stale. Scheduled publishing and freshness checks are coming soon.
         </p>
         <Provenance
           parts={[

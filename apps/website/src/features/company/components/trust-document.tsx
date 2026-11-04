@@ -4,7 +4,7 @@ import { explorer, shortHash, verifierEvidence } from "@/config/evidence";
 import { site } from "@/config/site";
 import { TrustContents, type TrustEntry } from "./trust-contents";
 
-export const TRUST_VERSION = { number: 1, iso: "2026-11-03", label: "3 November 2026" } as const;
+export const TRUST_VERSION = { number: 2, iso: "2026-11-04", label: "4 November 2026" } as const;
 
 const TRUST_CONTENTS: readonly TrustEntry[] = [
   { id: "proven", title: "What the proof establishes" },
@@ -57,27 +57,29 @@ export function TrustDocument() {
       <article className="min-w-0 max-w-[44rem]">
         <Section id="proven" title="What the proof establishes">
           <p>
-            Each record rests on one zero-knowledge proof, and a contract on Stellar checks that
-            proof before the record is written. When the record says <strong>covered</strong>, the
-            proof has established all of the following at the ledger it names:
+            Each record rests on one proof, and a contract on Stellar checks that proof before the
+            record is written. When the contract accepts a proof, the proof has established all of
+            the following at the ledger it names:
           </p>
           <Rows
             items={[
               "Every balance in the committed list was counted, and none of them is negative.",
               "The total of the list is at most the reserve balance that the proof was given.",
               "The commitment written in the record stands for exactly that list, so nothing can be left out or changed later without the commitment changing too.",
-              "Any holder who asks can be shown that their own balance is in the list, without seeing anyone else's.",
+              "Any holder who asks can be shown that their own balance is in the list. The check shows no names; it does show unnamed subtotals of nearby entries, including one neighbouring balance.",
             ]}
           />
           <p>
-            For an anchor, the list is the balances of the token holders, which add up to the supply
-            Stellar already publishes. For a custodial app, the list is its customer balances.
+            Today, for every institution, the list is a stored list of balances. For an anchor, it
+            is the balances of the token holders, which add up to the supply Stellar already
+            publishes. For a custodial app, it is its customer balances. Using an anchor&apos;s
+            supply read from Stellar in the proof is coming soon.
           </p>
           <p>
             One point of precision about the words zero-knowledge. The prover and verifier running
             on Testnet today keep every balance out of the public inputs, but the proof is not yet
-            in its formally hiding configuration. That configuration ships with the audited
-            verifier, and this page will say so when it does.
+            in its formally hiding configuration. That configuration is in development, and this
+            page will say so when it ships.
           </p>
         </Section>
 
@@ -89,7 +91,7 @@ export function TrustDocument() {
           <Rows
             items={[
               "The reserve balance. It is a statement from the accounts that hold the reserves, signed by that source and read at the time of the proof. Solva records which source signed, and when.",
-              "The committed list. The institution supplies it. The proof guarantees that the list was counted in full, but it cannot know whether a balance was left out before the list reached the prover. That is what the holder check is for.",
+              "The committed list. The institution supplies it, and today Solva's orchestrator holds it and passes it to the prover. The proof guarantees that the list was counted in full, but it cannot know whether a balance was left out before the list reached the prover. That is what the holder check is for.",
             ]}
           />
           <p>
@@ -102,18 +104,19 @@ export function TrustDocument() {
           <Rows
             items={[
               "That cash exists beyond the signed statement of the reserve accounts.",
-              "That an institution is sound in any sense other than coverage at one ledger. A record is daily evidence for your auditor. It does not replace an audit, and it never will.",
-              "Anything about a day with no record. A missed day is written as stale and stays that way.",
-              "That the reserve figure is private. The proof hides every balance in the list, but the reserve total and the result are public by design.",
+              "That an institution is sound in any sense other than coverage at one ledger. A record is evidence for your auditor. It does not replace an audit, and it never will.",
+              "Anything about a day with no record. Writing a missed day as stale is coming soon.",
+              "That the reserve figure is private. No balance in the list is published, but the reserve total and the result are public by design.",
             ]}
           />
         </Section>
 
         <Section id="assumptions" title="Who has to be honest">
           <p>
-            The prover does not have to be. The institution runs the prover on its own
-            infrastructure, and a dishonest prover cannot produce a proof that the contract accepts.
-            The total is whatever the proof computes, whatever the prover claims.
+            The prover does not have to be. Solva runs the prover today, and a dishonest prover
+            still cannot produce a proof that the contract accepts. The total is whatever the proof
+            computes, whatever the prover claims. Running the prover inside the institution&apos;s
+            own infrastructure is coming soon.
           </p>
           <p>
             The reserve source has to be. If the signed reserve statement is wrong, the record is
@@ -125,9 +128,11 @@ export function TrustDocument() {
             fail it, and a pattern of failed checks is visible to everyone.
           </p>
           <p>
-            Stale is applied by rule, with no judgement involved. Solva marks a record stale when no
-            new proof arrives inside the expected window, daily by default. How old a record may be
-            before a reader stops relying on it is the reader&apos;s own decision.
+            Stale will be applied by rule, with no judgement involved: a record turns stale when no
+            new proof arrives inside the expected window, daily by default. Freshness checks are
+            coming soon; today each record carries its timestamp, so a reader can judge its age. How
+            old a record may be before a reader stops relying on it is the reader&apos;s own
+            decision.
           </p>
         </Section>
 
@@ -189,8 +194,8 @@ export function TrustDocument() {
         <Section id="security" title="How the entry is protected">
           <Rows
             items={[
-              "An institution's entry is controlled by a passkey its team holds. There is no raw key to copy or leak, and Solva cannot publish on an institution's behalf.",
-              "No customer balance is ever sent to Solva or written anywhere public. The prover runs on the institution's side and produces only a proof and a commitment.",
+              "An institution's entry is owned by a passkey its team holds, with no raw owner key to copy or leak. The passkey grants Solva's orchestrator a scoped publishing key that can publish proofs to that registry only. The passkey stays the owner and can revoke that key at any time.",
+              "No customer balance is ever written anywhere public. Today the customer list is held by Solva's orchestrator and passed to the prover, which runs on Solva's side, over a private connection. Only the proof, the commitment and the totals reach Stellar.",
               "Every line of the prover, the contract and this site is open source under Apache 2.0.",
               `Found a problem? Write to ${site.securityEmail}. We answer every report and credit the reporter.`,
             ]}
@@ -200,16 +205,13 @@ export function TrustDocument() {
         <Section id="corrections" title="Corrections">
           <p>
             A record is never edited. If an institution believes a record is wrong, it writes to{" "}
-            <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>. The correction is
-            published as a new record with a note that names the one it corrects, and the note stays
-            on this page.
+            <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>, and the next proof
+            supersedes it. Correction notes that name the record they correct are coming soon.
           </p>
         </Section>
 
         <Section id="changes" title="Changes to this page">
-          <Provenance
-            parts={[`Version ${TRUST_VERSION.number}`, TRUST_VERSION.label, "First publication"]}
-          />
+          <Provenance parts={[`Version ${TRUST_VERSION.number}`, TRUST_VERSION.label, "Revised"]} />
         </Section>
       </article>
     </div>

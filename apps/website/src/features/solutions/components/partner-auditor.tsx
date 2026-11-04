@@ -8,7 +8,7 @@ export function PartnerAuditor() {
         id="auditor-title"
         label="Auditors"
         title="Daily evidence, dated and tied to a ledger."
-        lead="Every result carries the day it was made and the Stellar ledger it was checked at. An auditor can check the days between audits, and see at a glance where a proof did not arrive."
+        lead="Every result carries the time it was made and the Stellar ledger it was checked at, so an auditor can check the days between audits. A daily history that shows at a glance where a proof did not arrive is coming soon."
         align="end"
       />
       <div className="mt-14">

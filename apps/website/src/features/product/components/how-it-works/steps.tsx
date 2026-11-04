@@ -39,7 +39,7 @@ const STEPS: readonly Step[] = [
     id: "balances",
     title: "Balances",
     lead: "What is owed enters as a list of balances.",
-    body: "A custodial app's customers, or an anchor's token holders. The list is the private input to everything that follows. No balance on it is ever published, and it never leaves the institution's side.",
+    body: "A custodial app's customers, or an anchor's token holders. The list is the private input to everything that follows. No balance on it is ever published. Today Solva holds the list and passes it to its prover over a private connection.",
     figure: <BalancesFigure />,
     provenance: ["Example", "No balance published"],
     detail: <BalancesDetail />,
@@ -56,10 +56,10 @@ const STEPS: readonly Step[] = [
   {
     id: "proof",
     title: "Proof",
-    lead: "A zero-knowledge proof shows the total is covered.",
-    body: "The proof takes the commitment and the signed reserve balance and shows that what is owed is at most what the reserve accounts hold, without revealing a single balance. It is small enough for a contract on Stellar to check in one call.",
+    lead: "A proof shows the total is covered.",
+    body: "The proof takes the commitment and the signed reserve balance and shows that what is owed is at most what the reserve accounts hold. No balance is a public input, so none is published. It is small enough for a contract on Stellar to check in one call. The proof system's hiding mode is in development.",
     figure: <ProofFigure />,
-    provenance: ["Example", "Balances hidden", "Totals public"],
+    provenance: ["Example", "No balance published", "Totals public"],
     detail: <ProofDetail />,
   },
   {
@@ -79,7 +79,7 @@ const STEPS: readonly Step[] = [
     id: "record",
     title: "Record",
     lead: "The result is written once, for anyone to read.",
-    body: "Covered, short or stale, with the ledger it was checked at. Holders, wallets, lending pools and auditors read it without asking anyone. The next day's proof adds the next line, and nothing is edited after the fact.",
+    body: "The verified totals are written once, with the ledger they were checked at. Holders, wallets, lending pools and auditors read them without asking anyone. Each new proof adds the next line, and nothing is edited after the fact. Covered, short and stale labels on each record are coming soon.",
     figure: <RecordFigure />,
     provenance: [
       "Example",
@@ -100,7 +100,7 @@ export function Steps() {
         id="steps-title"
         label="The five steps"
         title="From a list of balances to a public record."
-        lead="The same five steps run every day for every asset on the record. The home page shows them in motion. This page walks through each one, with the evidence beside it."
+        lead="The same five steps are designed to run every day for every asset; on Testnet today a cycle runs on request. The home page shows them in motion. This page walks through each one, with the evidence beside it."
       />
 
       <div className="mt-14 grid gap-10 lg:grid-cols-[minmax(0,15rem)_1fr] lg:gap-14">

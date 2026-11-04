@@ -8,13 +8,13 @@ A record says that reserves covered everything an institution owed its customers
 <Callout type="info">
   Holders who do not write code can use the institution's app <ComingSoon /> or its public record
   page <ComingSoon />, which run the check from an account reference. To watch one run end to end,
-  open the demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo), where an example holder is
-  checked against the sandbox record.
+  open the demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo), where an example holder's
+  inclusion path is shown for the sandbox record.
 </Callout>
 
 ## What the check proves
 
-Before proving, the institution turns its list of customer balances into a tree of hashes. Each customer is a leaf, a hash of the customer's id hash and balance. Each step up the tree combines two branches and their subtotals. The top of the tree is the [commitment root](/docs/overview/how-solva-works), which the registry stores in the record with the total owed.
+Before proving, Solva's prover turns the institution's list of customer balances into a tree of hashes. Each customer is a leaf, a hash of the customer's id hash and balance. Each step up the tree combines two branches and their subtotals. The top of the tree is the [commitment root](/docs/overview/how-solva-works), which the registry stores in the record with the total owed.
 
 Your [inclusion path](/docs/overview/privacy) holds the branch beside yours at each level, with its subtotal. With your leaf and your path, anyone can rebuild the root.
 

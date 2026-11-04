@@ -70,6 +70,8 @@ The witness, meaning each customer's id hash and balance and each reserve figure
 
 The orchestrator does keep customer balances in its Postgres database, because it loads them for each cycle. They never go on chain.
 
+Privacy comes from balances never being public inputs. The proof system's zero-knowledge hiding setting <ComingSoon /> also keeps the proof data from revealing the private inputs. Today's proofs are not hiding proofs.
+
 ## Security status
 
 Solva runs on Stellar Testnet, and the contract and the vendored UltraHonk verifier are unaudited. An independent security audit <ComingSoon /> and Mainnet <ComingSoon /> are listed on [Security](/docs/overview/security).

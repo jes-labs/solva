@@ -4,7 +4,7 @@ import { StateStamp } from "@/components/ui/state-stamp";
 const PRINCIPLES = [
   {
     title: "Never round up",
-    body: "Coverage is held divided by owed, cut off at two decimals. 99.996 percent is shown as 99.99 percent, and a short record shows the size of the gap.",
+    body: "Coverage is held divided by owed, cut off at two decimals. 99.996 percent is shown as 99.99 percent, and no proof of coverage can be made for it.",
     figure: (
       <div className="flex flex-col gap-2.5">
         <LeaderRow label="Held" value="99,996.00" />
@@ -15,10 +15,10 @@ const PRINCIPLES = [
   },
   {
     title: "Never publish a balance",
-    body: "A custodial app commits its customer balances as one value, and the proof shows that the total is covered. Each customer can check that their own balance was counted. Nobody can check anyone else's.",
+    body: "A custodial app commits its customer balances as one value, and the proof shows that the total is covered. Each customer can check that their own balance was counted. No other customer is named, and no list of balances is published.",
     figure: (
       <div className="flex flex-col gap-2.5">
-        <LeaderRow label="Balances committed" value="41,206" />
+        <LeaderRow label="Balances committed (example)" value="8" />
         <LeaderRow label="Balances published" value="0" tone="signal" />
         <LeaderRow label="Commitment" value="0x0c5c…922e" />
       </div>
@@ -26,7 +26,7 @@ const PRINCIPLES = [
   },
   {
     title: "Never edit a record",
-    body: "Every day's result stays. A missed day is written as stale and never filled in later. A correction is published as a new record with a note, and the old record stays as it was.",
+    body: "Every proof stays as it was written. If an institution believes a record is wrong, it writes to hello@joinsolva.xyz, and the next proof supersedes it. Stale days and correction notes that name the record they correct are coming soon.",
     figure: (
       <div className="flex flex-wrap items-center gap-2">
         <StateStamp state="covered" />
@@ -39,7 +39,7 @@ const PRINCIPLES = [
   },
   {
     title: "Never ask for trust",
-    body: "A contract on Stellar checks the proof. Solva never checks its own work. The verifier, its code and a verified transaction are linked at the bottom of every page, so anyone can repeat the check.",
+    body: "A contract on Stellar checks the proof. Solva never checks its own work. The verifier, its code and a verified transaction are linked at the bottom of every page, so anyone can open the transaction and rerun the open-source verifier on the same proof.",
     figure: (
       <div className="flex flex-col gap-2.5">
         <LeaderRow label="Checked by" value="Soroban contract" />

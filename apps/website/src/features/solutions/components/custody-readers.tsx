@@ -8,7 +8,7 @@ const percent = coveragePercent(record.owed, record.held) ?? "Unknown";
 const READERS = [
   {
     name: "Your customers",
-    body: "A page in your app, or a link from it, where each customer can see that their balance was counted and that the total was covered.",
+    body: "A page in your app, or a link from it, where each customer can see that their balance was counted and that the total was covered. A ready-made customer page is coming soon.",
     rows: [
       { label: "Account", value: "NWC-0418" },
       { label: "Result", value: "Counted", tone: "signal" as const },
@@ -16,7 +16,7 @@ const READERS = [
   },
   {
     name: "Wallets and lending pools",
-    body: "Partners read your coverage from Stellar for free, without asking you for a report, and act on covered, short or stale.",
+    body: "Partners read your verified totals from Stellar for free, without asking you for a report. Covered, short and stale verdicts for them to act on are coming soon.",
     rows: [
       { label: record.asset, value: percent },
       { label: "Checked at", value: ledgerLabel(record.ledger) },
@@ -24,7 +24,7 @@ const READERS = [
   },
   {
     name: "Auditors",
-    body: "A dated result for every day, each tied to a ledger, including the totals your customers check against. It is daily evidence to check between audits.",
+    body: "A dated result for every proof, each tied to a ledger, including the totals your customers check against: evidence to check between audits. A daily CSV export is coming soon.",
     rows: [
       { label: "Export", value: "daily-evidence-usdc.csv" },
       { label: "Rows per year", value: "365" },

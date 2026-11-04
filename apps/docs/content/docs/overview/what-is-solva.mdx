@@ -17,7 +17,7 @@ Solva is an open reserve-coverage registry on Stellar.
 
 **Reserves** are the money an institution holds to back what it owes. **What is owed** is the total of every customer balance. **Reserve coverage**, or **coverage**, means the reserves are at least what is owed. As a formula, `R >= L`, where R is reserves and L is what is owed.
 
-Each day, an institution publishes a **zero-knowledge proof** that its reserves cover what it owes. A zero-knowledge proof is a short piece of data that shows a statement is true without revealing the inputs behind it. In Solva, it shows the total is covered and reveals no customer balance.
+Each cycle, an institution publishes a **zero-knowledge proof** that its reserves cover what it owes. Solva is designed to publish every day. A zero-knowledge proof is a short piece of data that shows a statement is true. In Solva, no balance is a public input to the proof, so the record shows the total is covered and reveals no customer balance. See [Privacy](/docs/overview/privacy).
 
 Each institution has its own **registry**, a contract on Stellar that checks the proof and keeps the result as a **record**. Partners, auditors and other contracts read the record. Any holder can check that their own balance was counted.
 
@@ -32,7 +32,7 @@ Each institution has its own **registry**, a contract on Stellar that checks the
 Solva runs on Stellar Testnet today, and on Mainnet <ComingSoon />.
 
 <Callout type="info">
-  Solva adds daily evidence between audits, and the audit stays in place. See [Coverage and
+  Solva adds regular evidence between audits, and the audit stays in place. See [Coverage and
   audits](/docs/overview/coverage-and-audits).
 </Callout>
 
@@ -40,7 +40,7 @@ Solva runs on Stellar Testnet today, and on Mainnet <ComingSoon />.
 
 <Cards>
   <Card title="What Solva does" href="/docs/overview/what-solva-does">
-    The daily record, the inclusion check and the reads partners make.
+    The record, the inclusion check and the reads partners make.
   </Card>
   <Card title="How Solva works" href="/docs/overview/how-solva-works">
     From a signed reserve balance to a record on Stellar, in plain steps.

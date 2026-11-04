@@ -32,8 +32,8 @@ export function InclusionResultPanel({ result, snapshot }: InclusionResultPanelP
             <LeaderRow label="Proof at ledger" value={ledger} tone="signal" />
           </div>
           <p className="mt-4 text-small text-sec">
-            The reserves behind this total covered it at the same ledger. No other balance is
-            revealed by this check.
+            The reserves behind this total covered it at the same ledger. No other customer is
+            named; the path shows unnamed subtotals, including one neighbouring balance.
           </p>
         </>
       ) : null}

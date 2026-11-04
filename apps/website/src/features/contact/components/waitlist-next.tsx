@@ -11,7 +11,7 @@ const STEPS: readonly NextStep[] = [
   },
   {
     title: "Your entry goes on the record",
-    body: "Your team signs in with a passkey, connects your reserve source and publishes the first proof. Holders read the result for free.",
+    body: "Your team signs in with a passkey, connects your reserve source and publishes the first proof. Self-serve onboarding is coming soon; pilot partners are set up with the team.",
   },
 ];
 

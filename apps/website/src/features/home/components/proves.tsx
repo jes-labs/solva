@@ -18,8 +18,8 @@ const COLUMNS = [
     note: "Signed by the institution's reserve source",
     items: [
       "The reserve balance comes from a signed statement of the reserve accounts.",
-      "For an anchor, what is owed is the token supply read from Stellar.",
-      "For a custodial app, what is owed is the list it committed that day.",
+      "For an anchor, what is owed is a stored list of holder balances that add up to the supply. Reading the supply from Stellar is coming soon.",
+      "For a custodial app, what is owed is the list it committed for that proof.",
     ],
   },
   {
@@ -27,8 +27,8 @@ const COLUMNS = [
     note: "What a record does not say",
     items: [
       "That cash in a reserve account exists beyond the signed statement.",
-      "Anything about a day with no record. A missed day shows as stale.",
-      "That an institution is sound in any other sense. A record shows coverage at one ledger; it is daily evidence for an auditor, never an audit.",
+      "Anything about a day with no record. Showing a missed day as stale is coming soon.",
+      "That an institution is sound in any other sense. A record shows coverage at one ledger; it is evidence for an auditor, never an audit.",
     ],
   },
 ] as const;

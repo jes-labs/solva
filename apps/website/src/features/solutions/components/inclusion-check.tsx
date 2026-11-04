@@ -90,9 +90,12 @@ export function InclusionCheck() {
         </p>
       </form>
 
+      <p className="mt-6 text-small text-sec">
+        In a pilot this check runs against the contract with verify_inclusion.
+      </p>
       <Provenance
-        className="mt-6"
-        parts={["Example", ledgerLabel(snapshot.ledger), "Proof checked on Stellar"]}
+        className="mt-3"
+        parts={["Example", ledgerLabel(snapshot.ledger), "Lookup simulated on this page"]}
       />
     </div>
   );
