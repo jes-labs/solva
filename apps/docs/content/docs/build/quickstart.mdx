@@ -1,0 +1,222 @@
+---
+title: Quickstart
+description: Run the full Solva pipeline on your machine against Stellar Testnet, then drive it from the interactive demo.
+---
+
+You go from a clean clone to a proof that Stellar Testnet has verified on chain. One command, `just e2e`, runs the whole pipeline. A second, `just demo`, brings up the interactive demo.
+
+The pipeline is the same one the public demo at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) runs. The reserve figures come from the [sandbox](/docs/build/sandbox), a mock reserve source that signs its balances. The circuit, the prover, the Soroban registry and the inclusion check after it are the real components.
+
+## Prerequisites
+
+Two tools are version sensitive. `nargo` and `bb` must be the exact versions below, or the proof will not verify against the verifying key in the registry.
+
+| Tool                         | Version                                                      | Used by                            |
+| ---------------------------- | ------------------------------------------------------------ | ---------------------------------- |
+| Docker                       | any recent                                                   | Postgres 16 and Redis 7 containers |
+| Node.js                      | 22 or later                                                  | SDK, website, scripts              |
+| pnpm                         | 10.28.2, pinned in `package.json`                            | workspace install                  |
+| Go                           | 1.25                                                         | orchestrator, sandbox              |
+| Rust                         | 1.91.1 with `wasm32v1-none`, pinned in `rust-toolchain.toml` | prover, contract                   |
+| Stellar CLI                  | any recent                                                   | contract deploy and reads          |
+| Noir `nargo`                 | 1.0.0-beta.9                                                 | circuit                            |
+| Barretenberg `bb`            | 0.87.0                                                       | proving backend                    |
+| Just                         | any recent                                                   | command runner                     |
+| `psql`, `curl`, `jq`, `lsof` | any recent                                                   | used by the scripts                |
+
+On Windows, use WSL2 with Ubuntu and follow the Linux steps.
+
+Install the two pinned proving tools:
+
+```bash
+curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
+noirup --version 1.0.0-beta.9
+```
+
+```bash
+mkdir -p ~/.bb
+curl -L https://github.com/AztecProtocol/aztec-packages/releases/download/v0.87.0/barretenberg-arm64-darwin.tar.gz | tar -xzC ~/.bb
+echo 'export PATH="$HOME/.bb:$PATH"' >> ~/.zshrc
+```
+
+The `bb` archive above is for Apple Silicon. Use `barretenberg-amd64-darwin.tar.gz` on an Intel Mac and `barretenberg-amd64-linux.tar.gz` on Linux. Add `~/.bb` to the `PATH` in your own shell profile if you do not use zsh.
+
+Check that every tool is on your `PATH`:
+
+```bash
+docker --version && node --version && pnpm --version && go version \
+  && rustc --version && stellar --version && nargo --version \
+  && bb --version && just --version
+```
+
+`bb --version` must print `0.87.0` and `nargo --version` must print `1.0.0-beta.9`.
+
+## Run the full pipeline
+
+<Steps>
+<Step>
+
+### Install dependencies
+
+From the repository root:
+
+```bash
+pnpm install
+```
+
+</Step>
+<Step>
+
+### Create a funded Testnet identity
+
+The scripts deploy a registry owned by an identity named `tester` and publish with its key. Publishing is owner gated, so the key that signs must be the registry owner.
+
+```bash
+stellar keys generate tester --network testnet --fund
+```
+
+</Step>
+<Step>
+
+### Start Docker
+
+Postgres and Redis run in containers from `infra/docker-compose.yml`. The sandbox, prover and orchestrator run on your machine and listen on ports 8090, 50051 and 8080. Those ports must be free.
+
+</Step>
+<Step>
+
+### Run the end-to-end test
+
+```bash
+export E2E_STELLAR_SIGNER_SECRET=$(stellar keys show tester)
+just e2e
+```
+
+The first run builds the prover, which takes several minutes.
+
+</Step>
+</Steps>
+
+## What `just e2e` does
+
+`just e2e` runs `scripts/e2e.sh`. In order, it:
+
+1. Deploys a new `proof-registry` contract to Testnet, owned by `tester`, with the circuit's verifying key. It skips this when `E2E_CONTRACT_ID` is set or `contracts/proof-registry/.contract_id` exists.
+2. Starts Postgres and Redis, resets the schema and applies the orchestrator migrations.
+3. Seeds one tenant, `11111111-1111-1111-1111-111111111111` (Kestrel Anchor), with three customers who are owed 4,000,000, 3,000,000 and 2,000,000. Liabilities total L = 9,000,000.
+4. Starts the sandbox, copies its public signing key into the orchestrator, then starts the prover and the orchestrator.
+5. Runs the `solvent` scenario with reserves of 16,000,000, proves it and publishes to Testnet. This is the registry's first proof, so it is the genesis cycle (see [Proof format](/docs/build/proof-format#the-growth-bound)).
+6. Checks that customer `cust-001` was counted, by calling `verify_inclusion` on the contract through the SDK. It then sends the same path with a balance one unit higher and expects the contract to reject it.
+7. Runs `near-breach` with reserves of 9,500,000. The margin is thin, and the proof is still published.
+8. Runs `insolvent` with reserves of 4,500,000, below liabilities. The orchestrator returns HTTP 422 and nothing is published.
+
+Two environment variables change the run. `E2E_DOWN=1` also stops the containers on exit. `E2E_DOCKER_PROVER=1` runs the prover from its Docker image instead of `cargo run`.
+
+## Expected output
+
+The script prints a line per step. The lines that matter look like this, with your own root hash and proof number:
+
+```text
+==> scenario: solvent -- expect a published proof
+    ok: solvent cycle accepted [HTTP 202]
+    ok: solvent proof: R=16000000 L=9000000 root=0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e, published + verified on Testnet
+==> inclusion: verify cust-001 in the latest proof, on-chain
+ok: real leaf included on-chain (chain proof 1)
+ok: tampered balance rejected on-chain
+    ok: inclusion verified on-chain (real leaf accepted, tampered balance rejected)
+==> scenario: near-breach -- expect a published proof
+    ok: near-breach cycle accepted [HTTP 202]
+    ok: near-breach proof: R=9500000 L=9000000 root=0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e, published + verified on Testnet
+==> scenario: insolvent -- expect the cycle to FAIL to prove
+    ok: insolvent cycle correctly rejected [HTTP 422, reserves below liabilities]
+==> E2E PASSED: solvent + near-breach published; insolvent rejected
+```
+
+The root hash stays the same across scenarios because the customers and their balances do not change. Only the reserves do.
+
+If a step fails, the script stops and names its log file, one of `/tmp/solva-e2e-orch.log`, `/tmp/solva-e2e-prover.log` or `/tmp/solva-e2e-sandbox.log`.
+
+<Callout type="warn">
+  The script resets the local database on every run. If you reuse a registry with `E2E_CONTRACT_ID`,
+  the orchestrator starts with no history while the contract still holds its last proof, and the
+  next publish fails with contract error 6 (`PrevReservesMismatch`). Let the script deploy a new
+  registry instead.
+</Callout>
+
+## Run the interactive demo
+
+`just demo` brings up the same services and keeps them running so the website can drive them. It seeds two fictional institutions, Kestrel Anchor (`11111111-1111-1111-1111-111111111111`) and Solstice Exchange (`22222222-2222-2222-2222-222222222222`). Each has three customers owed 9,000,000 in total and its own registry on Testnet.
+
+<Steps>
+<Step>
+
+### Start the stack
+
+```bash
+export ORCH_STELLAR_SIGNER_SECRET=$(stellar keys show tester)
+just demo
+```
+
+The script deploys a registry for each institution unless you pass `DEMO_CONTRACT_A` and `DEMO_CONTRACT_B`. Both must be owned by the key in `ORCH_STELLAR_SIGNER_SECRET`. Leave this terminal open. Ctrl-C stops the services.
+
+</Step>
+<Step>
+
+### Start the website
+
+In a second terminal, from the repository root:
+
+```bash
+ORCHESTRATOR_URL=http://localhost:8080 SANDBOX_URL=http://localhost:8090 \
+  pnpm --filter @solva/website dev
+```
+
+</Step>
+<Step>
+
+### Run a cycle
+
+Open `http://localhost:3000/demo`. Pick an institution, connect the mock custodian and run a scenario. `solvent` and `near-breach` publish a proof. `insolvent` is refused. After a publish, check that holder `cust-001` was counted and open the transaction on the explorer.
+
+</Step>
+</Steps>
+
+The hosted demo runs at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) against a hosted copy of the same stack.
+
+## Result
+
+When `just demo` is ready it prints:
+
+```text
+==> demo stack is up
+    Now start the website against this stack, in another terminal:
+
+      ORCHESTRATOR_URL=http://localhost:8080 \
+      SANDBOX_URL=http://localhost:8090 \
+        pnpm --filter @solva/website dev
+
+    Then open http://localhost:3000/demo
+
+    Logs: /tmp/solva-demo-{sandbox,prover,orch}.log
+    Press Ctrl-C here to stop the services.
+```
+
+A run on the demo page ends with a published proof, its transaction on the Testnet explorer, and an inclusion check that returns true.
+
+<Callout type="info">
+  Switching from `near-breach` or `insolvent` back to `solvent` raises reserves from 9,500,000 to
+  16,000,000. That is more than the 10% growth a cycle may show, so the cycle fails. The [sandbox
+  page](/docs/build/sandbox#switching-scenarios) explains why and how to reset.
+</Callout>
+
+## Other commands
+
+| Command                                     | What it does                                                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `just --list`                               | Lists every recipe.                                                                                    |
+| `just test`                                 | Runs the Noir, Rust, Go and TypeScript test suites.                                                    |
+| `just parity-check`                         | Confirms the circuit, the prover and the contract build the same Poseidon2 root for the sample leaves. |
+| `just e2e-multitenant`                      | Proves two institutions stay isolated on chain. Needs `E2E_STELLAR_SIGNER_SECRET`.                     |
+| `just provision-tenant <tenant-id> <owner>` | Deploys a registry owned by `<owner>` and records it on the tenant row.                                |
+
+**Next:** [Architecture](/docs/build/architecture).

@@ -1,0 +1,134 @@
+---
+title: Sandbox
+description: The mock reserve source behind the demo. OAuth, signed balances in USD, the accounts, the scenarios and how to seed them.
+---
+
+The sandbox is a mock reserve source. It stands in for a custodian that signs the balances it holds, so you can run full cycles without connecting a real one. It lives in `services/sandbox`.
+
+The orchestrator reads the sandbox through the same adapter it uses for any attested reserve source, `infrastructure/attested`, and verifies every signature. Only the balance figures are synthetic. Connections to real custodians <ComingSoon /> use the same signed-balance model.
+
+## Run it
+
+```bash
+cd services/sandbox && go run ./cmd/app
+```
+
+| Variable                  | Default | Meaning                                                                                              |
+| ------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `SANDBOX_HTTP_ADDR`       | `:8090` | Listen address.                                                                                      |
+| `SANDBOX_SIGNING_KEY_PEM` | empty   | P-256 private key in PEM. When empty, the sandbox creates a new key at boot and logs its public key. |
+| `SANDBOX_LOG_LEVEL`       | `info`  | Log level.                                                                                           |
+
+The orchestrator must trust the sandbox's key. Set `ORCH_RESERVE_PUBLIC_KEY_PEM` on the orchestrator to the sandbox's public key. `just e2e` and `just demo` do this for you by fetching it from `GET /.well-known/solva-signing-key.pem`. With an ephemeral key, restart both services together, or pin the key in both.
+
+## Routes
+
+| Method and path                          | Auth                                   | What it does                                                                                                          |
+| ---------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET /oauth/authorize?client_id=<id>`    | none                                   | Returns `{"code": "..."}`, a one-time code valid for 5 minutes. Consent is granted at once.                           |
+| `POST /oauth/token`                      | none                                   | Form body `code=<code>`. Returns `{"access_token", "token_type": "Bearer", "expires_in": 3600}`. The code is used up. |
+| `GET /v1/accounts/{id}/balance`          | `Authorization: Bearer <access_token>` | Returns a signed balance.                                                                                             |
+| `POST /admin/scenarios/{name}`           | none                                   | Sets every account to a named scenario.                                                                               |
+| `GET /.well-known/solva-signing-key.pem` | none                                   | The public key that verifies the signatures, PEM.                                                                     |
+| `GET /health`                            | none                                   | `{"status":"ok"}`.                                                                                                    |
+
+The orchestrator authenticates with the client id in `ORCH_RESERVE_CLIENT_ID`, default `solva-orchestrator`, once per cycle, then reads every account in parallel.
+
+## Signed balances
+
+```bash
+curl http://localhost:8090/v1/accounts/acct-anchor/balance \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "source_id": "acct-anchor",
+  "balance": "8000000",
+  "currency": "USD",
+  "as_of": "2026-11-04T09:00:00Z",
+  "signature": "MEUCIQ..."
+}
+```
+
+`balance` is a decimal string of integer minor units in `USD`: cents, so `"8000000"` is 80,000.00 US dollars. `as_of` is the time of signing in RFC 3339, UTC.
+
+The signature scheme is fixed:
+
+- Curve P-256 (secp256r1).
+- SHA-256 over the canonical payload.
+- An ASN.1 DER signature, base64 encoded.
+
+The canonical payload is the JSON object of the four signed fields with keys in sorted order and no whitespace, and without `signature`:
+
+```json
+{
+  "as_of": "2026-11-04T09:00:00Z",
+  "balance": "8000000",
+  "currency": "USD",
+  "source_id": "acct-anchor"
+}
+```
+
+The orchestrator rebuilds these bytes from the response and verifies the signature with its configured public key. A bad signature fails the cycle and is never retried. Network errors and 5xx responses are retried, with 3 attempts in all and a backoff that starts at 200 ms and doubles.
+
+## Accounts
+
+Three mock custodians hold one account each:
+
+| Account       | Custodian          |
+| ------------- | ------------------ |
+| `acct-anchor` | `custodian-anchor` |
+| `acct-beacon` | `custodian-beacon` |
+| `acct-cedar`  | `custodian-cedar`  |
+
+The orchestrator reads the accounts listed in `ORCH_RESERVE_ACCOUNTS`, default `acct-anchor,acct-beacon,acct-cedar`. An unknown account returns 404.
+
+## Scenarios
+
+A scenario sets the balance of every account at once. The scenarios are chosen against the demo's liabilities, L = 9,000,000, which `just e2e` and `just demo` seed as three customers owed 4,000,000, 3,000,000 and 2,000,000.
+
+| Scenario      | `acct-anchor` | `acct-beacon` | `acct-cedar` | Reserves R | R against L | Outcome                                                             |
+| ------------- | ------------- | ------------- | ------------ | ---------- | ----------- | ------------------------------------------------------------------- |
+| `solvent`     | 8,000,000     | 5,000,000     | 3,000,000    | 16,000,000 | 78% above   | Covered. Proof published.                                           |
+| `near-breach` | 4,200,000     | 3,100,000     | 2,200,000    | 9,500,000  | 5.6% above  | Covered with a thin margin. Proof published.                        |
+| `insolvent`   | 2,000,000     | 1,500,000     | 1,000,000    | 4,500,000  | below       | Not covered. The orchestrator returns 422 and nothing is published. |
+
+A fresh sandbox starts on `solvent`. Scenarios are deterministic: the same name always gives the same balances.
+
+Seed one:
+
+```bash
+curl -X POST http://localhost:8090/admin/scenarios/near-breach
+```
+
+```json
+{ "scenario": "near-breach", "status": "seeded" }
+```
+
+An unknown name returns 400 with the list:
+
+```json
+{ "error": "unknown scenario", "available": ["solvent", "near-breach", "insolvent"] }
+```
+
+Then run a cycle with [`POST /v1/cycles`](/docs/build/rest-api#run-a-cycle).
+
+## Switching scenarios
+
+The circuit's growth bound lets reserves rise at most 10% from one proof to the next (see [Proof format](/docs/build/proof-format#the-growth-bound)). Reserves may fall by any amount, but a rise of more than 10% fails:
+
+| From                 | To                   | Result                                                                     |
+| -------------------- | -------------------- | -------------------------------------------------------------------------- |
+| `solvent` (16.0M)    | `near-breach` (9.5M) | Published. Reserves fell.                                                  |
+| any                  | `insolvent` (4.5M)   | Refused with 422. Nothing is published, so the last proof does not change. |
+| `near-breach` (9.5M) | `solvent` (16.0M)    | Fails with 500. 16,000,000 is more than 1.1 × 9,500,000 = 10,450,000.      |
+
+After a `near-breach` proof, `solvent` cannot publish on that registry again. To get back to a clean state, start a fresh run. `just e2e` and `just demo` reset the database and deploy new registries unless you supply existing ones.
+
+<Callout type="warn">
+  The admin route has no authentication. Anyone who can reach the sandbox can change its balances.
+  Run it only where that is acceptable.
+</Callout>
+
+**Next:** [AI tools](/docs/build/ai-tools).

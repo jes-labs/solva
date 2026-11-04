@@ -1,0 +1,89 @@
+---
+title: Passkey wallet
+description: How an operator controls an institution's registry with a passkey, and how a scoped key lets the orchestrator publish.
+---
+
+Only the owner of an institution's registry can publish to it. The owner can be a passkey smart wallet, and the orchestrator then publishes through the wallet with a scoped publishing key, so no person approves each cycle.
+
+A **passkey** is a WebAuthn credential, the Face ID, Touch ID or security key prompt used to sign in to websites. A **passkey smart wallet** is a Soroban account contract that an operator's passkey controls. When the wallet owns the institution's registry, every publish to that registry is authorized through the wallet.
+
+## Why a passkey
+
+A seed phrase is one secret, and anyone who sees it can copy it. A passkey's private key is created inside the device's secure hardware or a security key and does not leave it. Signing is a WebAuthn assertion over a challenge, so the operator never types a secret.
+
+## The smart wallet
+
+The wallet is the passkey-kit smart wallet, deployed unmodified from the Wasm with hash `8991e3262e6099e2a18acb3583af4d9d1da886403609e7170467df4337450dca` on Testnet. The console's code for it is in `apps/web/src/lib/passkey`.
+
+When an operator creates a wallet, the console:
+
+1. Runs a WebAuthn registration. The passkey's public key is a secp256r1 (P-256) key.
+2. Derives the wallet's address before deploying it. The address comes from the deployer account and a salt, the hash of the passkey's credential id.
+3. Deploys the wallet at that address with the passkey as its first `Secp256r1` signer. If a contract already exists at the address, it uses that one.
+
+The deployer is a session key the browser creates and funds from Friendbot, so the console needs no server and no stored secret. Because the address depends on the deployer, it is stable for one passkey within one browser session key, not for the passkey alone.
+
+Stellar verifies the passkey's signature on chain with the secp256r1 host function added in Protocol 21. The wallet holds three kinds of signer, each with an optional expiry and optional limits: `Secp256r1` for passkeys, `Ed25519` for service keys, and `Policy` for policy contracts.
+
+## The wallet owns the registry
+
+Each institution has its own `proof-registry` contract. Its owner is set once, by `__constructor(owner, vk)`. `publish_proof` starts by requiring the owner's authorization:
+
+```rust title="contracts/proof-registry/src/lib.rs"
+pub fn publish_proof(env: Env, proof: Bytes, pub_inputs: PubInputs) -> Result<u64, Error> {
+    let owner: Address = env
+        .storage()
+        .instance()
+        .get(&DataKey::Owner)
+        .ok_or(Error::NotInitialized)?;
+    owner.require_auth();
+```
+
+`owner.require_auth()` fails the call unless the owner authorizes it. When the owner is a smart wallet, the wallet's `__check_auth` runs in the same transaction and decides. No other account can publish to that registry.
+
+The owner can also be an ordinary Stellar account (`G...`). The registries that `just e2e` and `just demo` deploy are owned by the `tester` account, which signs the publish directly. To make a wallet the owner, pass its `C...` address to `just provision-tenant <tenant-id> <wallet-address>`, which also records the wallet on the tenant row.
+
+## Authorizing the orchestrator
+
+The orchestrator publishes every cycle, so it cannot wait for a passkey prompt each time. The operator grants it a **scoped publishing key** once. From the console, the operator adds the orchestrator's Ed25519 public key as a wallet signer, limited to the registry contract:
+
+```ts title="apps/web/src/lib/passkey/signer.ts"
+const signer: Signer = {
+  tag: "Ed25519",
+  values: [
+    Buffer.from(pubKey),
+    [undefined],
+    [new Map([[args.registryContract, undefined]])],
+    { tag: "Persistent", values: undefined },
+  ],
+};
+```
+
+The four values are the public key, no expiry, a limit map whose only entry is the registry contract, and persistent storage for the signer. The `add_signer` call itself is authorized with the passkey.
+
+At publish time, the orchestrator simulates `publish_proof`, finds the wallet's authorization entry, signs it with its Ed25519 key in the layout the wallet's `__check_auth` expects, and simulates again so the fee covers the wallet check. It then submits the transaction.
+
+## The full flow
+
+1. The operator signs in with a passkey. The console deploys the smart wallet with the passkey as its signer.
+2. The institution's registry is deployed with the wallet as its owner.
+3. The operator adds the orchestrator's Ed25519 key as a signer limited to that registry, authorized by the passkey.
+4. Each cycle, the orchestrator calls `publish_proof`. The registry calls `owner.require_auth()`, the wallet's `__check_auth` checks the scoped signature, and the proof is recorded.
+
+## Security properties
+
+- **No raw keys held by people.** The passkey's private key stays in the device.
+- **Least privilege for the service.** The orchestrator's signer is limited by `SignerLimits` to calls on the one registry contract. What else the limit forbids is decided by the passkey-kit wallet contract.
+- **Human control.** The passkey stays a signer of the wallet. The wallet contract has a `remove_signer` function, so the scoped key can be removed without moving the wallet or the registry. The console has no button for it, so call the wallet contract directly.
+- **Isolation.** Each institution has its own registry and its own owner, so one institution cannot authorize a publish to another's registry.
+
+## Beyond one operator
+
+The wallet accepts several signers, which is how control extends past one person:
+
+- **Several passkeys** <ComingSoon />, on different devices, signing for the same wallet. This gives an institution recovery and shared control.
+- **Policy signers** <ComingSoon />, which express approval rules such as requiring more than one signer for a sensitive action.
+
+The wallet contract supports both kinds of signer.
+
+**Next:** [Contract reference](/docs/build/contract-reference).

@@ -1,0 +1,206 @@
+---
+title: SDK
+description: The TypeScript SDK, @solva/sdk-ts. Read a registry on Stellar and check a holder's inclusion from your own code.
+---
+
+`@solva/sdk-ts` is the TypeScript client for Solva. It wraps the orchestrator's [REST API](/docs/build/rest-api) and the registry contract behind one class, `Solva`. The source is `packages/sdk-ts/src`.
+
+Two methods are released and tested end to end: `getOnChainLatestProof` and `verifyInclusion`. Both read the registry on Stellar, so the answer comes from the ledger, not from Solva's servers. The other four methods are described under [Orchestrator methods](#orchestrator-methods).
+
+## Install
+
+A published npm package <ComingSoon /> installs the SDK from npm. Today the package is private at version `0.1.0`, so you use it from inside the Solva monorepo.
+
+<Steps>
+<Step>
+
+### Add the dependency
+
+In a package inside the workspace (`apps/*`, `packages/*` or `services/oracle`), add the SDK and its peer dependency:
+
+```json title="package.json"
+{
+  "dependencies": {
+    "@solva/sdk-ts": "workspace:*",
+    "@stellar/stellar-sdk": "^16.0.0"
+  }
+}
+```
+
+Then run `pnpm install` from the repository root.
+
+</Step>
+<Step>
+
+### Build the SDK
+
+The SDK and the packages it depends on export their `dist/` builds:
+
+```bash
+pnpm exec turbo run build --filter=@solva/sdk-ts
+```
+
+</Step>
+</Steps>
+
+## Configure
+
+```ts title="solva.ts"
+import { Solva } from "@solva/sdk-ts";
+
+export const solva = new Solva({
+  network: "testnet",
+  tenant: "11111111-1111-1111-1111-111111111111",
+  endpoints: {
+    contractId: "CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN",
+  },
+});
+```
+
+| Option      | Type                                | Meaning                                                                                |
+| ----------- | ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `network`   | `"testnet" \| "mainnet" \| "local"` | Picks the default endpoints below.                                                     |
+| `tenant`    | `string`                            | The tenant's UUID.                                                                     |
+| `endpoints` | `Partial<NetworkConfig>`            | Overrides any default: `orchestratorUrl`, `rpcUrl`, `networkPassphrase`, `contractId`. |
+| `apiKey`    | `string`                            | Sent as `Authorization: Bearer <apiKey>` on every orchestrator call.                   |
+
+The defaults for `testnet` are the RPC `https://soroban-testnet.stellar.org` and the passphrase `Test SDF Network ; September 2015`. No network has a default `contractId`, and the default orchestrator URLs are placeholders that do not resolve. Pass `contractId` to read a registry directly. Pass `orchestratorUrl` for any call that goes through an orchestrator, such as `http://localhost:8080` for a local stack.
+
+When `contractId` is empty, the SDK asks the orchestrator for the tenant's registry with `GET /v1/tenants/{tenant}/contract`.
+
+## `getOnChainLatestProof`
+
+```ts
+getOnChainLatestProof(): Promise<ProofMeta>
+```
+
+Reads the latest proof from the tenant's registry by simulating `get_latest_proof`. It needs no account and costs nothing.
+
+```ts title="read-record.ts"
+import { Solva } from "@solva/sdk-ts";
+
+const solva = new Solva({
+  network: "testnet",
+  tenant: "11111111-1111-1111-1111-111111111111",
+  endpoints: {
+    contractId: "CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN",
+  },
+});
+
+const record = await solva.getOnChainLatestProof();
+const covered = BigInt(record.reservesTotal) >= BigInt(record.liabilitiesTotal);
+console.log(record, covered);
+```
+
+The registry is Kestrel Anchor's, a fictional institution from the demo. The output looks like this. The values change after each cycle.
+
+```text
+{
+  rootHash: '0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e',
+  reservesTotal: '16000000',
+  liabilitiesTotal: '9000000',
+  timestamp: 1793685990
+} true
+```
+
+| Field              | Type     | Meaning                                                  |
+| ------------------ | -------- | -------------------------------------------------------- |
+| `rootHash`         | `string` | Merkle sum tree root, hex without `0x`.                  |
+| `reservesTotal`    | `string` | `R`, minor units. Compare with `BigInt`, never `Number`. |
+| `liabilitiesTotal` | `string` | `L`, minor units.                                        |
+| `timestamp`        | `number` | Ledger close time of the publish, Unix seconds.          |
+
+## `verifyInclusion`
+
+```ts
+verifyInclusion(ref: InclusionRef | string): Promise<InclusionResult>
+```
+
+Checks on chain that a holder's balance is in a published proof, by calling the registry's `verify_inclusion`. It returns `{ included, proofId }`. `included` is `true` only when the contract rebuilds both the stored root and the stored total from the holder's leaf and path.
+
+You can pass the ref in two forms.
+
+**A string**, `<proof-uuid>:<id-hash>`. The SDK fetches the path from `GET /v1/proofs/inclusion/{ref}` on the orchestrator, then calls the contract. This form needs `orchestratorUrl`. Against a local stack from `just demo`:
+
+```ts title="check-holder.ts"
+import { Solva } from "@solva/sdk-ts";
+
+const solva = new Solva({
+  network: "testnet",
+  tenant: "11111111-1111-1111-1111-111111111111",
+  endpoints: {
+    orchestratorUrl: "http://localhost:8080",
+    contractId: process.env.SOLVA_CONTRACT_ID,
+  },
+});
+
+const proofUuid = process.env.SOLVA_PROOF_UUID;
+const idHash = "0000000000000000000000000000000000000000000000000000000000000001";
+
+const result = await solva.verifyInclusion(`${proofUuid}:${idHash}`);
+console.log(result);
+```
+
+Take `SOLVA_PROOF_UUID` from the `id` of `GET /v1/proofs/latest`. The result:
+
+```text
+{ included: true, proofId: '1' }
+```
+
+**An `InclusionRef` object.** The SDK calls the contract directly and never contacts an orchestrator. Use this form when the holder already has their path, for example from the institution.
+
+```ts
+interface InclusionRef {
+  proofId: string;
+  customerIdHash: string;
+  balance: string;
+  path: PathNode[];
+}
+
+interface PathNode {
+  hash: string;
+  sum: string;
+  position: "left" | "right";
+}
+```
+
+`proofId` is the on-chain proof id. `position` is `"left"` when the sibling is the left child, the same as `sibling_is_left: true` in the REST response. Hex values may carry a `0x` prefix.
+
+If any value in the ref is changed, such as the balance raised by one unit, the contract rebuilds a different root and `included` is `false`. The e2e test checks exactly this.
+
+<Callout type="info">
+  The RPC's read view can lag a few seconds behind a new ledger. A check made right after a publish
+  may fail once; retry after a few seconds.
+</Callout>
+
+## Orchestrator methods
+
+These four methods wrap orchestrator routes. Their request and response shapes differ from the orchestrator's, so call the [REST API](/docs/build/rest-api) directly instead.
+
+### `runProofCycle`
+
+`runProofCycle` <ComingSoon /> runs one cycle for the configured tenant through `POST /v1/cycles`, with `tenant_id` in the body and the API token as `apiKey`. It resolves once the proof is published, and rejects when the cycle is refused, for example with status 422 when reserves do not cover liabilities.
+
+### `getLatestProof`
+
+`getLatestProof` <ComingSoon /> returns the tenant's latest stored proof through `GET /v1/proofs/latest?tenant_id=`: the orchestrator's proof id, the on-chain proof id, the root and the two totals.
+
+### `getProof`
+
+`getProof` <ComingSoon /> returns one stored proof by its orchestrator UUID through `GET /v1/proofs/{id}`, in the same shape as `getLatestProof`.
+
+### `connectSource`
+
+`connectSource` <ComingSoon /> connects a reserve source for the tenant: `attested`, where a custodian signs each balance, or `onchain`, where the balance is read from a Stellar account. Today reserve sources are configured on the orchestrator with `ORCH_RESERVE_ACCOUNTS`, and the orchestrator has no route for this method.
+
+## Errors
+
+Every error the SDK throws extends `SolvaError`.
+
+| Class               | When                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `OrchestratorError` | An orchestrator call failed. `status` holds the HTTP status, or `0` when the request never reached the server. The message includes the response body. |
+| `ChainError`        | A contract read failed, with the underlying error as `cause`, or the SDK has no `contractId` to read from.                                             |
+| `ConfigError`       | Exported for invalid configuration. No method throws it today.                                                                                         |
+
+**Next:** [Sandbox](/docs/build/sandbox).

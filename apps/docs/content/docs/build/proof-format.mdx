@@ -1,0 +1,153 @@
+---
+title: Proof format
+description: The public inputs, the Merkle sum tree, the circuit's checks, the growth bound, the limits and the proving toolchain.
+---
+
+A Solva proof commits to four public inputs, and the circuit and the registry each check it. Use this reference when you verify a proof yourself, build a compatible prover or read the circuit.
+
+The claim is reserve coverage. Total reserves `R` are at least total [liabilities](/docs/overview/how-solva-works) `L`, the sum of the balances an institution owes its customers.
+
+## Public inputs
+
+The circuit in `circuits/solvency/src/main.nr` declares four public inputs, in this order:
+
+| Index | Name     | Meaning                                                    |
+| ----- | -------- | ---------------------------------------------------------- |
+| 0     | `R`      | Total reserves, integer minor units.                       |
+| 1     | `root_h` | Root hash of the Merkle sum tree over the liabilities.     |
+| 2     | `L`      | Total liabilities, integer minor units.                    |
+| 3     | `R_prev` | Reserve total of the previous proof, for the growth bound. |
+
+Each input is a BN254 field element written as 32 bytes, big endian. The four are concatenated into a 128-byte blob, which is the `public_inputs` file `bb` writes. The order is load bearing: the contract rebuilds the same blob from its `PubInputs` struct before it verifies, and a different order fails verification.
+
+The contract stores `R`, `L` and the prover's `prev_reserves` as `u128`. When it builds the blob, each `u128` fills the low 16 bytes of its 32-byte word and the high 16 bytes are zero. `root_h` is copied as its 32 bytes.
+
+The circuit's signature:
+
+```rust title="circuits/solvency/src/main.nr"
+fn main(
+    R: pub Field,
+    root_h: pub Field,
+    L: pub Field,
+    R_prev: pub Field,
+    leaf_ids: [Field; N],
+    leaf_balances: [Field; N],
+    merkle_paths: [[Field; DEPTH]; N],
+    reserves: [Field; M],
+)
+```
+
+The private witness is each customer's id hash (`leaf_ids`), each customer's balance (`leaf_balances`) and each reserve figure (`reserves`). `merkle_paths` is part of the declared interface but the circuit does not use it: for a complete tree it recomputes the root from all the leaves, which covers every path. The prover fills it with zeros.
+
+## The Merkle sum tree
+
+The liabilities are committed in a Merkle sum tree. Every node carries a hash and a sum. A leaf is one customer. The root's sum is `L` and the root's hash is `root_h`.
+
+Hashing is Poseidon2 over BN254 with four inputs, `Poseidon2::hash(inputs, 4)` in Noir. The parameters are a width of 4 (rate 3, capacity 1), 8 full rounds, 56 partial rounds and an `x^5` S-box. The prover, the circuit and the contract's native host function all use this instance.
+
+```rust title="circuits/lib/src/lib.nr"
+pub fn hash4(inputs: [Field; 4]) -> Field {
+    Poseidon2::hash(inputs, 4)
+}
+```
+
+A leaf commits to the customer's id hash and balance:
+
+```text
+leaf.hash = hash4([id_hash, balance, 0, 0])
+leaf.sum  = balance
+```
+
+A parent binds both child hashes and both child sums:
+
+```text
+parent.hash = hash4([left.hash, left.sum, right.hash, right.sum])
+parent.sum  = left.sum + right.sum
+```
+
+Binding the sums into the hash stops a subtree from reporting a smaller total than its leaves hold. Change any balance and the root hash changes. Lower any sum and the parent hash no longer matches.
+
+The `id_hash` is a Poseidon2 commitment to the customer's own reference, computed before the cycle and stored with the customer. The tree is complete: it always has `N = 8` leaves and depth 3. The prover pads a shorter list with leaves of id `0` and balance `0`, which add nothing to the sum.
+
+## What the circuit checks
+
+The circuit asserts five things. Each failure message below is the exact string in `main.nr`.
+
+1. **Coverage.** `R >= L`, compared as unsigned 64-bit integers. Message: `insolvent: reserves below liabilities`.
+2. **The commitment.** The root rebuilt from `leaf_ids` and `leaf_balances` has hash `root_h` and sum `L`. Messages: `root hash mismatch`, `root sum does not equal L`.
+3. **The liability sum.** The leaf balances add up to `L`. Message: `leaf balance sum does not equal L`.
+4. **The reserve sum.** The reserve figures add up to `R`. Message: `reserve sum does not equal R`.
+5. **The growth bound.** `10 * R <= 11 * R_prev`. Message: `fraud bound: reserves grew too fast`.
+
+`R`, `L`, `R_prev`, every leaf balance and every reserve figure is range checked to fit in a `u64` before it is used. Without the range check, a field element that wraps around could make a sum look smaller than it is. Message: `range check failed: value exceeds u64`.
+
+## The growth bound
+
+The fifth check caps how fast reserves can rise between two proofs: `R` may be at most 10% above `R_prev`, computed in integers as `10 * R <= 11 * R_prev`. The code calls this the fraud bound, because it stops a sudden jump in reserves from being proven in one cycle. There is no lower bound. Reserves can fall by any amount, as long as they still cover the liabilities.
+
+`R_prev` is an input the prover chooses, so the bound means something only if `R_prev` is tied to history. The contract does this in `publish_proof`:
+
+- **Later proofs.** The declared `prev_reserves` must equal `R` of the latest proof stored in the registry.
+- **The genesis proof.** A registry with no proof yet requires `prev_reserves` to equal `reserves_total`. The first proof declares zero growth, so there is no arbitrary baseline to inflate against next time.
+
+Either mismatch fails with contract error 6, `PrevReservesMismatch`.
+
+The orchestrator follows the same rule. It reads `R_prev` from the last proof in its own database. When there is none, it sets `R_prev = R`. If the orchestrator's database and the registry disagree, for example after a database reset against a registry that already holds proofs, the publish fails with error 6.
+
+## Limits
+
+| Limit                        | Value                                            | Enforced in                                               |
+| ---------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| Customer balances per proof  | 1 to 8                                           | `N` in `main.nr`; checked by the prover before proving    |
+| Reserve figures per proof    | 1 to 4                                           | `M` in `main.nr`; checked by the prover                   |
+| Tree depth                   | 3                                                | `DEPTH` in `main.nr`                                      |
+| Size of any balance or total | fits in `u64`                                    | Circuit range checks; the prover parses balances as `u64` |
+| Units                        | integer minor units, decimal strings on the wire | Every tier; never floating point                          |
+
+These are fixed at compile time. Larger proofs <ComingSoon /> need a new circuit build, a new verifying key and new registries.
+
+For a token issued as a Soroban contract, the SEP-41 token interface has no total-supply call. Liabilities from token events <ComingSoon /> rebuild the amount owed to holders of such a token from its mint, burn and clawback events.
+
+## The proving toolchain
+
+| Component         | Version or setting                                                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Noir `nargo`      | 1.0.0-beta.9                                                                                                                       |
+| Barretenberg `bb` | 0.87.0                                                                                                                             |
+| Proving system    | UltraHonk over BN254, `--scheme ultra_honk`                                                                                        |
+| Transcript hash   | keccak, `--oracle_hash keccak`                                                                                                     |
+| On-chain verifier | `crates/ultrahonk-soroban-verifier`, vendored from `yugocabrio/rs-soroban-ultrahonk` at `661db07200f890b1bd9a7349ed787c70a706dd12` |
+
+The on-chain verifier implements the keccak transcript only, so every proof and verifying key must use `--oracle_hash keccak`. The flag sets the Fiat-Shamir transcript hash. It does not change the in-circuit hashing, which stays Poseidon2. A different Noir or Barretenberg version produces a different verifying key and a different proof encoding.
+
+The prover runs these two commands in `circuits/solvency` for each cycle, after it writes `Prover.toml`:
+
+```bash
+nargo execute
+bb prove --scheme ultra_honk --oracle_hash keccak \
+  --bytecode_path target/solva_solvency.json \
+  --witness_path target/solva_solvency.gz \
+  --output_path target --output_format bytes_and_fields
+```
+
+To produce the verifying key, and to check a proof locally:
+
+```bash
+bb write_vk --scheme ultra_honk --oracle_hash keccak \
+  --bytecode_path target/solva_solvency.json \
+  --output_path target --output_format bytes_and_fields
+bb verify --scheme ultra_honk --oracle_hash keccak \
+  --proof_path target/proof \
+  --public_inputs_path target/public_inputs \
+  --vk_path target/vk
+```
+
+| Artifact        | Size                              | Role                                                                        |
+| --------------- | --------------------------------- | --------------------------------------------------------------------------- |
+| `vk`            | 1,760 bytes                       | Verifying key, stored in the registry by `__constructor`.                   |
+| `proof`         | 14,592 bytes (456 field elements) | The proof passed to `publish_proof`. The contract rejects any other length. |
+| `public_inputs` | 128 bytes                         | The four public inputs.                                                     |
+
+The committed verifying key the registries are deployed with is `contracts/proof-registry/src/testdata/solvency_vk.bin`. The sample witness `circuits/solvency/Prover.toml.example` has eight customers owed 10 to 80 (`L = 360`), reserves `[200, 200, 0, 0]` (`R = 400`) and `R_prev = 400`. Its root is `0x0e36888d7cade7e79309cd7e58109611104c225f2fcd5a158c662debb173572f`, the value `just parity-check` asserts in all three layers.
+
+**Next:** [Passkey wallet](/docs/build/passkey-wallet).

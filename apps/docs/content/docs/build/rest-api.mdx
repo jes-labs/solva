@@ -1,0 +1,355 @@
+---
+title: REST API
+description: Every route of the Solva orchestrator, with authentication, request, response, status codes, errors and idempotency.
+---
+
+The orchestrator serves a JSON API over HTTP. Use it to run a cycle, read the proofs it has stored, fetch a holder's inclusion path, and provision tenants. The routes are defined in `services/orchestrator/internal/controller/http/router.go`.
+
+A local stack listens on `http://localhost:8080` (`ORCH_HTTP_ADDR`, default `:8080`).
+
+## Conventions
+
+**Tenants.** A [tenant](/docs/operate/set-up-your-institution) is one institution. Every tenant id is a UUID, for example `11111111-1111-1111-1111-111111111111`. A value that is not a UUID fails inside the database layer, so it surfaces as a 500 or a 501, not a 400.
+
+**Money.** Every amount is a decimal string of integer minor units, such as `"9000000"`. Amounts are never JSON numbers.
+
+**Hashes.** Hashes are hex strings. `root_hash` on a proof has no `0x` prefix. Hashes in an inclusion response have one.
+
+**Errors.** Every error has the same body:
+
+```json
+{ "error": "tenant_id is required" }
+```
+
+**Authentication.** There are three levels.
+
+| Level       | Routes                                                                             | Header                                     |
+| ----------- | ---------------------------------------------------------------------------------- | ------------------------------------------ |
+| API token   | `POST /v1/cycles`                                                                  | `Authorization: Bearer <ORCH_API_TOKEN>`   |
+| Admin token | `POST /v1/tenants`, `PUT /v1/tenants/{id}/contract`, `PUT /v1/tenants/{id}/wallet` | `Authorization: Bearer <ORCH_ADMIN_TOKEN>` |
+| None        | every `GET` route                                                                  | none                                       |
+
+A token is set by its environment variable on the orchestrator. When the variable is empty, that check is off. Local runs from `just e2e` and `just demo` leave both empty. Never run a shared orchestrator without them.
+
+## Run a cycle
+
+```http
+POST /v1/cycles
+```
+
+Runs one full cycle for a tenant: read and verify reserves, load liabilities, prove, publish to the tenant's registry, store. The call is synchronous and returns when the cycle has published or failed. A cycle takes as long as proving takes, so give your client a long timeout; the e2e script allows 300 seconds.
+
+**Auth:** API token.
+
+**Headers**
+
+| Header            | Required | Value                              |
+| ----------------- | -------- | ---------------------------------- |
+| `Authorization`   | yes      | `Bearer <token>`                   |
+| `Content-Type`    | yes      | `application/json`                 |
+| `Idempotency-Key` | no       | Any string unique to this attempt. |
+
+**Body**
+
+| Field       | Type   | Required | Value              |
+| ----------- | ------ | -------- | ------------------ |
+| `tenant_id` | string | yes      | The tenant's UUID. |
+
+```bash
+curl -X POST http://localhost:8080/v1/cycles \
+  -H "Authorization: Bearer $ORCH_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: kestrel-2026-11-04" \
+  -d '{"tenant_id":"11111111-1111-1111-1111-111111111111"}'
+```
+
+**Response**
+
+```json
+{ "status": "accepted" }
+```
+
+The response does not carry the proof. Read it with `GET /v1/proofs/latest`.
+
+**Status codes**
+
+| Status | Body                                                 | Meaning                                                                                                                                                                       |
+| ------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 202    | `{"status":"accepted"}`                              | The cycle ran and the proof is published and stored.                                                                                                                          |
+| 200    | `{"status":"already processed"}`                     | This `Idempotency-Key` was used before. Nothing ran.                                                                                                                          |
+| 400    | `invalid request body`                               | The body is not JSON.                                                                                                                                                         |
+| 400    | `tenant_id is required`                              | The body has no `tenant_id`.                                                                                                                                                  |
+| 401    | `unauthorized`                                       | The API token is missing or wrong.                                                                                                                                            |
+| 409    | `cycle already in progress`                          | Another cycle for this tenant holds the lock. Nothing ran.                                                                                                                    |
+| 422    | `reserves are below liabilities; no proof generated` | Reserves do not cover liabilities. Nothing is proven or published.                                                                                                            |
+| 500    | `the proof cycle could not complete`                 | Any other failure, such as a bad reserve signature, a growth-bound failure, an unprovisioned tenant, a contract error or a network error. The orchestrator log has the cause. |
+
+**Idempotency**
+
+A cycle is guarded twice. First, a per-tenant lock in Redis, held for up to 15 minutes, stops two cycles running at once and returns 409. Second, the `Idempotency-Key` is claimed in Postgres before any work starts. A key that was claimed before returns 200 `already processed`, even if Redis has restarted.
+
+The claim happens before the cycle runs, so a key is used up even when its cycle fails. To retry a failed cycle, send a new key. Without the header, the orchestrator generates a random key, so every call runs.
+
+## Get the latest proof
+
+```http
+GET /v1/proofs/latest?tenant_id={tenant_id}
+```
+
+Returns the tenant's most recent stored proof.
+
+**Auth:** none.
+
+**Query**
+
+| Parameter   | Required | Value              |
+| ----------- | -------- | ------------------ |
+| `tenant_id` | yes      | The tenant's UUID. |
+
+```bash
+curl "http://localhost:8080/v1/proofs/latest?tenant_id=11111111-1111-1111-1111-111111111111"
+```
+
+**Response**
+
+```json
+{
+  "id": "ab31f400-d433-4af0-bbda-80e26a2a1a05",
+  "tenant_id": "11111111-1111-1111-1111-111111111111",
+  "chain_proof_id": 1,
+  "root_hash": "0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e",
+  "reserves_total": "16000000",
+  "liabilities_total": "9000000"
+}
+```
+
+| Field               | Type   | Meaning                                                    |
+| ------------------- | ------ | ---------------------------------------------------------- |
+| `id`                | string | The orchestrator's proof UUID. Use it in an inclusion ref. |
+| `tenant_id`         | string | The tenant's UUID.                                         |
+| `chain_proof_id`    | number | The proof id in the tenant's registry.                     |
+| `root_hash`         | string | The Merkle sum tree root, hex without `0x`.                |
+| `reserves_total`    | string | `R`, minor units.                                          |
+| `liabilities_total` | string | `L`, minor units.                                          |
+
+**Status codes**
+
+| Status | Body                                  | Meaning                                                                                          |
+| ------ | ------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 200    | the proof                             | Found.                                                                                           |
+| 400    | `tenant_id query param is required`   | No `tenant_id`.                                                                                  |
+| 501    | `latest proof lookup not implemented` | Any lookup failure: the tenant has no proof yet, the tenant is unknown, or the id is not a UUID. |
+
+## Get a proof
+
+```http
+GET /v1/proofs/{id}
+```
+
+Returns one stored proof by its orchestrator UUID, in the same shape as the latest proof.
+
+**Auth:** none.
+
+| Status | Body                           | Meaning                                                                |
+| ------ | ------------------------------ | ---------------------------------------------------------------------- |
+| 200    | the proof                      | Found.                                                                 |
+| 501    | `proof lookup not implemented` | Any lookup failure, including an unknown id or one that is not a UUID. |
+
+## Get an inclusion path
+
+```http
+GET /v1/proofs/inclusion/{ref}
+```
+
+Returns a holder's leaf and inclusion path for one proof. Pass the result to the contract's `verify_inclusion` to check that the holder was counted. The orchestrator does not hash anything here. It reads the path from the tree the prover returned.
+
+**Auth:** none.
+
+**Path**
+
+`ref` is `<proof-uuid>:<id-hash>`. `proof-uuid` is the `id` of a stored proof. `id-hash` is the holder's `customer_id_hash`, hex, with or without `0x`, in any case. Percent-encode the colon as `%3A`, or send it as is.
+
+```bash
+curl "http://localhost:8080/v1/proofs/inclusion/ab31f400-d433-4af0-bbda-80e26a2a1a05%3A0000000000000000000000000000000000000000000000000000000000000001"
+```
+
+**Response**
+
+```json
+{
+  "proof_id": "1",
+  "customer_id_hash": "0x0000000000000000000000000000000000000000000000000000000000000001",
+  "balance": "4000000",
+  "root_hash": "0x0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e",
+  "path": [
+    { "hash": "0x<sibling hash>", "sum": "3000000", "sibling_is_left": false },
+    { "hash": "0x<sibling hash>", "sum": "2000000", "sibling_is_left": false },
+    { "hash": "0x<sibling hash>", "sum": "0", "sibling_is_left": false }
+  ]
+}
+```
+
+| Field              | Type   | Meaning                                                                                                                           |
+| ------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `proof_id`         | string | The on-chain proof id, the `id` argument of `verify_inclusion`.                                                                   |
+| `customer_id_hash` | string | The leaf's id hash.                                                                                                               |
+| `balance`          | string | The balance committed for this holder, minor units.                                                                               |
+| `root_hash`        | string | The root of the tree.                                                                                                             |
+| `path`             | array  | Siblings from the leaf up to the root. `sum` is the sibling subtree's total. `sibling_is_left` matches the contract's `PathNode`. |
+
+The example is the demo's first customer, owed 4,000,000, in a tree of three customers padded to eight leaves. The sibling sums are the next customer (3,000,000), the pair holding the third customer (2,000,000) and the four empty leaves (0).
+
+<Callout type="warn">
+  Sibling sums are totals of other customers' balances. Near the leaves a sibling sum can be one
+  other customer's exact balance. Give a holder only their own path.
+</Callout>
+
+**Status codes**
+
+| Status | Body                                            | Meaning                                                                                     |
+| ------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 200    | the path                                        | Found.                                                                                      |
+| 400    | `invalid inclusion ref encoding`                | The ref is not valid percent-encoding.                                                      |
+| 404    | `no inclusion path for that proof and customer` | The ref has no colon, the proof does not exist, or the id hash is not in that proof's tree. |
+| 500    | `internal error`                                | The proof part is not a UUID, or the stored tree could not be read.                         |
+
+## Get a tenant's contract
+
+```http
+GET /v1/tenants/{id}/contract
+```
+
+Returns the registry a tenant publishes to and its network. The SDK uses this route to find a tenant's registry when you do not pass a contract id.
+
+**Auth:** none.
+
+**Response**
+
+```json
+{ "contract_id": "CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN", "network": "testnet" }
+```
+
+| Status | Body                          | Meaning                                        |
+| ------ | ----------------------------- | ---------------------------------------------- |
+| 200    | the contract                  | Found.                                         |
+| 404    | `no contract for that tenant` | The tenant is unknown, or has no contract yet. |
+| 500    | `internal error`              | The id is not a UUID, or the lookup failed.    |
+
+## Create a tenant
+
+```http
+POST /v1/tenants
+```
+
+Registers an institution. The new tenant has no contract. Deploy its registry, then record it with `PUT /v1/tenants/{id}/contract`.
+
+**Auth:** admin token.
+
+**Body**
+
+| Field  | Type   | Required | Value                                                                                                        |
+| ------ | ------ | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `name` | string | yes      | The institution's name.                                                                                      |
+| `plan` | string | no       | `free` (the default) runs a scheduled cycle daily at 00:00 UTC. Any other value, such as `pro`, runs hourly. |
+
+```bash
+curl -X POST http://localhost:8080/v1/tenants \
+  -H "Authorization: Bearer $ORCH_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Kestrel Anchor","plan":"free"}'
+```
+
+**Response**, status 201:
+
+```json
+{ "id": "3f0c9a52-6c1e-4f1e-9a43-2b7d1c0e8a11", "name": "Kestrel Anchor", "plan": "free" }
+```
+
+| Status | Body                             | Meaning                                                            |
+| ------ | -------------------------------- | ------------------------------------------------------------------ |
+| 201    | the tenant                       | Created. The `id` is a new UUID.                                   |
+| 400    | `invalid request body`           | The body is not JSON.                                              |
+| 400    | `name is required`               | No `name`. Any database failure also returns 400 with its message. |
+| 401    | `missing or invalid admin token` | The admin token is missing or wrong.                               |
+
+## Record a tenant's contract
+
+```http
+PUT /v1/tenants/{id}/contract
+```
+
+Records the registry a tenant publishes to. Cycles for a tenant fail until this is set.
+
+**Auth:** admin token.
+
+**Body**
+
+| Field         | Type   | Required | Value                            |
+| ------------- | ------ | -------- | -------------------------------- |
+| `contract_id` | string | yes      | The registry's `C...` address.   |
+| `network`     | string | yes      | `testnet`, `mainnet` or `local`. |
+
+```bash
+curl -X PUT http://localhost:8080/v1/tenants/3f0c9a52-6c1e-4f1e-9a43-2b7d1c0e8a11/contract \
+  -H "Authorization: Bearer $ORCH_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"contract_id":"CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN","network":"testnet"}'
+```
+
+**Response**, status 200: the recorded `contract_id` and `network`.
+
+| Status | Body                                                  | Meaning                                                            |
+| ------ | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| 200    | the contract                                          | Recorded. The route does not check that the tenant exists.         |
+| 400    | `invalid request body`                                | The body is not JSON.                                              |
+| 400    | `usecase: network must be testnet, mainnet, or local` | Unknown network.                                                   |
+| 401    | `missing or invalid admin token`                      | The admin token is missing or wrong.                               |
+| 500    | `internal error`                                      | `contract_id` is empty, the id is not a UUID, or the write failed. |
+
+`just provision-tenant <tenant-id> <owner>` deploys a registry and writes the same column directly to Postgres.
+
+## Record a tenant's wallet
+
+```http
+PUT /v1/tenants/{id}/wallet
+```
+
+Records the passkey smart wallet that owns the tenant's registry. See [Passkey wallet](/docs/build/passkey-wallet).
+
+**Auth:** admin token.
+
+**Body**
+
+| Field            | Type   | Required | Value                                               |
+| ---------------- | ------ | -------- | --------------------------------------------------- |
+| `wallet_address` | string | yes      | A contract address: starts with `C`, 56 characters. |
+
+**Response**, status 200:
+
+```json
+{ "wallet_address": "C..." }
+```
+
+| Status | Body                                                | Meaning                                    |
+| ------ | --------------------------------------------------- | ------------------------------------------ |
+| 200    | the wallet                                          | Recorded.                                  |
+| 400    | `invalid request body`                              | The body is not JSON.                      |
+| 400    | `usecase: wallet must be a contract address (C...)` | Not a `C` address of 56 characters.        |
+| 401    | `missing or invalid admin token`                    | The admin token is missing or wrong.       |
+| 500    | `internal error`                                    | The id is not a UUID, or the write failed. |
+
+## Health and metrics
+
+```http
+GET /health
+```
+
+Returns `{"status":"ok"}` with status 200 while the process is up.
+
+```http
+GET /metrics
+```
+
+Returns Prometheus metrics in the text exposition format.
+
+**Next:** [SDK](/docs/build/sdk).

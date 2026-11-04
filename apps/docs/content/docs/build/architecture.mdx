@@ -1,0 +1,77 @@
+---
+title: Architecture
+description: The tiers of Solva, what each one does, where each check runs, and how one cycle moves through them.
+---
+
+Solva is a monorepo with one language per tier. Each tier has one job, and each check runs in a known place. Read this before you change a tier or integrate with one.
+
+A [cycle](/docs/overview/how-solva-works) moves through every tier: it reads the reserves, loads the liabilities, proves that reserves cover them and publishes the proof to the institution's registry on Stellar.
+
+## The tiers
+
+| Tier         | Path                       | Language            | What it does                                                                                                                         |
+| ------------ | -------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Circuits     | `circuits/`                | Noir                | States the coverage claim `R >= L`, the commitment to the liabilities, and the growth bound, as constraints a proof must satisfy.    |
+| Prover       | `services/prover`          | Rust                | Builds the Poseidon2 Merkle sum tree, writes the circuit witness and produces the UltraHonk proof. Serves one gRPC method, `Prove`.  |
+| Contract     | `contracts/proof-registry` | Rust, Soroban       | Verifies each proof on chain, stores the record, and answers the inclusion check. One contract per institution.                      |
+| Orchestrator | `services/orchestrator`    | Go                  | Runs cycles, reads and verifies signed reserve balances, calls the prover, publishes to Stellar, stores proofs, serves the REST API. |
+| Sandbox      | `services/sandbox`         | Go                  | A mock reserve source: OAuth, accounts and ECDSA-signed balances in `USD`.                                                           |
+| Web          | `apps/web`, `apps/website` | TypeScript, Next.js | The operator console with the passkey wallet, and the public website with the demo.                                                  |
+| Oracle       | `services/oracle`          | TypeScript          | An MCP server with two tools, `get_solvency` and `get_anomalies`.                                                                    |
+
+Shared code sits in `packages/`: the SDK (`sdk-ts`), the generated contract client (`contract-bindings`) and the wire types (`shared-types`). The gRPC contract between the orchestrator and the prover is `proto/prover.proto`.
+
+The orchestrator keeps its state in PostgreSQL 16 (tenants, customers, liabilities, proofs, serialized trees, the audit log) and Redis 7 (the latest proof id per tenant and the per-tenant cycle lock).
+
+## The crypto boundary
+
+Every hash that must match the circuit is computed in two places only: the Rust prover and the Soroban contract.
+
+- The **prover** builds the tree with Poseidon2 and generates the proof. It also writes each customer's inclusion path into the serialized tree it returns.
+- The **contract** recomputes Poseidon2 with the native host function when it checks an inclusion path, and runs the UltraHonk verifier with the native BN254 host functions.
+- The **orchestrator** never hashes for the circuit. It moves the witness to the prover over gRPC, stores the serialized tree as it receives it, and forwards paths from it. It zeroizes its copy of the witness after the call.
+- The **SDK and the web apps** never hash either. They pass paths to the contract and read the result.
+
+One hash implementation per side leaves no seam where two languages could drift apart. If the circuit, the prover and the contract computed different roots, a proof could verify against a root the circuit never committed to. `just parity-check` guards against this by requiring all three layers to build the same canonical root for a fixed set of leaves.
+
+## Where each check runs
+
+| Check                                                               | Where                                           | What happens on failure                                                               |
+| ------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Reserve balance signature (P-256 ECDSA over SHA-256)                | Orchestrator, `infrastructure/attested`         | The cycle fails. A bad signature is never retried.                                    |
+| At most 8 customers, at most 4 reserve figures, balances fit in u64 | Prover, before proving                          | gRPC `InvalidArgument`; the cycle fails.                                              |
+| Reserves cover liabilities (`R >= L`)                               | Prover pre-check, the circuit, and the contract | The prover refuses first, so the orchestrator returns HTTP 422 and nothing is proven. |
+| Root and sums are consistent with the leaves                        | Circuit                                         | No proof can be produced.                                                             |
+| Growth bound `10 * R <= 11 * R_prev`                                | Circuit                                         | `nargo execute` fails; the cycle fails.                                               |
+| `R_prev` matches the last proof on chain                            | Contract                                        | Contract error 6, `PrevReservesMismatch`.                                             |
+| Proof verifies against the stored verifying key                     | Contract                                        | Contract error 3, `ProofInvalid`.                                                     |
+| The publish is authorized by the registry owner                     | Contract, `owner.require_auth()`                | The transaction is rejected.                                                          |
+| A holder's balance is in the committed tree                         | Contract, `verify_inclusion`                    | Returns `false`.                                                                      |
+
+## One cycle, end to end
+
+A cycle starts when a caller sends `POST /v1/cycles` with a tenant id, or when the scheduler fires. The scheduler is off unless `ORCH_SCHEDULER_ENABLED=true`. When on, a tenant on the `free` plan runs once a day at 00:00 UTC, and any other plan runs every hour.
+
+1. **Lock and claim.** The orchestrator takes a per-tenant lock in Redis (15 minute expiry) and claims the request's idempotency key in Postgres. If either is taken, it stops and does no work.
+2. **Read reserves.** It runs the OAuth handshake with the reserve source, reads every configured account in parallel, and verifies each signature. Today the accounts are a fixed list in `ORCH_RESERVE_ACCOUNTS`, verified with one public key in `ORCH_RESERVE_PUBLIC_KEY_PEM`. It records the snapshot in the audit log.
+3. **Load liabilities.** It loads the tenant's customer balances from Postgres. Each balance is an integer in minor units with a Poseidon2 `customer_id_hash`.
+4. **Find the previous total.** It reads the reserve total of the tenant's last stored proof. On the first cycle there is none, so it sets `R_prev = R`.
+5. **Prove.** It sends reserves, liabilities and `R_prev` to the prover. The prover checks the limits, refuses if `R < L`, builds the tree, runs `nargo execute` and `bb prove`, and returns the proof, the four public inputs and the serialized tree.
+6. **Publish.** It resolves the tenant's own registry contract and calls `publish_proof`. When the owner is a passkey smart wallet, the orchestrator signs the wallet's authorization with its scoped Ed25519 key. The contract verifies the proof and returns the new proof id.
+7. **Store.** It saves the proof and the serialized tree in one transaction, points the Redis cache at the new proof id, and appends a `proof_cycle` entry to the audit log.
+
+The call to `POST /v1/cycles` is synchronous. It returns when the cycle has published or failed.
+
+After the cycle, anyone can read the record from the contract without Solva. A holder gets their inclusion path from `GET /v1/proofs/inclusion/{ref}` and checks it with `verify_inclusion` on the contract. The SDK wraps both reads.
+
+## What stays private
+
+The witness, meaning each customer's id hash and balance and each reserve figure, goes to the prover and is never published. The public inputs are the reserve total `R`, the liability total `L`, the commitment root and `R_prev`. The contract stores `R`, `L`, the root and the ledger timestamp.
+
+The orchestrator does keep customer balances in its Postgres database, because it loads them for each cycle. They never go on chain.
+
+## Security status
+
+Solva runs on Stellar Testnet, and the contract and the vendored UltraHonk verifier are unaudited. An independent security audit <ComingSoon /> and Mainnet <ComingSoon /> are listed on [Security](/docs/overview/security).
+
+**Next:** [Proof format](/docs/build/proof-format).
