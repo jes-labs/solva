@@ -12,6 +12,8 @@ import (
 	"github.com/jes-labs/solva/services/orchestrator/internal/config"
 	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/attested"
 	grpcprover "github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/grpc"
+	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/onchain"
+	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/reservesource"
 	"github.com/jes-labs/solva/services/orchestrator/internal/infrastructure/stellar"
 	"github.com/jes-labs/solva/services/orchestrator/internal/repo"
 )
@@ -23,7 +25,7 @@ type deps struct {
 	cache    *repo.RedisCache
 	prover   *grpcprover.ProverClient
 	stellar  *stellar.Publisher
-	sources  *attested.Adapter
+	sources  *reservesource.Router
 }
 
 // buildDeps connects every backing store and adapter. It returns a cleanup
@@ -82,7 +84,7 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		pg.Close()
 		return deps{}, nil, fmt.Errorf("parse reserve source public key: %w", err)
 	}
-	sourceAdapter := attested.NewAdapter(attested.Config{
+	attestedSource := attested.NewAdapter(attested.Config{
 		BaseURL:  cfg.ReserveBaseURL,
 		Accounts: cfg.ReserveAccounts,
 		PubKey:   pubKey,
@@ -95,13 +97,39 @@ func buildDeps(ctx context.Context, cfg config.Config, log zerolog.Logger) (deps
 		pg.Close()
 	}
 
+	sources, err := buildReserveSources(cfg, attestedSource)
+	if err != nil {
+		cleanup()
+		return deps{}, nil, err
+	}
+
 	return deps{
 		postgres: pg,
 		cache:    cache,
 		prover:   prover,
 		stellar:  publisher,
-		sources:  sourceAdapter,
+		sources:  sources,
 	}, cleanup, nil
+}
+
+func buildReserveSources(cfg config.Config, attestedSource *attested.Adapter) (*reservesource.Router, error) {
+	kinds, err := reservesource.ParseSources(cfg.ReserveSources)
+	if err != nil {
+		return nil, err
+	}
+	var onchainSource reservesource.OnChainSource
+	if len(cfg.OnChainHoldings) > 0 {
+		holdings, err := onchain.ParseHoldings(cfg.OnChainHoldings)
+		if err != nil {
+			return nil, err
+		}
+		adapter, err := onchain.NewAdapter(onchain.Config{HorizonURL: cfg.OnChainHorizonURL, Holdings: holdings})
+		if err != nil {
+			return nil, err
+		}
+		onchainSource = adapter
+	}
+	return reservesource.NewRouter(attestedSource, onchainSource, kinds)
 }
 
 // bearerToken sends the prover API token as gRPC per-RPC metadata. It permits

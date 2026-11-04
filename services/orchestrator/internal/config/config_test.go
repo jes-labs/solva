@@ -52,3 +52,22 @@ func TestLoadReadsAPIToken(t *testing.T) {
 		t.Errorf("APIToken = %q", cfg.APIToken)
 	}
 }
+
+func TestLoadReadsPerTenantReserveSources(t *testing.T) {
+	t.Setenv("ORCH_RESERVE_SOURCES", "harbor=onchain, kestrel=attested")
+	t.Setenv("ORCH_ONCHAIN_HOLDINGS", "harbor=GADDR|USDC|GISSUER")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !slices.Equal(cfg.ReserveSources, []string{"harbor=onchain", "kestrel=attested"}) {
+		t.Errorf("ReserveSources = %v", cfg.ReserveSources)
+	}
+	if !slices.Equal(cfg.OnChainHoldings, []string{"harbor=GADDR|USDC|GISSUER"}) {
+		t.Errorf("OnChainHoldings = %v", cfg.OnChainHoldings)
+	}
+	if cfg.OnChainHorizonURL != "https://horizon-testnet.stellar.org" {
+		t.Errorf("OnChainHorizonURL = %q", cfg.OnChainHorizonURL)
+	}
+}
