@@ -16,13 +16,13 @@ Coverage holds when reserves are at least what is owed.
 
 ## One cycle, step by step
 
-| Step | Who         | What happens                                               | What becomes public       |
-| ---- | ----------- | ---------------------------------------------------------- | ------------------------- |
-| 1    | Custodian   | Signs the balance of each reserve account                  | Nothing yet               |
-| 2    | Institution | Commits the list of customer balances as one value         | Nothing yet               |
-| 3    | Prover      | Builds a zero-knowledge proof that reserves cover the list | Nothing yet               |
-| 4    | Stellar     | A contract checks the proof and writes the record          | Totals and the commitment |
-| 5    | Anyone      | Reads the record, and any holder checks their own balance  | Nothing more              |
+| Step | Who                     | What happens                                               | What becomes public       |
+| ---- | ----------------------- | ---------------------------------------------------------- | ------------------------- |
+| 1    | Custodian               | Signs the balance of each reserve account                  | Nothing yet               |
+| 2    | Orchestrator and prover | Commit the list of customer balances as one value          | Nothing yet               |
+| 3    | Prover                  | Builds a zero-knowledge proof that reserves cover the list | Nothing yet               |
+| 4    | Stellar                 | A contract checks the proof and writes the record          | Totals and the commitment |
+| 5    | Anyone                  | Reads the record, and any holder checks their own balance  | Nothing more              |
 
 ### 1. The custodian signs the reserve balance
 
@@ -30,11 +30,11 @@ Solva asks the institution's [reserve source](/docs/overview/reserve-sources) fo
 
 The signature shows who stated the balance and that nobody changed it on the way. It does not show that the money exists, so that trust sits with the custodian.
 
-### 2. The institution commits what it owes
+### 2. The list of what is owed is committed
 
-The institution supplies the list of what it owes: one entry per customer, holding a hashed customer reference and a balance. No names go into the list.
+The orchestrator holds the institution's list of what it owes: one entry per customer, holding a hashed customer reference and a balance. No names go into the list. Today the list is stored when the institution is set up. Balance upload <ComingSoon /> lets an institution send a fresh list each cycle.
 
-The list is folded into a single value called the **commitment root**. Every balance, and the total of all of them, is bound into that value. Changing one balance or dropping one customer changes the commitment root, and no balance can be read back out of it.
+The prover folds the list into a single value called the **commitment root**. Every balance, and the total of all of them, is bound into that value. Changing one balance or dropping one customer changes the commitment root, and no balance can be read back out of it.
 
 ### 3. A zero-knowledge proof shows the reserves cover what is owed
 

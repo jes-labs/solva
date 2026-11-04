@@ -15,7 +15,7 @@ import { readSupplySnapshot } from "@/lib/stellar-supply";
 export const metadata: Metadata = {
   title: "For anchors",
   description:
-    "Show holders and partners that your Stellar token is backed, every day. Solva records each asset as covered, short or stale, free for anyone to read.",
+    "Show holders and partners that your Stellar token is backed. Each proof is checked by a contract on Stellar and free for anyone to read. Covered, short and stale statuses are coming soon.",
   alternates: { canonical: routes.anchors },
 };
 
@@ -28,7 +28,7 @@ export default async function AnchorsPage() {
       <PageOpening
         label="For anchors"
         title="Show your token is backed, every day."
-        lead="Your token supply is already public on Stellar. Connect your reserves, and every day Solva records whether they cover it, on a page your holders can check for themselves."
+        lead="Your token supply is already public on Stellar. Connect your reserves, and Solva proves whether they cover what you owe, checked by a contract on Stellar. A public page for your holders is coming soon."
         primary={{ label: "Talk to us", href: contactHref }}
         secondary={{ label: "See it work", href: routes.demo }}
         figure={<AnchorAssetPage />}

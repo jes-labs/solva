@@ -14,7 +14,7 @@ import {
 export const metadata: Metadata = {
   title: "For partners",
   description:
-    "Wallets, lending pools and auditors read reserve coverage for any Stellar asset, for free: covered, short or stale, with the ledger it was proven at.",
+    "Wallets, lending pools and auditors read the verified totals behind a Stellar asset for free, with the ledger they were checked at. Covered, short and stale verdicts are coming soon.",
   alternates: { canonical: routes.partners },
 };
 
@@ -26,7 +26,7 @@ export default function PartnersPage() {
       <PageOpening
         label="For partners"
         title="Read coverage before you rely on it."
-        lead="Wallets, lending pools and auditors read each asset's coverage straight from Stellar, for free, without asking the issuer for permission or waiting for a report."
+        lead="Wallets, lending pools and auditors read each institution's verified totals straight from Stellar, for free, without asking the issuer for permission. A one-call coverage verdict is coming soon."
         primary={{ label: "Talk to us", href: contactHref }}
         secondary={{ label: "Read the docs", href: site.docsUrl }}
         figure={<IsCoveredFigure />}

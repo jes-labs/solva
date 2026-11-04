@@ -46,9 +46,10 @@ export function Opening() {
             </span>
           </h1>
           <p data-intro data-fade className="mt-7 max-w-[34rem] text-lead text-sec">
-            Solva gives anchors and custodial apps on Stellar one public record, per asset, that
-            their reserves cover what they owe. A new proof lands every day, a contract on Stellar
-            checks it, and anyone can read the result without asking you.
+            Solva gives anchors and custodial apps on Stellar a public record that their reserves
+            cover what they owe. A contract on Stellar checks every proof, and anyone can read the
+            result without asking you. Running on Stellar Testnet today, with daily publishing
+            coming soon.
           </p>
           <div data-intro data-fade className="mt-9 flex flex-wrap items-center gap-3">
             <Button asChild size="lg">

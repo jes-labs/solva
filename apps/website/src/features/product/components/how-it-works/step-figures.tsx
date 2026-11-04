@@ -173,7 +173,7 @@ export function ProofFigure() {
     <svg
       viewBox="0 0 320 208"
       role="img"
-      aria-label="One proof, built from the commitment and the signed reserve balance, with every balance hidden"
+      aria-label="One proof, built from the commitment and the signed reserve balance, with no balance published"
       className={figureClass}
     >
       <rect x={16} y={24} width={14} height={14} className="fill-text" />
@@ -210,7 +210,7 @@ export function ProofFigure() {
       </text>
 
       <text x={16} y={132} fontSize={10} className="fill-faint">
-        hidden
+        never published
       </text>
       <text x={16} y={150} fontSize={12} className="fill-text">
         every balance on the list

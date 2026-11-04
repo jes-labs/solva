@@ -65,9 +65,9 @@ export function LegalDocument() {
             <RecordExample />
             <p>
               A real coverage record states whether an institution&rsquo;s reported reserves covered
-              what it owed at the last proof. It is daily evidence that an auditor can check. It is
-              not an audit, and it is not a judgement on the quality of an institution or its
-              assets. Read a record as of the ledger it names.
+              what it owed at the last proof. It is evidence that an auditor can check. It is not an
+              audit, and it is not a judgement on the quality of an institution or its assets. Read
+              a record as of the ledger it names.
             </p>
           </LegalSection>
 
@@ -78,8 +78,8 @@ export function LegalDocument() {
               law or our compliance policy does not allow it.
             </p>
             <p>
-              Every registration is assessed case by case, and we may decline or remove an entry
-              when the law or that policy requires it.
+              Registration will be assessed case by case once self-serve onboarding opens, and we
+              may decline or remove an entry when the law or that policy requires it.
             </p>
           </LegalSection>
 

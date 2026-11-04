@@ -47,7 +47,7 @@ export function PartnerVerdicts() {
         id="verdicts-title"
         label="Reading a verdict"
         title="Three verdicts, and what each reader does with them."
-        lead="Every asset has one current verdict. Read it, check the ledger it was made at, and act on one of three states."
+        lead="Each record will carry one of three verdicts. Read it, check the ledger it was made at, and act on it. Verdicts are coming soon: today a reader gets the verified totals and works out the verdict itself."
       />
       <div className="mt-14 border-t border-line">
         {VERDICTS.map((verdict) => (
@@ -68,7 +68,7 @@ export function PartnerVerdicts() {
           </div>
         ))}
       </div>
-      <Provenance className="mt-6" parts={["One verdict per asset", "Read from Stellar"]} />
+      <Provenance className="mt-6" parts={["Coming soon", "One verdict per record"]} />
     </Chapter>
   );
 }

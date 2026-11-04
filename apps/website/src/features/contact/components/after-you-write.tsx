@@ -11,7 +11,7 @@ const STEPS: readonly NextStep[] = [
   },
   {
     title: "Your first record, proven on Stellar",
-    body: "We connect your reserve source and publish the first proof. Your holders can read the result the same day.",
+    body: "We plan your reserve source together and publish your first proof on Stellar Testnet. Connections to real custodians and a public page for holders are coming soon.",
   },
 ];
 

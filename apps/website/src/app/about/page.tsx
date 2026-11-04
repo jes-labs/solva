@@ -20,7 +20,7 @@ export default function AboutPage() {
       <PageOpening
         label="About"
         title="Built so the record means something."
-        lead="Solva is an open registry on Stellar where anchors and custodial apps prove, every day, that their reserves cover what they owe. This page says why it exists, how it is run, and where it stands today."
+        lead="Solva is an open registry on Stellar where anchors and custodial apps prove that their reserves cover what they owe, built to publish a record every day. This page says why it exists, how it is run, and where it stands today."
         primary={{ label: "What a record proves", href: routes.trust }}
         secondary={{ label: "Talk to us", href: routes.contact }}
         figure={

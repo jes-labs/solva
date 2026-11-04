@@ -20,13 +20,13 @@ Treat every record on Testnet as a demonstration, not as evidence for a decision
 
 The table shows what happens if each part is wrong or dishonest.
 
-| Part                         | Trusted for                                 | If it is wrong or dishonest                                                                                                                    |
-| ---------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Custodian (reserve source)   | The reserve figure it signs                 | The record is wrong. The proof cannot detect it.                                                                                               |
-| Institution                  | A complete customer list                    | A left-out customer fails the inclusion check.                                                                                                 |
-| Prover                       | Keeping the customer list private           | It cannot make a proof the contract accepts for false figures. It does see the customer list.                                                  |
-| Orchestrator                 | Running cycles, checking reserve signatures | It could pass an unchecked reserve figure to the prover. It cannot publish a record the proof does not support. A missed cycle shows as stale. |
-| Registry contract on Stellar | Checking every proof                        | Its code is open, and anyone can read what it checks.                                                                                          |
+| Part                         | Trusted for                                 | If it is wrong or dishonest                                                                                                                          |
+| ---------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custodian (reserve source)   | The reserve figure it signs                 | The record is wrong. The proof cannot detect it.                                                                                                     |
+| Institution                  | A complete customer list                    | A left-out customer fails the inclusion check.                                                                                                       |
+| Prover                       | Keeping the customer list private           | It cannot make a proof the contract accepts for false figures. It does see the customer list.                                                        |
+| Orchestrator                 | Running cycles, checking reserve signatures | It could pass an unchecked reserve figure to the prover. It cannot publish a record the proof does not support. A missed cycle leaves no new record. |
+| Registry contract on Stellar | Checking every proof                        | Its code is open, and anyone can read what it checks.                                                                                                |
 
 ## What is checked on Stellar
 
@@ -49,7 +49,7 @@ Each institution has its own registry. Only the registry's owner can publish to 
 
 **The passkey smart wallet.** An institution's registry can be owned by a [passkey smart wallet](/docs/build/passkey-wallet). The passkey's private part never leaves the device that holds it, so there is no secret to copy or leak.
 
-**The scoped publishing key.** Cycles run on a schedule, so the orchestrator publishes without a person present. Its key is a signer on the wallet limited to that one registry, and it can authorize nothing else. The passkey stays in control and can remove that signer.
+**The scoped publishing key.** The orchestrator publishes without a person present, for cycles on request and, when its scheduler is turned on, cycles on a schedule. Its key is a signer on the wallet limited to that one registry, and it can authorize nothing else. The passkey stays in control and can remove that signer.
 
 ## Access to the orchestrator
 

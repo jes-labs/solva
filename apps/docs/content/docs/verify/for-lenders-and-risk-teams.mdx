@@ -11,13 +11,13 @@ A record tells you, for one ledger, that reserves were at least what the institu
 
 Read three things from each record:
 
-| Input    | Where it comes from                             | Why it matters                                        |
-| -------- | ----------------------------------------------- | ----------------------------------------------------- |
-| Status   | Covered, short or stale                         | If you accept the token at all                        |
-| Coverage | Reserves divided by what is owed                | How much room there is before the next cycle is short |
-| Age      | The current time minus the record's `timestamp` | How far you are relying on an old answer              |
+| Input    | Where it comes from                              | Why it matters                                        |
+| -------- | ------------------------------------------------ | ----------------------------------------------------- |
+| Status   | Covered, short or stale, worked out by you today | If you accept the token at all                        |
+| Coverage | Reserves divided by what is owed                 | How much room there is before the next cycle is short |
+| Age      | The current time minus the record's `timestamp`  | How far you are relying on an old answer              |
 
-To read them from Stellar, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).
+To read them from Stellar, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar). The registry stores no status. Public record pages <ComingSoon /> will report it for you.
 
 ## A collateral rule
 
@@ -40,9 +40,9 @@ A **haircut** is the discount you apply to collateral's value when you lend agai
 - raise it further, or stop counting the collateral, once the record is older than your limit,
 - stop counting the collateral while the asset is short.
 
-Set the age limit from the institution's cadence. Records are daily by default. Solva's oracle treats a gap of more than 26 hours between cycles as a sign worth flagging.
+Set the age limit from the institution's schedule. Solva is designed for a record every day, and today an institution runs cycles on request or on a daily or hourly schedule. A gap of more than 26 hours after a daily cycle is a sign worth acting on.
 
-A short day leaves no new record on chain, because the registry refuses a proof where reserves are below what is owed. From the contract alone, a short day looks like a stale one, so your rule handles both the same way until a new record arrives.
+A short day leaves no new record on chain, because a cycle with reserves below what is owed is refused. From the contract alone, a short day looks like a stale one, so your rule handles both the same way until a new record arrives.
 
 ## What a record does not cover
 

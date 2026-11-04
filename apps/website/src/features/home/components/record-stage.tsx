@@ -16,7 +16,7 @@ const STEPS = [
   },
   {
     title: "Proof",
-    body: "A zero-knowledge proof shows that the total behind the commitment is at most the signed balance of the reserve accounts, without revealing a single balance.",
+    body: "A proof shows that the total behind the commitment is at most the signed balance of the reserve accounts. No balance is a public input, so none is published.",
   },
   {
     title: "Verify",
@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     title: "Record",
-    body: "The result is written once: covered, short or stale, with the ledger it was checked at. Anyone can read it, and nobody can edit it.",
+    body: "The verified totals are written once, with the ledger they were checked at. Anyone can read them, and nobody can edit them. Covered, short and stale labels on each record are coming soon.",
   },
 ] as const;
 
@@ -58,8 +58,8 @@ export function RecordStage() {
             </h2>
           </div>
           <p className="max-w-md text-body text-sec">
-            The same five steps run every day for every asset on the record. Scroll through them, or
-            pick a step.
+            The same five steps are designed to run every day for every asset. On Testnet today a
+            cycle runs on request. Scroll through them, or pick a step.
           </p>
         </div>
 

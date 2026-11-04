@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: "For custodial apps",
   description:
-    "Prove that your reserves cover every customer balance you hold on Stellar, and let each customer confirm their own was counted, without publishing anyone's.",
+    "Prove that your reserves cover the customer balances you hold on Stellar, and let each customer confirm their own was counted, without publishing a list of balances.",
   alternates: { canonical: routes.custodialApps },
 };
 
@@ -25,7 +25,7 @@ export default function CustodialAppsPage() {
       <PageOpening
         label="For custodial apps and exchanges"
         title="Prove you can repay every customer."
-        lead="Show that your reserves cover every balance you hold for customers, and let each customer confirm their own was counted, without publishing anyone's balance."
+        lead="Show that your reserves cover the balances you hold for customers, and let each customer confirm their own was counted, without publishing a list of balances. Today a proof covers up to 8 balances; proofs over your full customer list are coming soon."
         primary={{ label: "Talk to us", href: contactHref }}
         secondary={{ label: "See it work", href: routes.demo }}
         figure={<InclusionCheck />}

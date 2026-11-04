@@ -3,19 +3,19 @@ import { Chapter, ChapterHead } from "@/components/ui/ledger";
 const PROMISES = [
   {
     title: "Solva never holds your funds",
-    body: "Your reserves stay in your own reserve accounts, wherever you keep them. Solva works from the signed reserve balance and the supply on Stellar, and has no way to move money.",
+    body: "Your reserves stay in your own reserve accounts, wherever you keep them. Solva works from the signed reserve balance, and has no way to move money.",
   },
   {
     title: "Solva never publishes a customer's balance",
-    body: "The record shows totals for each asset. A customer who runs the check sees only their own balance, and no list of customers is ever published.",
+    body: "The record shows totals only. No customer is named and no list of balances is ever published. A customer's own check shows unnamed subtotals, including one neighbouring balance.",
   },
   {
     title: "Solva never rounds coverage up",
-    body: "The percentage is cut off at two decimals. A reserve that is 99.999% of what is owed reads as 99.99%, and the record says short.",
+    body: "The percentage is cut off at two decimals. A reserve that is 99.999% of what is owed reads as 99.99%, and no proof of coverage can be made.",
   },
   {
     title: "Solva never edits a record",
-    body: "Each result is written at a ledger and stays there. The next proof adds the next result, and a missed proof shows as stale instead of disappearing.",
+    body: "Each result is written at a ledger and stays there. The next proof adds the next result. Showing a missed proof as stale is coming soon.",
   },
 ] as const;
 

@@ -9,7 +9,7 @@
 </pre>
 
 <strong>Reserve coverage for anchors and custodial apps on Stellar.</strong>
-<code>reserves ≥ liabilities</code>, proven in zero knowledge, without revealing a balance.
+<code>reserves ≥ liabilities</code>, proven on Stellar without publishing a customer balance.
 
 </div>
 
@@ -25,13 +25,13 @@
 [![gRPC](https://img.shields.io/badge/gRPC-protobuf-244c5a?logo=grpc&logoColor=white)](https://grpc.io)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
 
-Solva is an open reserve-coverage registry on Stellar for anchors and custodial apps. Each proof cycle publishes a zero-knowledge proof that an institution's reserves cover what it owes its customers (`R >= L`), without revealing any customer balance. A scheduler runs the cycle on a fixed interval, and anyone can read the record on Stellar.
+Solva is an open reserve-coverage registry on Stellar for anchors and custodial apps. Each proof cycle publishes a proof that an institution's reserves cover what it owes its customers (`R >= L`), without publishing any customer balance. The proof system's zero-knowledge (hiding) mode is in development. Cycles run on request through the API, or on a fixed interval when the scheduler is turned on. Daily scheduled publishing for live institutions is coming soon. Anyone can read the record on Stellar.
 
-An audit samples a few accounts, takes weeks, and describes a day that has already passed. Solva adds a proof that can run every day between audits. Reserves are attested at the source through custodian-signed balances or on-chain holdings. Liabilities are committed into a Poseidon2 Merkle Sum Tree. A Noir circuit proves the relation `R >= L`, and a Soroban contract verifies the proof on-chain using the BN254 and Poseidon2 host functions added in Stellar Protocol 25 (X-Ray).
+An audit samples a few accounts, takes weeks, and describes a day that has already passed. Solva adds a proof that can run every day between audits. Reserves are attested at the source through custodian-signed balances. Reading reserves on chain is in development. Liabilities are committed into a Poseidon2 Merkle Sum Tree. A Noir circuit proves the relation `R >= L`, and a Soroban contract verifies the proof on-chain using the BN254 and Poseidon2 host functions added in Stellar Protocol 25 (X-Ray).
 
-The proof reveals nothing about who owns what. The public sees only the totals and the commitment root, and customers can check that their own balance is included in the committed tree. Selective disclosure, a scoped viewing key for a supervisor or auditor, is on the roadmap and not yet built.
+The public sees only the totals and the commitment root; no name or balance is published. Customers can check that their own balance is in the committed tree, and the check also shows unnamed subtotals of nearby entries, including one neighbouring balance. Hiding mode is in development, and selective disclosure through a scoped viewing key for an auditor is coming soon.
 
-**Live demo:** run the full flow on Stellar Testnet at **[joinsolva.xyz/demo](https://www.joinsolva.xyz/demo)**: connect a mock custodian, generate a zero-knowledge proof, publish it on-chain, and check a customer's inclusion.
+**Live demo:** run the full flow on Stellar Testnet at **[joinsolva.xyz/demo](https://www.joinsolva.xyz/demo)**: connect a mock custodian, generate a proof, publish it on-chain, and look up a customer's inclusion path for the published proof. Running that check against the contract from the demo is coming soon; the contract's `verify_inclusion` and the SDK's `verifyInclusion` do it today.
 
 **Demo video:** [watch the walkthrough](https://www.youtube.com/watch?v=fDMml7nLFHU).
 
@@ -62,7 +62,7 @@ flowchart TB
     PROVER["Prover · Rust<br/>Poseidon2 Merkle Sum Tree<br/>Noir / UltraHonk proof generation"]
     SANDBOX["Sandbox · Go<br/>mock custodian<br/>OAuth + ECDSA signed balances"]
     CONTRACT["proof-registry · Soroban<br/>UltraHonk verify · BN254 + Poseidon2<br/>registry + inclusion"]
-    ORACLE["Oracle · TypeScript<br/>MCP coverage oracle · anomaly agent"]
+    ORACLE["Oracle (coming soon) · TypeScript<br/>MCP coverage oracle · anomaly agent"]
 
     PG[("PostgreSQL<br/>proofs · liabilities · audit log")]
     REDIS[("Redis<br/>latest proof · idempotency lock")]
@@ -110,7 +110,7 @@ Postgres stores proofs, liabilities, and the audit log. Redis caches the latest 
 4. The prover builds the Poseidon2 Merkle Sum Tree, generates the Noir/UltraHonk proof, and returns the proof, the public inputs, and the serialized tree.
 5. The orchestrator publishes the proof to the Soroban `proof-registry` contract, which verifies it on-chain and stores the root and totals.
 6. The proof and tree are persisted to an append-only audit log. The latest proof is cached in Redis.
-7. The web app reads the latest proof, customers check inclusion on-chain, and the oracle answers coverage queries.
+7. The web app reads the latest proof, and customers can check inclusion on-chain with `verify_inclusion`. The MCP oracle, which answers coverage queries, is coming soon.
 
 ## What is real, and what is simulated
 
@@ -122,7 +122,7 @@ The operator console (`apps/web`) is partly illustrative: the passkey wallet, pu
 
 ## Passkey smart wallet
 
-Institutions do not hold private keys. An operator signs in with a passkey, and that passkey controls a Soroban smart wallet that owns the institution's proof registry. Publishing is owner-gated through `owner.require_auth()`, so every proof is authorized by the wallet. For continuous publishing, the operator grants the orchestrator's Ed25519 key as a signer scoped to that one registry, so the service can publish and nothing else. The passkey stays the root of authority and can revoke that signer at any time. The full model is in the [passkey smart wallet](apps/docs/content/docs/passkey-wallet.mdx) page.
+Institutions do not hold private keys. An operator signs in with a passkey, and that passkey controls a Soroban smart wallet that owns the institution's proof registry. Publishing is owner-gated through `owner.require_auth()`, so every proof is authorized by the wallet. For continuous publishing, the operator grants the orchestrator's Ed25519 key as a signer scoped to that one registry, so the service can publish and nothing else. The passkey stays the root of authority and can revoke that signer at any time. The full model is in the [passkey smart wallet](apps/docs/content/docs/build/passkey-wallet.mdx) page.
 
 ## Repository layout
 
@@ -263,7 +263,7 @@ ORCHESTRATOR_URL=http://localhost:8080 SANDBOX_URL=http://localhost:8090 \
   pnpm --filter @solva/website dev
 ```
 
-Open `http://localhost:3000/demo`, connect the mock custodian, and run a cycle. Try the three scenarios: `solvent` and `near-breach` publish a proof, `insolvent` is refused on-chain. You can also check a customer's inclusion against the published proof, and open the transaction on the public explorer.
+Open `http://localhost:3000/demo`, connect the mock custodian, and run a cycle. Try the three scenarios: `solvent` and `near-breach` publish a proof, `insolvent` is refused on-chain. You can also look up a customer's inclusion path for the published proof, and open the transaction on the public explorer.
 
 ### Other commands
 
@@ -280,7 +280,7 @@ Protocol overview, quickstart, SDK reference, and the sandbox guide live in [Doc
 
 ## Project status
 
-Built for the Stellar Real-World ZK hackathon. Running on Stellar Testnet today: the Noir/UltraHonk proving pipeline, the Soroban on-chain verifier, per-institution multi-tenancy, and passkey smart-wallet publishing. Try it at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo). The reserve source in the demo is a mock custodian sandbox, described above in "What is real, and what is simulated". Next: real custodian and on-chain reserve integration, a production-data console, a security audit, and Mainnet. Open work is tracked in the [issues](https://github.com/jes-labs/solva/issues).
+Built for the Stellar Real-World ZK hackathon. Running on Stellar Testnet today: the Noir/UltraHonk proving pipeline, the Soroban on-chain verifier, per-institution multi-tenancy, and passkey smart-wallet publishing. Try it at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo). The reserve source in the demo is a mock custodian sandbox, described above in "What is real, and what is simulated". Coming soon: real custodian connections, `is_covered` for contracts, public record pages, an npm package, proofs beyond 8 balances and 4 reserve figures, an independent security audit, and Mainnet. In development: reserves read on chain and hiding proofs. Open work is tracked in the [issues](https://github.com/jes-labs/solva/issues).
 
 ## Contact
 

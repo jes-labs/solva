@@ -17,7 +17,7 @@ export default function HowItWorksPage() {
       <PageOpening
         label="How it works"
         title="How a coverage record is made."
-        lead="Solva measures what an anchor or custodial app holds against what it owes, asks a contract on Stellar to check the proof, and writes the result where anyone can read it. Five steps, every day, for every asset."
+        lead="Solva measures what an anchor or custodial app holds against what it owes, asks a contract on Stellar to check the proof, and writes the result where anyone can read it. Five steps for every asset, designed to run every day. Scheduled daily publishing is coming soon; on Testnet today a cycle runs on request."
         primary={{ label: "See it work", href: routes.demo }}
         secondary={{ label: "Talk to us", href: routes.contact }}
         figure={<StepsSeal />}

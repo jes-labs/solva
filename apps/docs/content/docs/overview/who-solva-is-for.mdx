@@ -9,11 +9,11 @@ Two kinds of **institution** publish records on Solva: anchors and custodial app
 
 An **anchor** issues a fiat-backed token on Stellar, such as USDC, EURC or ARST, and redeems it for the underlying money.
 
-The token supply is already public on Stellar, and the reserves behind it are not. With Solva, an anchor publishes a daily record that its reserves cover what it owes its holders. The record comes from a proof checked on Stellar, not from a statement the anchor writes itself.
+The token supply is already public on Stellar, and the reserves behind it are not. With Solva, an anchor publishes a record each cycle that its reserves cover what it owes its holders. The record comes from a proof checked on Stellar, not from a statement the anchor writes itself.
 
 What an anchor gets:
 
-- A dated record for each asset, every day, tied to a Stellar ledger.
+- A dated record for each asset at every cycle, tied to a Stellar ledger.
 - A record that partners read without asking the anchor each time.
 - A public record page <ComingSoon /> it can link from its `stellar.toml`.
 
@@ -27,7 +27,9 @@ What a custodial app gets:
 
 - A way to show customers and partners that it can cover every balance, without exposing any of them.
 - A check each customer can run on their own balance.
-- Daily evidence its auditor can use between audits.
+- Regular evidence its auditor can use between audits.
+
+A proof holds up to eight balances and four reserve figures today. Larger proofs <ComingSoon /> hold a full customer list.
 
 ## Partners who rely on them
 
@@ -38,7 +40,7 @@ Partners make decisions that depend on an institution's reserves. They read the 
 | Exchanges listing a token       | Check coverage before listing, and keep checking while the token is listed           |
 | Lenders taking it as collateral | Accept the asset while it is covered; pause new borrowing while it is short or stale |
 | Wallets                         | Show coverage beside a balance, and show stale as unknown                            |
-| Auditors                        | Collect a dated record for every day between audits, and see any missed day          |
+| Auditors                        | Collect a dated record for every cycle between audits, and see any gap               |
 
 A contract can read the record too. `is_covered` <ComingSoon /> answers in one call whether an asset is covered, so a lending pool can check before each deposit.
 

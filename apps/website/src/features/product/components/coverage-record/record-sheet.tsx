@@ -30,12 +30,12 @@ export function RecordSheet() {
           </span>
         </span>
       ),
-      note: "The token and its issuing account on Stellar. One record per asset, never a blended figure.",
+      note: "The token and its issuing account on Stellar. One registry per institution today. Separate records for each asset are coming soon, never a blended figure.",
     },
     {
       label: "Owed",
       value: <span data-count>{formatAmount(record.owed, record.decimals)}</span>,
-      note: "The supply of the token, read from Stellar at the ledger named below. For a custodial app, the total of the customer balances it committed that day.",
+      note: "Today, the total of a stored list of balances: an anchor's holder balances, which add up to the supply, or a custodial app's customer balances. Reading an anchor's supply from Stellar at the ledger named below is coming soon.",
     },
     {
       label: "Held",
@@ -55,7 +55,7 @@ export function RecordSheet() {
     {
       label: "State",
       value: <StateStamp state={record.state} />,
-      note: "Covered, short or stale. Nothing in between, and never shown by colour alone.",
+      note: "Covered, short or stale. Nothing in between, and never shown by colour alone. Coming soon.",
     },
     {
       label: "Ledger",
@@ -65,12 +65,12 @@ export function RecordSheet() {
     {
       label: "Proven",
       value: record.provenAgo,
-      note: "How old the latest proof is. Once it passes the agreed window, the state turns stale by itself.",
+      note: "How old the latest proof is. Once it passes the agreed window, the state will turn stale by itself. Coming soon.",
     },
     {
       label: "Schedule",
       value: "Daily, 06:00 UTC",
-      note: "The cadence agreed with the institution. Daily by default.",
+      note: "The cadence agreed with the institution. Daily by default. Scheduled publishing is coming soon.",
     },
   ];
 
@@ -80,7 +80,7 @@ export function RecordSheet() {
         id="sheet-title"
         label="Field by field"
         title="Ten lines, and what stands behind each."
-        lead="Supply is read from Stellar, reserves are signed by the account that holds them, and a contract on Stellar writes the result every morning. Nothing on this sheet is typed in by hand."
+        lead="Reserves are signed by the account that holds them, and a contract on Stellar checks the proof before the result is written. This example shows the full record as designed; states, supply read from Stellar and the daily schedule are coming soon."
         align="end"
       />
       <Ruled marks className="mt-14 bg-bg">

@@ -23,7 +23,7 @@ export function CustodyCompare() {
         id="compare-title"
         label="Alongside your auditor"
         title="A monthly attestation, and a record every day."
-        lead="Most custodial apps publish an attestation a few times a year. Keep it. This is what changes, counted for one asset over one year, when a record also lands every day."
+        lead="Most custodial apps publish an attestation a few times a year. Keep it. This is what changes, counted for one asset over one year, once a record also lands every day. Daily publishing is coming soon."
         align="end"
       />
       <table className="mt-14 w-full border border-line text-left">

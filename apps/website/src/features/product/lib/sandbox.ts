@@ -57,8 +57,8 @@ export const STEPS = [
   },
   {
     id: "verify",
-    title: "Check it on Stellar",
-    summary: "Read the published proof back from the contract.",
+    title: "Check the published record",
+    summary: "Read the published totals back and check that reserves cover what is owed.",
   },
   {
     id: "inclusion",
@@ -208,14 +208,14 @@ export function verifyLines(proof: ProofDTO): { covers: boolean; lines: LogLine[
   return {
     covers,
     lines: [
-      { kind: "info", text: "get_latest_proof  →  read from the registry" },
+      { kind: "info", text: "latest proof  →  read from the orchestrator's copy of the record" },
       {
         kind: "data",
         text: `R=${commas(proof.reserves_total)}  L=${commas(proof.liabilities_total)}`,
       },
       covers
-        ? { kind: "ok", text: "R ≥ L confirmed on Stellar. The record reads covered." }
-        : { kind: "warn", text: "R < L on Stellar. The record reads short." },
+        ? { kind: "ok", text: "R ≥ L. The published record covers what is owed." }
+        : { kind: "warn", text: "R < L. Reserves do not cover what is owed." },
     ],
   };
 }
@@ -234,7 +234,7 @@ export function inclusionLines(response: {
     },
     {
       kind: "ok",
-      text: `Counted in proof #${response.chainProofId ?? "?"}. Checkable on Stellar, with no other balance revealed.`,
+      text: `Counted in proof #${response.chainProofId ?? "?"}. Anyone can check this path on Stellar with verify_inclusion. No customer is named.`,
     },
   ];
 }

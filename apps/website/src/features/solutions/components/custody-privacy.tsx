@@ -19,7 +19,7 @@ const GROUPS = [
     rows: [
       { item: "The total you owe customers", who: "Everyone" },
       { item: "Reserves held for the asset", who: "Everyone" },
-      { item: "Covered, short or stale, with the percentage", who: "Everyone" },
+      { item: "Covered, short or stale, with the percentage (coming soon)", who: "Everyone" },
       { item: "The Stellar ledger each proof is tied to", who: "Everyone" },
     ],
   },
@@ -32,7 +32,7 @@ export function CustodyPrivacy() {
         id="privacy-title"
         label="What leaves your systems"
         title="You publish one commitment, never a balance."
-        lead="Each day you commit your customer balances as one value and prove that the total behind it is covered. The commitment, the totals and the result are public. The list itself never is."
+        lead="Each proof commits your customer balances as one value and shows that the total behind it is covered. The commitment, the totals and the result are public. The list itself never is. Today Solva holds the list and passes it to its prover over a private connection."
       />
       <div data-rows className="mt-14 grid border border-line lg:grid-cols-2">
         {GROUPS.map((group) => (

@@ -19,7 +19,7 @@ export default function TrustPage() {
       <PageOpening
         label="Trust"
         title="What a record proves, and what it does not."
-        lead="Written for the person who has to sign off on relying on a record. Every claim on this page has a stated limit, and the verifier that checks each proof is linked so anyone can repeat the check."
+        lead="Written for the person who has to sign off on relying on a record. Every claim on this page has a stated limit, and the verifier that checks each proof is linked, so anyone can open the transaction where the contract verified it and rerun the open-source verifier on the same proof."
         primary={{ label: "Start with what is proven", href: "#proven" }}
         secondary={{ label: "Ask a question", href: routes.contact }}
         figure={
@@ -35,8 +35,8 @@ export default function TrustPage() {
       <Close
         readers={{
           label: "For auditors",
-          title: "Daily evidence for the audit file.",
-          body: "Read a record the way an auditor would: the ledger, the proof, the verifier and a year of history, one dated row per day.",
+          title: "Evidence for the audit file.",
+          body: "Read a record the way an auditor would: the ledger, the proof and the verifier. Daily history and a CSV export for the audit file are coming soon.",
           action: { label: "The coverage record", href: routes.coverageRecord },
         }}
       />

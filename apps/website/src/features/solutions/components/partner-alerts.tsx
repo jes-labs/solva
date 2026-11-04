@@ -31,7 +31,7 @@ export function PartnerAlerts() {
           id="alerts-title"
           label="Alerts"
           title="Know the moment an asset turns."
-          lead="Partners watch the assets they hold or accept, and act the moment one turns short or stale, before their own customers start asking."
+          lead="Partners watch the assets they hold or accept, and act the moment one turns short or stale, before their own customers start asking. Alerts are coming soon."
         />
         <div className="ruled-marks relative border border-line bg-bg">
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-3">

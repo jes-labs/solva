@@ -25,7 +25,7 @@ No two institutions share a registry, so one institution cannot publish into ano
 
     Open the console at [app.joinsolva.xyz](https://app.joinsolva.xyz) and select **Sign in with passkey**. Your device asks you to create a passkey with Face ID, Touch ID, Windows Hello or a similar authenticator.
 
-    On first sign-in the console then deploys your passkey smart wallet. The wallet's address is derived from the passkey, and the passkey's P-256 key becomes its first signer. The console shows **Provisioning your wallet** while this runs. No seed phrase is created, and nothing is stored on a server.
+    On first sign-in the console then deploys your passkey smart wallet. The wallet's address is derived from your passkey's credential and this browser's deployer key, and the passkey's P-256 key becomes its first signer. The console shows **Provisioning your wallet** while this runs. No seed phrase is created, and nothing is stored on a server.
 
     The console remembers your wallet in this browser, so sign in from the same browser each time.
 
@@ -41,9 +41,9 @@ No two institutions share a registry, so one institution cannot publish into ano
     - the company registration number,
     - a compliance contact name and work email.
 
-    Select **Submit for review**. Your application moves to **under review**, and the contact receives a confirmation email.
+    Select **Submit for review**. The contact receives a confirmation email, and the console shows **under review** in this browser.
 
-    Self-serve onboarding <ComingSoon /> includes a reviewed KYB: a Solva reviewer checks the details, then approves the institution or asks for changes. An approval email follows, and the console opens. If the reviewer asks for changes, the form returns with a notice, and you resubmit.
+    Reviewed KYB <ComingSoon /> comes with self-serve onboarding: a Solva reviewer checks the details, then approves the institution or asks for changes. An approval email follows, and the console opens. If the reviewer asks for changes, the form returns with a notice, and you resubmit.
 
     <Callout type="warn">
       The review is a stand-in. The console shows **Simulate reviewer approval**, which approves the institution in your browser only. Use it to continue on Testnet.
@@ -72,7 +72,7 @@ No two institutions share a registry, so one institution cannot publish into ano
     recorded contract_id on tenant <tenant-id>
     ```
 
-    Self-serve onboarding also deploys the registry from the console, with no command to run.
+    Self-serve onboarding <ComingSoon /> deploys the registry from the console, with no command to run.
 
   </Step>
   <Step>

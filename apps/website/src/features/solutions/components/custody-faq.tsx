@@ -4,7 +4,7 @@ const ITEMS: readonly { question: string; answer: string }[] = [
   {
     question: "Do you publish our customers' balances?",
     answer:
-      "No. Solva publishes the total you owe customers, your reserve balance and the result. No list of balances is published, and each customer can check only their own.",
+      "No. Solva publishes the total you owe customers, your reserve balance and the result. No customer is named and no list of balances is published. A customer's own check shows unnamed subtotals, including one neighbouring balance.",
   },
   {
     question: "What does a customer need to run the check?",
@@ -19,12 +19,12 @@ const ITEMS: readonly { question: string; answer: string }[] = [
   {
     question: "How many customers can one proof cover?",
     answer:
-      "Every customer you hold the asset for. One proof covers the full list of balances, so the total your customers check against is the whole of what you owe in that asset.",
+      "Today a proof covers up to 8 customer balances and 4 reserve figures. Proofs over your full customer list are coming soon, and each proof will then cover every customer you hold the asset for.",
   },
   {
     question: "What does our auditor get?",
     answer:
-      "A dated result for every day, each tied to a Stellar ledger, including the totals your customers check against. Daily evidence to check between audits.",
+      "A dated result for every proof, each tied to a Stellar ledger, including the totals your customers check against: evidence to check between audits. Daily history and a CSV export are coming soon.",
   },
   {
     question: "What does it cost?",

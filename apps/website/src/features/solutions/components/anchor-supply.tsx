@@ -8,7 +8,7 @@ const FIELDS = [
   {
     label: "Owed",
     value:
-      "The token supply at the proof's ledger, read from Stellar. You never have to report it.",
+      "Today, a stored list of holder balances that add up to the supply. Reading the supply from Stellar at the proof's ledger is coming soon.",
   },
   {
     label: "Held",
@@ -18,14 +18,15 @@ const FIELDS = [
   { label: "Coverage", value: "Held divided by owed, never rounded up." },
   {
     label: "State",
-    value: "Covered at or above 100%, short below it, and stale when no proof arrived in time.",
+    value:
+      "Covered at or above 100%, short below it, and stale when no proof arrived in time. Coming soon.",
   },
 ] as const;
 
 const YOUR_PART = [
   "Tell Solva where the reserves for each asset are held.",
   "Report the signed reserve balance on the schedule you agree with us.",
-  "Approve any change to your entry with your team's passkey.",
+  "Own your entry with your team's passkey.",
 ] as const;
 
 interface AnchorSupplyProps {
@@ -39,16 +40,16 @@ export function AnchorSupply({ snapshot }: AnchorSupplyProps) {
         id="supply-title"
         label="Supply and reserves"
         title="Supply is read from the ledger. Reserves are attested."
-        lead="What you owe is the token supply, which is already public on Stellar. What you hold is the signed balance of your reserve accounts. Every day, Solva proves that the second covers the first and writes the result where anyone can read it."
+        lead="What you owe is the token supply, which is already public on Stellar. What you hold is the signed balance of your reserve accounts. Solva proves that the second covers the first and writes the result where anyone can read it. Using the supply read from Stellar in the proof is coming soon; today a pilot loads holder balances that add up to it."
       />
       <div className="mt-14 grid gap-10 lg:grid-cols-[1.25fr_0.75fr] lg:items-start lg:gap-14">
         <div className="flex min-w-0 flex-col gap-6">
           <SupplyFigure snapshot={snapshot} />
           <p className="max-w-[44rem] text-body text-sec">
-            Four fiat tokens issued on Stellar today, with the supply the ledger reports for each.
-            That is the half of the question anyone can already answer. The record adds the other
-            half: whether signed reserves cover that supply, proven every day. The record below is
-            an example of what that looks like.
+            Fiat tokens issued on Stellar today, with the supply the ledger reports for each. That
+            is the half of the question anyone can already answer. The record adds the other half:
+            whether signed reserves cover that supply. The record below is an example of what that
+            looks like.
           </p>
           <RecordDocument record={exampleRecords[0]} className="bg-bg" />
         </div>

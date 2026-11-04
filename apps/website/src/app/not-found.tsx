@@ -19,12 +19,12 @@ const DESTINATIONS = [
   },
   {
     label: "For anchors",
-    note: "Show holders and partners that your token is backed, every day, with supply read from Stellar.",
+    note: "Show holders and partners that your token is backed, checked by a contract on Stellar.",
     href: routes.anchors,
   },
   {
     label: "For custodial apps",
-    note: "Prove you hold enough to repay every customer, and let each one check that their balance was counted.",
+    note: "Prove your reserves cover what you owe customers, and let each one check that their balance was counted.",
     href: routes.custodialApps,
   },
   {

@@ -56,7 +56,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
         title="Write to the team"
         body="The more we know about the asset, the more useful the first reply. Name the token, say roughly how many holders or customers it has, and tell us where the reserves are held."
         record={exampleRecords[0]}
-        caption="What a pilot ends with"
+        caption="Example: what a pilot ends with"
       >
         <ContactForm prefill={prefill} />
       </WriteSection>

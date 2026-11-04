@@ -9,11 +9,11 @@ Each entry uses the same word as the rest of the docs.
 
 **API token.** The secret a caller sends as `Authorization: Bearer <token>` to start a cycle through the orchestrator's REST API.
 
-**Attestation.** A report by an independent accountant on an institution's reserves at a date. A coverage record adds daily evidence between attestations and does not replace them.
+**Attestation.** A report by an independent accountant on an institution's reserves at a date. A coverage record adds regular evidence between attestations and does not replace them.
 
 **Attested reserve source.** A reserve source where the custodian signs each reserve balance. Solva checks the signature, and the trust in the figure sits with the custodian.
 
-**`attestation_of_reserve`.** A SEP-1 field in an issuer's `stellar.toml` that holds a link to evidence of its reserves. An anchor points it at its public record page.
+**`attestation_of_reserve`.** A SEP-1 field in an issuer's `stellar.toml` that holds a link to evidence of its reserves. An anchor points it at its record, on a page of its own site today or on its public record page.
 
 **Audit.** An independent examination of an institution's accounts and controls. A record is evidence an auditor can use. It is not an audit.
 
@@ -21,13 +21,13 @@ Each entry uses the same word as the rest of the docs.
 
 **Coverage.** The state in which reserves are at least what is owed, written `R >= L`. As a percentage, it is reserves divided by what is owed, cut off at two decimals and never rounded up.
 
-**Covered.** The status of an asset whose latest record shows reserves at or above what is owed and is recent.
+**Covered.** The status of an asset whose latest record shows reserves at or above what is owed and is recent. Statuses belong to public record pages. The registry stores none, so today a reader works the status out from the record.
 
 **Custodial app.** A wallet, exchange or other app that holds customer money and moves it over Stellar.
 
 **Custodian.** The firm that holds an institution's reserves and, for an attested source, signs the reserve balances.
 
-**Cycle.** One full run that reads the reserves, takes the customer list, builds a proof and publishes it to the registry. Cycles run on a schedule, daily by default, or on request.
+**Cycle.** One full run that reads the reserves, takes the customer list, builds a proof and publishes it to the registry. Cycles run on request, or on a schedule when the orchestrator's scheduler is turned on: daily for the free plan, hourly for pro.
 
 **Growth bound.** The rule that reserves may grow by at most 10 percent from one record to the next. The first record must state no growth.
 
@@ -81,11 +81,11 @@ Each entry uses the same word as the rest of the docs.
 
 **SEP.** A Stellar Ecosystem Proposal, the name for a Stellar standard.
 
-**Short.** The status of an asset whose latest cycle found reserves below what is owed. The registry refuses such a proof, so no new record is written.
+**Short.** The status of an asset whose latest cycle found reserves below what is owed. Such a cycle is refused, so there is no proof that day and no new record. Shown on public record pages.
 
 **Soroban.** The smart contract platform on Stellar. The registry is a Soroban contract.
 
-**Stale.** The status of an asset with no new record inside the expected window, daily by default. Coverage is unknown until the next record.
+**Stale.** The status of an asset with no new record inside the expected window. Coverage is unknown until the next record. Shown on public record pages; today a reader applies the rule from the record's time.
 
 **`stellar.toml`.** The file an issuer publishes on its domain to describe itself and its tokens, defined by SEP-1.
 
@@ -97,4 +97,4 @@ Each entry uses the same word as the rest of the docs.
 
 **What is owed.** See liabilities.
 
-**Zero-knowledge proof.** A short piece of data that shows a statement is true without revealing the inputs behind it. In Solva, it shows reserves cover what is owed without revealing any balance.
+**Zero-knowledge proof.** A short piece of data that shows a statement is true. In Solva, it shows reserves cover what is owed, and no balance is a public input, so a record reveals none. The proof system's hiding setting <ComingSoon /> also keeps the proof data from revealing anything about the private inputs. See [Privacy](/docs/overview/privacy).
