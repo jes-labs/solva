@@ -1,59 +1,52 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
-import { fontVariables } from "@solva/brand/fonts";
 import { appName, siteUrl } from "@/lib/shared";
+import { body, display, mono } from "./fonts";
 import "./global.css";
 
 const description =
-  "Documentation for Solva: prove reserves meet liabilities on Stellar with the SDK, sandbox, and proof-registry contract.";
+  "Solva documentation: how anchors and custodial apps on Stellar publish proof that their reserves cover what they owe, and how anyone can check it.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Solva docs",
-    template: "%s · Solva docs",
+    default: "Solva Docs",
+    template: "%s · Solva Docs",
   },
   description,
   applicationName: appName,
-  icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon/favicon-16.png", sizes: "16x16", type: "image/png" },
-    ],
-    apple: "/favicon/apple-touch-icon-180.png",
-  },
-  manifest: "/manifest.json",
   openGraph: {
     type: "website",
-    siteName: "Solva docs",
-    title: "Solva docs",
+    siteName: "Solva Docs",
+    title: "Solva Docs",
     description,
-    url: "/",
+    url: "/docs",
     locale: "en_US",
-    images: [{ url: "/social/og-image-1200x630.png", width: 1200, height: 630, alt: "Solva" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solva docs",
+    title: "Solva Docs",
     description,
-    images: ["/social/og-image-1200x630.png"],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A0C06",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0c06" },
+  ],
 };
 
-// Root layout shared by the (marketing) and (docs) groups. Fumadocs's
-// RootProvider wraps next-themes (one toggle drives both surfaces) and the
-// search dialog provider.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={fontVariables} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${display.variable} ${body.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="flex min-h-screen flex-col">
-        <RootProvider>{children}</RootProvider>
+        <RootProvider theme={{ defaultTheme: "dark" }}>{children}</RootProvider>
       </body>
     </html>
   );

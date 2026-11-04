@@ -1,0 +1,15 @@
+{
+  "title": "Build",
+  "pages": [
+    "quickstart",
+    "architecture",
+    "proof-format",
+    "passkey-wallet",
+    "contract-reference",
+    "rest-api",
+    "sdk",
+    "sandbox",
+    "ai-tools",
+    "changelog"
+  ]
+}

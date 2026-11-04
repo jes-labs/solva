@@ -1,0 +1,153 @@
+---
+title: AI tools
+description: Read these docs as Markdown from an AI assistant, and query coverage records with the oracle's two MCP tools.
+---
+
+An AI assistant reads these docs as Markdown. The oracle, an MCP server, answers an assistant's questions about an institution's record.
+
+## These docs as Markdown
+
+Every page is available as plain Markdown, built from the same source as the HTML page.
+
+| URL                                         | What it returns                                                                                            |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `https://docs.joinsolva.xyz/llms.txt`       | An index of every page, with its title, description and a link to its Markdown version.                    |
+| `https://docs.joinsolva.xyz/llms-full.txt`  | Every page in one Markdown file.                                                                           |
+| `https://docs.joinsolva.xyz/docs/<page>.md` | One page. Add `.md` to any page URL, for example `/docs/build/quickstart.md`. The docs home is `/docs.md`. |
+
+Each Markdown page starts with the page title and description. Each HTML page also points to its Markdown version with a `text/markdown` alternate link in its head.
+
+Give an assistant `llms.txt` when it should find the right page itself, and `llms-full.txt` when it should read everything at once.
+
+## Page actions
+
+Under every page title:
+
+- **Copy Markdown** copies the page's Markdown to your clipboard.
+- **Open** shows a menu: Open in GitHub, View as Markdown, Open in Scira AI, Open in ChatGPT, Open in Claude and Open in Cursor. The assistant links open with the prompt "Read `<page URL>`, I want to ask questions about it."
+
+## The oracle
+
+The oracle is an MCP server in `services/oracle`. MCP, the Model Context Protocol, is how an AI assistant calls tools that a server exposes. The oracle exposes two tools about an institution's coverage: `get_solvency` and `get_anomalies`. It runs over stdio.
+
+Answers from a live orchestrator <ComingSoon /> depend on the SDK's orchestrator calls, which the oracle reads through. The tools, their inputs and their outputs are described below as they work once those calls match the orchestrator.
+
+### Run it
+
+From the repository root, build it and point your MCP client at the built server:
+
+```bash
+pnpm exec turbo run build --filter=@solva/oracle
+```
+
+```json title="mcp.json"
+{
+  "mcpServers": {
+    "solva-oracle": {
+      "command": "node",
+      "args": ["/path/to/solva/services/oracle/dist/server.js"],
+      "env": {
+        "SOLVA_NETWORK": "testnet",
+        "SOLVA_ORCHESTRATOR_URL": "http://localhost:8080",
+        "SOLVA_CONTRACT_ID": "CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN"
+      }
+    }
+  }
+}
+```
+
+| Variable                 | Default         | Meaning                                                                                       |
+| ------------------------ | --------------- | --------------------------------------------------------------------------------------------- |
+| `SOLVA_NETWORK`          | `testnet`       | `testnet`, `mainnet` or `local`. Picks the SDK's default endpoints.                           |
+| `SOLVA_ORCHESTRATOR_URL` | the SDK default | Orchestrator the oracle reads stored proofs from.                                             |
+| `SOLVA_RPC_URL`          | the SDK default | Soroban RPC for the on-chain read.                                                            |
+| `SOLVA_CONTRACT_ID`      | none            | A registry to read. When unset, the SDK asks the orchestrator for the institution's registry. |
+| `SOLVA_API_TOKEN`        | none            | Sent as a bearer token on orchestrator calls.                                                 |
+
+### `get_solvency`
+
+Returns whether an institution's reserves cover its liabilities, confirmed by a read of its own registry on Stellar.
+
+**Input**
+
+| Field            | Type                         | Meaning                        |
+| ---------------- | ---------------------------- | ------------------------------ |
+| `institution_id` | string, at least 1 character | The institution's tenant UUID. |
+
+**How it answers.** It reads the institution's latest stored proof through the SDK's `getLatestProof`. It then reads the latest proof from the institution's registry on chain with `getOnChainLatestProof` and checks that `R >= L` there. If the on-chain read fails, it reports `verifiedOnChain: false` instead of an error.
+
+**Output.** One text item holding this JSON:
+
+```json
+{
+  "status": "solvent",
+  "solvent": true,
+  "reservesTotal": "16000000",
+  "liabilitiesTotal": "9000000",
+  "proofId": "1",
+  "verifiedOnChain": true,
+  "asOf": 1793685990
+}
+```
+
+| Field              | Type    | Meaning                                                                      |
+| ------------------ | ------- | ---------------------------------------------------------------------------- |
+| `status`           | string  | `solvent` when covered and confirmed on chain, otherwise `breach`.           |
+| `solvent`          | boolean | `true` only when the on-chain read succeeded and reserves cover liabilities. |
+| `reservesTotal`    | string  | `R`, minor units.                                                            |
+| `liabilitiesTotal` | string  | `L`, minor units.                                                            |
+| `proofId`          | string  | The proof's id.                                                              |
+| `verifiedOnChain`  | boolean | `true` when the on-chain read succeeded and showed `R >= L`.                 |
+| `asOf`             | number  | When the proof was published, Unix seconds.                                  |
+
+The field and value names are the tool's API. In these docs the same idea is called coverage: `solvent: true` means the record shows reserves covering liabilities.
+
+### `get_anomalies`
+
+Returns flags raised across an institution's proof history. It compares each proof with the one before it, using only the public totals and timestamps, so it needs no private data.
+
+**Input**
+
+| Field            | Type                         | Meaning                        |
+| ---------------- | ---------------------------- | ------------------------------ |
+| `institution_id` | string, at least 1 character | The institution's tenant UUID. |
+
+**Output.** One text item holding a JSON array of flags:
+
+```json
+[
+  {
+    "kind": "reserve_drift",
+    "severity": "critical",
+    "proofId": "2",
+    "value": -40.62,
+    "threshold": -10,
+    "message": "Reserves fell 40.62% from the previous cycle.",
+    "detectedAt": 1793772390
+  }
+]
+```
+
+| Field        | Type   | Meaning                                                                        |
+| ------------ | ------ | ------------------------------------------------------------------------------ |
+| `kind`       | string | `reserve_drift`, `liability_spike` or `cycle_timing_gap`.                      |
+| `severity`   | string | `warning` at or past the threshold, `critical` at twice the threshold or more. |
+| `proofId`    | string | The later proof of the two compared.                                           |
+| `value`      | number | The measured change in percent, or the gap in seconds.                         |
+| `threshold`  | number | The threshold crossed. Negative for reserve drift.                             |
+| `message`    | string | A plain sentence describing the flag.                                          |
+| `detectedAt` | number | Publish time of the later proof, Unix seconds.                                 |
+
+The thresholds are `DEFAULT_THRESHOLDS` in `packages/shared-types/src/anomaly.ts`:
+
+| Flag               | Raised when                                                                             | Default                                         |
+| ------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `reserve_drift`    | Reserves fall by at least this percent from the previous proof. A rise never raises it. | 10%                                             |
+| `liability_spike`  | Liabilities rise by at least this percent from the previous proof.                      | 15%                                             |
+| `cycle_timing_gap` | More than this many seconds pass between two proofs.                                    | 93,600 s (26 hours: a daily cycle plus 2 hours) |
+
+Percent changes are computed on the integer totals with `BigInt` and truncated to two decimal places.
+
+A flag needs two proofs to compare, so `get_anomalies` scans the institution's proof history. The example above shows the shape a flag takes. A move from `solvent` (16,000,000) to `near-breach` (9,500,000) is a 40.62% fall, more than twice the 10% threshold, so it is critical.
+
+**Next:** [Changelog](/docs/build/changelog).

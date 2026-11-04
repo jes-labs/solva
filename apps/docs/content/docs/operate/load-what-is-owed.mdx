@@ -1,0 +1,87 @@
+---
+title: Load what is owed
+description: The customer balances a cycle proves against, how each customer is identified by a hash, and the limits per proof today.
+---
+
+Each cycle proves that your reserves cover the total of your customer balances, which Solva calls [what is owed](/docs/overview/what-is-solva). The orchestrator holds the list, one balance per customer, and identifies each customer by a hash.
+
+## What each row holds
+
+| Field              | What it is                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Customer reference | Your own reference for the customer, such as `cust-001`. Use an internal id, not a name, email or account number. |
+| Id hash            | A Poseidon2 hash of the customer reference, as 32 bytes in hex. This is what goes into the proof.                 |
+| Balance            | What you owe the customer, as a whole number of minor units.                                                      |
+
+### Balances in minor units
+
+A balance is a whole number in the smallest unit of the asset. For a dollar token with two decimals, USD 40,000.00 is `4000000`. Never use decimals or floating-point numbers. Each balance must fit in an unsigned 64-bit integer, which is at most 18,446,744,073,709,551,615 minor units. Use the same asset and unit as your reserve figures.
+
+### Why identities never reach the record
+
+The proof commits to your customer list as a **Merkle sum tree**: a tree of hashes in which each leaf is one customer's id hash and balance, and each branch carries the sum of the balances below it. Only the tree's root and the total reach Stellar.
+
+The tree holds the id hash, never the customer reference itself. Nothing on chain names a customer or shows a single balance. A customer who knows their own reference and balance can still [check that they were counted](/docs/verify/check-a-balance-was-counted), using their path through the tree.
+
+## Limits per proof today
+
+| Limit             | Value |
+| ----------------- | ----- |
+| Customer balances | 8     |
+| Reserve figures   | 4     |
+| Tree depth        | 3     |
+
+A cycle with more than 8 customer balances or more than 4 reserve figures fails before any proof is made. Larger proofs <ComingSoon /> raise both limits.
+
+## Load the balances
+
+The console and the API have no upload. An engineer loads the balances into the orchestrator's database, in two tables: `customers` holds each customer reference and its id hash, and `liabilities` holds each balance.
+
+<Steps>
+  <Step>
+    Export your customer balances as reference and balance pairs, in minor units.
+  </Step>
+  <Step>
+    Compute the Poseidon2 id hash of each reference, as up to 32 bytes of hex. Solva ships no tool for this step. The demo uses placeholder hashes such as `0x...01`.
+  </Step>
+  <Step>
+    Insert one `customers` row and one `liabilities` row per customer, under your tenant id.
+
+    ```sql title="load-liabilities.sql"
+    WITH c AS (
+      INSERT INTO customers (tenant_id, external_ref, id_hash) VALUES
+        ('<tenant-id>', 'cust-001', '<id-hash-hex>'),
+        ('<tenant-id>', 'cust-002', '<id-hash-hex>')
+      RETURNING id, external_ref
+    )
+    INSERT INTO liabilities (tenant_id, customer_id, balance)
+    SELECT '<tenant-id>', c.id, v.bal
+    FROM c JOIN (VALUES
+      ('cust-001', 4000000::numeric),
+      ('cust-002', 3000000::numeric)
+    ) AS v(ref, bal) ON c.external_ref = v.ref;
+    ```
+
+  </Step>
+  <Step>
+    Check the total against your books.
+
+    ```sql
+    SELECT SUM(balance) FROM liabilities WHERE tenant_id = '<tenant-id>';
+    ```
+
+  </Step>
+</Steps>
+
+Every cycle reads and adds up all `liabilities` rows for your tenant. When balances change, delete the old rows and insert the new ones, so each cycle proves against the current book and no balance is counted twice.
+
+<Callout type="info">
+  The balances sit in the orchestrator's database and are sent to the prover, the service that
+  builds the proof. They never go on chain.
+</Callout>
+
+## Result
+
+The orchestrator holds your current customer balances, and the next cycle proves your reserves against their total.
+
+**Next:** [Run cycles](/docs/operate/run-cycles).

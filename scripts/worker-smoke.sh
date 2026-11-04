@@ -32,8 +32,10 @@ case "$app" in
     ;;
   docs)
     routes=(
-      "/ 200" "/docs 200" "/docs/architecture 200" "/docs/architecture.md 200"
-      "/docs.md 200" "/api/search?query=proof 200" "/robots.txt 200" "/sitemap.xml 200"
+      "/ 308" "/docs 200" "/docs/overview/what-is-solva 200" "/docs/build/contract-reference 200"
+      "/docs/build/architecture.md 200" "/docs.md 200" "/llms.txt 200" "/llms-full.txt 200"
+      "/api/search?query=coverage 200" "/docs/architecture 308" "/docs/no-such-page 404"
+      "/robots.txt 200" "/sitemap.xml 200"
     )
     ;;
   *)

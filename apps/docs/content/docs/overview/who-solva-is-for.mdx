@@ -1,0 +1,61 @@
+---
+title: Who Solva is for
+description: The institutions that publish coverage records, the partners who rely on them, and the holders who check them.
+---
+
+Two kinds of **institution** publish records on Solva: anchors and custodial apps. Partners and holders read those records. Find your role below.
+
+## Anchors
+
+An **anchor** issues a fiat-backed token on Stellar, such as USDC, EURC or ARST, and redeems it for the underlying money.
+
+The token supply is already public on Stellar, and the reserves behind it are not. With Solva, an anchor publishes a daily record that its reserves cover what it owes its holders. The record comes from a proof checked on Stellar, not from a statement the anchor writes itself.
+
+What an anchor gets:
+
+- A dated record for each asset, every day, tied to a Stellar ledger.
+- A record that partners read without asking the anchor each time.
+- A public record page <ComingSoon /> it can link from its `stellar.toml`.
+
+## Custodial apps
+
+A **custodial app** holds customer money and moves it over Stellar. Wallets and exchanges are the common cases.
+
+A custodial app owes each customer a balance and cannot publish those balances. With Solva, it commits the whole list as one value and proves that the total is covered. Each customer can then check that their own balance was counted, without seeing anyone else's.
+
+What a custodial app gets:
+
+- A way to show customers and partners that it can cover every balance, without exposing any of them.
+- A check each customer can run on their own balance.
+- Daily evidence its auditor can use between audits.
+
+## Partners who rely on them
+
+Partners make decisions that depend on an institution's reserves. They read the same record, for free, without the institution's permission.
+
+| Partner                         | What they do with a record                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------ |
+| Exchanges listing a token       | Check coverage before listing, and keep checking while the token is listed           |
+| Lenders taking it as collateral | Accept the asset while it is covered; pause new borrowing while it is short or stale |
+| Wallets                         | Show coverage beside a balance, and show stale as unknown                            |
+| Auditors                        | Collect a dated record for every day between audits, and see any missed day          |
+
+A contract can read the record too. `is_covered` <ComingSoon /> answers in one call whether an asset is covered, so a lending pool can check before each deposit.
+
+## Token holders
+
+A **holder** is anyone who holds an anchor's token or keeps a balance with a custodial app. A holder can read the latest record and check that their own balance was counted in it, with no account with Solva.
+
+## Next
+
+<Cards>
+  <Card title="Before you start" href="/docs/operate/before-you-start">
+    For operators at an anchor or a custodial app.
+  </Card>
+  <Card title="Find a record" href="/docs/verify/find-a-record">
+    For partners, auditors and holders.
+  </Card>
+  <Card title="Quickstart" href="/docs/build/quickstart">
+    For developers.
+  </Card>
+</Cards>

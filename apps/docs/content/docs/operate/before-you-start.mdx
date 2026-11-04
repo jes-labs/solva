@@ -1,0 +1,71 @@
+---
+title: Before you start
+description: What an anchor or custodial app needs in place, and who does what, before it publishes its first coverage record.
+---
+
+An institution needs five things in place before it sets up Solva: a Stellar account, a reserve source, an export of customer balances, a passkey and an owner for each part of the work. Work through this list once per institution.
+
+Solva runs on Stellar Testnet, and on Mainnet <ComingSoon />.
+
+## What you need
+
+| You need                       | What it is for                                                                                            | Today                                                                                                        |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| A Stellar account              | Your issuing or treasury account. Its home domain serves your `stellar.toml`, where you link your record. | Any account you control. On Testnet, Friendbot funds accounts for free.                                      |
+| A reserve source               | The place your reserve figures come from.                                                                 | A custodian that signs each balance it reports. Reserves held on Stellar <ComingSoon /> are read on chain.   |
+| An export of customer balances | What you owe each customer, as one balance per customer.                                                  | Up to 8 customer balances per proof. Larger proofs <ComingSoon /> lift the limit.                            |
+| A passkey on a device          | Signs you in to the console and controls your institution's wallet.                                       | A device with Face ID, Touch ID, Windows Hello or a similar built-in authenticator, in a browser over https. |
+| The right people               | Each part has an owner. See [Who does what](#who-does-what).                                              | One signed-in owner per institution in the console.                                                          |
+
+### A reserve source that signs its balances
+
+Solva reads reserves from an [attested source](/docs/overview/reserve-sources), a custodian's service that signs each balance it reports. Ask your custodian if it can sign balance statements with a P-256 (secp256r1) key. The exact format is in [Connect a reserve source](/docs/operate/connect-a-reserve-source).
+
+For reserves held in Stellar accounts, a reserve source that reads the balance from the ledger removes the custodian from the path.
+
+### An export of customer balances
+
+The export has one row per customer, with your own reference for that customer and the balance you owe them. Balances are whole numbers in the smallest unit of the asset, such as cents. Reserve figures use the same unit. The format is in [Load what is owed](/docs/operate/load-what-is-owed).
+
+## Who does what
+
+| Role       | Owns                                                                                                                       |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Operations | Runs and schedules cycles. Watches each result and starts the response when coverage drops.                                |
+| Finance    | Owns the reserve figures and the customer balance export. Reconciles the two before each cycle.                            |
+| Compliance | Submits the business verification (KYB). Explains a drop in coverage to holders and partners. Owns the public record link. |
+| Engineer   | Provisions the registry, configures the reserve source and the schedule, and holds the API token.                          |
+
+The console signs in one owner per institution. Team roles <ComingSoon /> (owner, compliance, operator and viewer) give each person only the actions their role needs.
+
+## Limits to plan for
+
+| Limit                         | Value today                                                         |
+| ----------------------------- | ------------------------------------------------------------------- |
+| Customer balances per proof   | 8                                                                   |
+| Reserve figures per proof     | 4                                                                   |
+| Largest single balance        | 18,446,744,073,709,551,615 minor units (an unsigned 64-bit integer) |
+| Reserve growth between cycles | At most 10 percent. The proof requires `10 × R <= 11 × R_prev`.     |
+| Network                       | Stellar Testnet                                                     |
+
+## Check you are ready
+
+<Steps>
+  <Step>Pick the Stellar account whose home domain will carry your `stellar.toml`.</Step>
+  <Step>
+    Confirm with your custodian that it signs balance statements, and get its public key as a PEM
+    file.
+  </Step>
+  <Step>
+    Produce a test export of customer balances in minor units, and check the total against your
+    books.
+  </Step>
+  <Step>Open the console on the device you will use and check that it offers a passkey.</Step>
+  <Step>Name an owner for each role in the table above.</Step>
+</Steps>
+
+## Result
+
+You have everything setup asks for.
+
+**Next:** [Set up your institution](/docs/operate/set-up-your-institution).

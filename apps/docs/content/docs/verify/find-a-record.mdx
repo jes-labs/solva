@@ -1,0 +1,85 @@
+---
+title: Find a record
+description: Go from an institution to the registry contract that holds its coverage records, and confirm the contract is the right one.
+---
+
+To read an institution's record, you need the contract id of its [registry](/docs/overview/what-is-solva). Each institution has its own, and you find the id in a place the institution controls, then confirm it on Stellar.
+
+The Verify section is for anyone who relies on a record without running Solva, from exchanges and lenders to auditors and holders of the token.
+
+## Where an institution publishes its registry
+
+A registry's contract id is a Stellar contract address of 56 characters that starts with `C`. An institution publishes it in one or more of these places.
+
+| Where                                   | What you find                                                                                        |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| The institution's own site or documents | The registry contract id, stated directly.                                                           |
+| The institution's `stellar.toml`        | The `attestation_of_reserve` field for each token, pointing at the institution's record.             |
+| A public record page <ComingSoon />     | The status, coverage and history for each asset, with the registry contract id and the latest proof. |
+
+Two institutions never share a registry, so tokens from several institutions mean several registries to read.
+
+## Find it in stellar.toml
+
+`stellar.toml` is the file an institution publishes at its own domain to describe itself and its tokens. SEP-1, the Stellar standard that sets its format, gives each currency an `attestation_of_reserve` field that holds a URL to evidence of reserves. An anchor points that field at its Solva record.
+
+<Steps>
+  <Step>
+    ### Fetch the file
+
+    The file sits at the same path on every domain. Replace `anchor.example` with the institution's domain:
+
+    ```bash
+    curl -s https://anchor.example/.well-known/stellar.toml
+    ```
+
+  </Step>
+  <Step>
+    ### Find the token
+
+    Look for the `[[CURRENCIES]]` entry whose `code` matches the token you hold or accept. Its `attestation_of_reserve` field is the link to the record:
+
+    ```toml title="stellar.toml"
+    [[CURRENCIES]]
+    code = "ARSK"
+    attestation_of_reserve = "https://joinsolva.xyz/registry/kestrel-anchor/ARSK"
+    ```
+
+    This example uses the address form of a public record page. An institution can also point the field at a page on its own site that names its registry.
+
+  </Step>
+  <Step>
+    ### Read the contract id
+
+    Open the link and note the registry contract id it gives.
+
+  </Step>
+</Steps>
+
+You now have the contract id of the registry for that token.
+
+<Callout type="info">
+  SEP-1 leaves `attestation_of_reserve` as a plain URL with no format, date or status. The proof and
+  its status live in the registry on Stellar, which you read directly.
+</Callout>
+
+## Confirm you have the right contract
+
+A contract id is only as trustworthy as its source. Take it from a channel the institution controls, such as its own domain, its `stellar.toml` or its signed documents. An id passed on by anyone else could point at a registry someone else runs.
+
+Then check the contract on Stellar. A Solva registry answers `get_latest_proof` with a record of four fields. If the call fails with an unknown function, the id is not a Solva registry. If it fails with error 5, the registry exists but has no record yet. See [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).
+
+You can also look the contract up on a Stellar explorer, such as `https://stellar.expert/explorer/testnet/contract/<contract-id>`, to see when it was created and the transactions that published each record.
+
+## Example registries on Testnet
+
+Solva runs on Stellar Testnet. Two example registries hold records from the public demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo). Kestrel Anchor and Solstice Exchange are fictional institutions made up for the demo, and their reserves come from Solva's sandbox, a stand-in for a real custodian.
+
+| Example institution | Kind          | Registry contract                                          |
+| ------------------- | ------------- | ---------------------------------------------------------- |
+| Kestrel Anchor      | Anchor        | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
+| Solstice Exchange   | Custodial app | `CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW` |
+
+The examples in the Verify section use these two registries, and every command works against them as written.
+
+**Next:** [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).

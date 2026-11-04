@@ -1,0 +1,155 @@
+---
+title: Check a balance was counted
+description: How a holder confirms on Stellar that their own balance was in the list a coverage record covered, with the Stellar CLI or the SDK.
+---
+
+A record says that reserves covered everything an institution owed its customers. The [inclusion check](/docs/overview/privacy) lets one holder confirm that their own balance was part of that total, on Stellar, without trusting the institution's word.
+
+<Callout type="info">
+  Holders who do not write code can use the institution's app <ComingSoon /> or its public record
+  page <ComingSoon />, which run the check from an account reference. To watch one run end to end,
+  open the demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo), where an example holder is
+  checked against the sandbox record.
+</Callout>
+
+## What the check proves
+
+Before proving, the institution turns its list of customer balances into a tree of hashes. Each customer is a leaf, a hash of the customer's id hash and balance. Each step up the tree combines two branches and their subtotals. The top of the tree is the [commitment root](/docs/overview/how-solva-works), which the registry stores in the record with the total owed.
+
+Your [inclusion path](/docs/overview/privacy) holds the branch beside yours at each level, with its subtotal. With your leaf and your path, anyone can rebuild the root.
+
+The registry's `verify_inclusion` function does that rebuild on Stellar. It returns `true` only when both of these hold:
+
+- the rebuilt root equals the commitment root stored in the record,
+- the running total at the top equals the record's total owed.
+
+A `true` result means your balance, exactly as given, was in the list that the proof covered with reserves. The institution cannot have counted you at a lower balance, and it cannot have left you out, because a changed or missing leaf rebuilds a different root.
+
+A `false` result means the details do not match that record. Check that you used the right record and copied every value exactly. If it still fails, raise it with the institution.
+
+## What the check reveals
+
+The check never reveals another customer's name, id or account. The path holds only hashes and subtotals of neighbouring branches, and the check is a read that writes nothing to the ledger.
+
+At the current tree size of 8 customers, the first step of a path is a single neighbouring leaf, so its subtotal is one other customer's balance, without saying whose. Higher steps are sums of several balances. See [Privacy](/docs/overview/privacy).
+
+## What you need
+
+| Item              | What it is                                                                                      | Where it comes from                         |
+| ----------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Registry contract | The institution's registry contract id                                                          | [Find a record](/docs/verify/find-a-record) |
+| Proof id          | The number of the record you are checking against, in the registry                              | The institution                             |
+| Id hash           | The Poseidon2 hash of your customer reference, your leaf's label in the tree, 32 bytes in hex   | The institution                             |
+| Balance           | Your balance as committed, in the asset's smallest unit                                         | The institution                             |
+| Inclusion path    | One step per level of the tree, with the sibling's hash, its subtotal and which side it sits on | The institution                             |
+
+The institution serves these from Solva's [orchestrator](/docs/build/architecture) at `GET /v1/proofs/inclusion/{proof}:{id-hash}`. `{proof}` is the orchestrator's id for the proof, and `{id-hash}` is your id hash. The response is JSON:
+
+| Field              | Meaning                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| `proof_id`         | The proof id in the registry, the number `verify_inclusion` takes                              |
+| `customer_id_hash` | Your id hash, as `0x` followed by 64 hex characters                                            |
+| `balance`          | Your committed balance, as a decimal string                                                    |
+| `root_hash`        | The commitment root the path leads to, as `0x` followed by 64 hex characters                   |
+| `path`             | The steps, each with `hash`, `sum` and `sibling_is_left`, in the same shape the contract takes |
+
+The steps below assume you saved that response as `inclusion.json`. They use the Solstice Exchange example registry.
+
+## Run the check with the Stellar CLI
+
+You need the Stellar CLI, a funded Testnet key named `reader` (see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar#before-you-start)), and `jq` to read the JSON file.
+
+<Steps>
+  <Step>
+    ### Confirm the root matches the record
+
+    Read the record your path points at, and compare its `root_h` with the `root_hash` in your file:
+
+    ```bash
+    stellar contract invoke \
+      --id CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW \
+      --network testnet \
+      --source-account reader \
+      -- get_proof --id "$(jq -r .proof_id inclusion.json)"
+    ```
+
+    The registry prints the root without the `0x` prefix. The two values must be the same 64 characters.
+
+  </Step>
+  <Step>
+    ### Call verify_inclusion
+
+    The CLI takes hashes as bare hex, so the command strips the `0x` prefix from each one:
+
+    ```bash
+    stellar contract invoke \
+      --id CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW \
+      --network testnet \
+      --source-account reader \
+      -- verify_inclusion \
+      --id "$(jq -r .proof_id inclusion.json)" \
+      --id_hash "$(jq -r '.customer_id_hash | ltrimstr("0x")' inclusion.json)" \
+      --balance "$(jq -r .balance inclusion.json)" \
+      --path "$(jq -c '[.path[] | .hash |= ltrimstr("0x")]' inclusion.json)"
+    ```
+
+  </Step>
+  <Step>
+    ### Read the answer
+
+    The contract prints one word:
+
+    ```text
+    true
+    ```
+
+    `true` means your balance was counted in that record. `false` means the details given do not match it.
+
+  </Step>
+</Steps>
+
+If the proof id does not exist in the registry, the call fails with error 5, `ProofNotFound`, instead of returning an answer.
+
+## Run the check with the SDK
+
+The SDK's `verifyInclusion` calls the same contract function. Given the full details as an object, it goes straight to the registry and makes no call to Solva's API. It takes each step's side as `position`, which is `"left"` when the sibling sits on the left. Hashes may keep their `0x` prefix.
+
+```ts title="check-balance.ts"
+import { readFile } from "node:fs/promises";
+import { Solva } from "@solva/sdk-ts";
+
+const inclusion = JSON.parse(await readFile("inclusion.json", "utf8"));
+
+const solva = new Solva({
+  network: "testnet",
+  tenant: "22222222-2222-2222-2222-222222222222",
+  endpoints: { contractId: "CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW" },
+});
+
+const result = await solva.verifyInclusion({
+  proofId: inclusion.proof_id,
+  customerIdHash: inclusion.customer_id_hash,
+  balance: inclusion.balance,
+  path: inclusion.path.map((node) => ({
+    hash: node.hash,
+    sum: node.sum,
+    position: node.sibling_is_left ? "left" : "right",
+  })),
+});
+
+console.log(result);
+```
+
+The result names the record it checked against:
+
+```json
+{ "included": true, "proofId": "4" }
+```
+
+`verifyInclusion` also accepts a reference string, `"<proof>:<id-hash>"`. The SDK then fetches the path from the orchestrator first, which needs access to the institution's orchestrator. Passing the full object keeps the check between you and Stellar.
+
+## What a holder still has to trust
+
+The check proves your balance was in the list. It does not prove that the reserves figure is honest, which rests on the custodian's signature. See [Where reserve figures come from](/docs/overview/reserve-sources).
+
+**Next:** [For exchanges and wallets](/docs/verify/for-exchanges-and-wallets).

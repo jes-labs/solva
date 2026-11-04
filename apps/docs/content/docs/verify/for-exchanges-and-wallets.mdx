@@ -1,0 +1,75 @@
+---
+title: For exchanges and wallets
+description: Use coverage records in listing reviews, treasury checks and what you show your users, and know which signs to watch.
+---
+
+An exchange or wallet that lists, holds or displays an anchor's token, or keeps balances at a custodial app, can use the issuer's record in a listing review and a treasury check, and watch it for warning signs.
+
+## In a listing review
+
+Before you list a token, confirm that its issuer publishes coverage and that the record says what you expect.
+
+1. Find the registry contract id in a channel the issuer controls, such as its `stellar.toml`. See [Find a record](/docs/verify/find-a-record).
+2. Read the latest record and confirm it is recent. See [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).
+3. Read the history of records to see how long the issuer has published, and how regularly. See [For auditors](/docs/verify/for-auditors) for the command.
+4. Read where the reserve figures come from, and decide if that source meets your bar. See [Where reserve figures come from](/docs/overview/reserve-sources).
+
+A record covers one registry. For a token the issuer has on several networks or with several custodians, ask which reserves the registry counts.
+
+## In a treasury check
+
+If you hold an anchor's token on your own balance sheet or keep funds at a custodial app, read its record on a schedule. Each read is free and needs no permission from the institution.
+
+This check reads the latest record, works out how old it is, and computes coverage in basis points (hundredths of a percent) with integer arithmetic:
+
+```ts title="treasury-check.ts"
+import { Solva } from "@solva/sdk-ts";
+
+const MAX_AGE_SECONDS = 26 * 60 * 60;
+
+const solva = new Solva({
+  network: "testnet",
+  tenant: "22222222-2222-2222-2222-222222222222",
+  endpoints: { contractId: "CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW" },
+});
+
+const record = await solva.getOnChainLatestProof();
+const reserves = BigInt(record.reservesTotal);
+const owed = BigInt(record.liabilitiesTotal);
+const ageSeconds = Math.floor(Date.now() / 1000) - record.timestamp;
+const coverageBasisPoints = (reserves * 10000n) / owed;
+const fresh = ageSeconds <= MAX_AGE_SECONDS;
+
+console.log({ fresh, ageSeconds, coverageBasisPoints });
+```
+
+Against the Solstice Exchange example registry, a run printed:
+
+```ts
+{ fresh: true, ageSeconds: 9241, coverageBasisPoints: 17777n }
+```
+
+`17777n` basis points is 177.77 percent. The 26-hour limit is a daily cycle plus a two-hour grace period, the same gap Solva's oracle flags by default. Set your own limit to match the cadence you expect from the institution.
+
+## What to watch
+
+| Sign                          | What it means                                                                                                                                         | What to do                                                            |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| The latest record is too old  | The record is **stale**. No new proof arrived inside the expected window. The cycle may have been refused for a shortfall, or it may not have run.    | Treat coverage as unknown. Never show the last result as current.     |
+| A refused cycle               | The record is **short**. Reserves were below what is owed. The registry refuses the proof and writes nothing, so on chain it looks like a missed day. | Treat the asset as not covered until a new record shows it covered.   |
+| Coverage close to 100 percent | Reserves barely cover what is owed. A small drop in reserves or a rise in what is owed makes the next cycle short.                                    | Read more often, and decide in advance what you do if it turns short. |
+| Gaps in the history           | Days with no record. Each one says nothing either way.                                                                                                | Weigh the pattern, not one day.                                       |
+
+The registry limits how fast reserves can rise. Each record's reserves can be at most 10 percent above the record before, so reserves moved in shortly before a cycle cannot lift the figure by more than that. There is no limit on how fast reserves can fall.
+
+## Show coverage to your users
+
+A wallet can show the status beside a token balance. Show short and stale as plainly as covered, each with the time of the record it comes from. Point holders at the inclusion check so they can confirm their own balance. See [Check a balance was counted](/docs/verify/check-a-balance-was-counted).
+
+## Automated checks with is_covered
+
+`is_covered` <ComingSoon /> is a read on the registry that returns the status directly, covered, short or stale, with the ledger the asset was checked at. It takes the issuer and the asset, so a contract or a back-end job gets one answer per asset without working out freshness itself. A swap, a listing gate or an alert can call it before acting.
+
+Without `is_covered`, read the latest record and apply your own freshness rule, as in the treasury check above. Solva's oracle tools `get_solvency` and `get_anomalies` also read records for AI agents, and flag a reserve drop of 10 percent, a rise in what is owed of 15 percent, or a gap of more than 26 hours between cycles.
+
+**Next:** [For lenders and risk teams](/docs/verify/for-lenders-and-risk-teams).

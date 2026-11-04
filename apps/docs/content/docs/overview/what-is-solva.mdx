@@ -1,0 +1,54 @@
+---
+title: What is Solva
+description: The problem Solva solves for fiat tokens and customer money on Stellar, and what Solva is.
+---
+
+## The problem
+
+An anchor issues a fiat-backed token on Stellar, such as USDC, EURC or ARST. A custodial app, such as a wallet or an exchange, holds customer money on Stellar. In both cases, people hold a claim on money that sits in reserve accounts they cannot see.
+
+Holders and partners want to know that the reserves cover what is owed to customers. That answer usually comes from an audit or an attestation, a few times a year. Between those reports, nobody outside the institution can see if the reserves still cover what is owed.
+
+An institution cannot publish every customer balance to prove its total, because that would expose its customers to anyone who looks.
+
+## What Solva is
+
+Solva is an open reserve-coverage registry on Stellar.
+
+**Reserves** are the money an institution holds to back what it owes. **What is owed** is the total of every customer balance. **Reserve coverage**, or **coverage**, means the reserves are at least what is owed. As a formula, `R >= L`, where R is reserves and L is what is owed.
+
+Each day, an institution publishes a **zero-knowledge proof** that its reserves cover what it owes. A zero-knowledge proof is a short piece of data that shows a statement is true without revealing the inputs behind it. In Solva, it shows the total is covered and reveals no customer balance.
+
+Each institution has its own **registry**, a contract on Stellar that checks the proof and keeps the result as a **record**. Partners, auditors and other contracts read the record. Any holder can check that their own balance was counted.
+
+| Question             | Answer                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Who publishes        | Anchors and custodial apps, each to its own registry on Stellar                      |
+| What is published    | The reserves total, the total owed, a commitment to the customer list, and the proof |
+| What stays private   | Every customer balance and every customer identity                                   |
+| Who checks the proof | A contract on Stellar, not Solva                                                     |
+| Who reads the record | Anyone: holders, wallets, exchanges, lenders, auditors and contracts                 |
+
+Solva runs on Stellar Testnet today, and on Mainnet <ComingSoon />.
+
+<Callout type="info">
+  Solva adds daily evidence between audits, and the audit stays in place. See [Coverage and
+  audits](/docs/overview/coverage-and-audits).
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="What Solva does" href="/docs/overview/what-solva-does">
+    The daily record, the inclusion check and the reads partners make.
+  </Card>
+  <Card title="How Solva works" href="/docs/overview/how-solva-works">
+    From a signed reserve balance to a record on Stellar, in plain steps.
+  </Card>
+  <Card title="Who Solva is for" href="/docs/overview/who-solva-is-for">
+    Anchors, custodial apps, their partners and their holders.
+  </Card>
+  <Card title="Why it matters" href="/docs/overview/why-it-matters">
+    Evidence between audits, with customer privacy kept.
+  </Card>
+</Cards>

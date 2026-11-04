@@ -1,0 +1,95 @@
+---
+title: When coverage drops
+description: What happens when reserves fall below what is owed, how to respond, how to explain it to holders and partners, and the early warning signals.
+---
+
+When your reserves fall below what is owed, Solva publishes no new record. Follow these steps to find the cause, restore coverage and tell the people who rely on you.
+
+## What happens
+
+When the reserves total is below the total owed, no proof can be made:
+
+1. The prover checks the totals first and refuses the cycle. The API answers `422` with `reserves are below liabilities; no proof generated`.
+2. Nothing is published. A proof made some other way fails too, because the registry refuses any proof where reserves are below what is owed, with error 4, `InsolventBound`.
+3. Your registry keeps its last record, with its older time.
+
+Your status is [short](/docs/overview/records) for that cycle. If no new record arrives inside the expected window, daily by default, the record becomes [stale](/docs/overview/records). Readers see the time of your last record and can tell that no newer one exists.
+
+A scheduled cycle that is refused is retried up to 3 times, then again at the next due run. It succeeds as soon as reserves cover what is owed again.
+
+## Respond
+
+<Steps>
+  <Step>
+    ### Confirm the result
+
+    Check the `422` response or the orchestrator's logs. Then check the two totals yourself: the sum of the signed reserve figures, and the sum of the customer balances you loaded.
+
+  </Step>
+  <Step>
+    ### Find the cause
+
+    Common causes are a reserve movement that has not settled, a timing gap between the custodian's statement and your balance export, a real rise in customer balances, or a data error such as a balance in the wrong unit or a row counted twice.
+
+  </Step>
+  <Step>
+    ### Fix the cause, not the data
+
+    If reserves are short, restore them at the custodian. If the data is wrong, correct it to match your books. Never remove a customer or lower a balance to pass a cycle. A customer who was left out fails the inclusion check, and that failure is visible to them.
+
+  </Step>
+  <Step>
+    ### Run a cycle again
+
+    Send `POST /v1/cycles` with a new idempotency key. A key that ran before is never run again. See [Run cycles](/docs/operate/run-cycles).
+
+  </Step>
+  <Step>
+    ### Tell the people who rely on you
+
+    Use the guidance below. Tell them early, before they find the gap on their own.
+
+  </Step>
+</Steps>
+
+When reserves cover what is owed again, the next cycle returns `202` and your registry holds a new record with a current time.
+
+<Callout type="warn">
+  The growth bound applies on the way back. Reserves may rise at most 10 percent per cycle against
+  your last record. If your last record was made at a lower reserves total, a large top-up can take
+  several cycles to publish.
+</Callout>
+
+## Explain it to holders and partners
+
+Say what happened, in plain words, with the times. A useful notice covers:
+
+| Point                    | Example                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| What the record shows    | "Our coverage record has not been updated since 09:00 UTC on 4 November."                              |
+| Why                      | "At the next check, our reserves were below the balances we owe customers, so no proof was published." |
+| The size, if you know it | "The gap was USD 120,000, under 1 percent of balances."                                                |
+| What you are doing       | "We are moving funds from our operating account to the reserve account."                               |
+| When to expect a record  | "We expect a new record by 15:00 UTC."                                                                 |
+| How to check             | "Read our record at the contract id below, and check your own balance was counted."                    |
+
+Do not describe a short or stale day as covered. Partners read the record's time and can see that it has not moved.
+
+## Early warning signals
+
+The oracle tool `get_anomalies` compares each record with the one before it and flags changes that often come before a shortfall. It uses only the public totals and times, never a customer balance.
+
+| Signal           | Kind               | Flags when                                                        | Critical at        |
+| ---------------- | ------------------ | ----------------------------------------------------------------- | ------------------ |
+| Reserve drift    | `reserve_drift`    | Reserves fall by 10 percent or more against the prior cycle.      | 20 percent or more |
+| Liability spike  | `liability_spike`  | What is owed rises by 15 percent or more against the prior cycle. | 30 percent or more |
+| Cycle timing gap | `cycle_timing_gap` | More than 26 hours pass between two records.                      | 52 hours or more   |
+
+A flag at or past its threshold is a warning. A flag at twice the threshold or more is critical. Each flag names the record it was seen on and gives the measured value.
+
+<Callout type="info">
+  The oracle reads only your latest record, so it has no prior cycle to compare with and returns no
+  flags.
+</Callout>
+
+**Next:** [Publish your record](/docs/operate/publish-your-record).

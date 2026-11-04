@@ -1,0 +1,77 @@
+---
+title: Security
+description: The trust boundaries in Solva, what is checked on Stellar, who can publish, and the current security status.
+---
+
+Each check on a record runs in a known place, and each part of Solva is trusted for one thing. The tables below are written for a risk review or a security questionnaire.
+
+## Status
+
+| Item                       | Today                                                                                    |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| Network                    | Stellar Testnet                                                                          |
+| Mainnet                    | <ComingSoon />                                                                           |
+| Independent security audit | <ComingSoon />. The circuit, the prover, the contract and the verifier have not had one. |
+| Source code                | Open, Apache-2.0                                                                         |
+
+Treat every record on Testnet as a demonstration, not as evidence for a decision about real money.
+
+## Trust boundaries
+
+The table shows what happens if each part is wrong or dishonest.
+
+| Part                         | Trusted for                                 | If it is wrong or dishonest                                                                                                                    |
+| ---------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custodian (reserve source)   | The reserve figure it signs                 | The record is wrong. The proof cannot detect it.                                                                                               |
+| Institution                  | A complete customer list                    | A left-out customer fails the inclusion check.                                                                                                 |
+| Prover                       | Keeping the customer list private           | It cannot make a proof the contract accepts for false figures. It does see the customer list.                                                  |
+| Orchestrator                 | Running cycles, checking reserve signatures | It could pass an unchecked reserve figure to the prover. It cannot publish a record the proof does not support. A missed cycle shows as stale. |
+| Registry contract on Stellar | Checking every proof                        | Its code is open, and anyone can read what it checks.                                                                                          |
+
+## What is checked on Stellar
+
+The registry checks these before it writes a record. If one fails, nothing is written.
+
+| Check                   | What it stops                                             |
+| ----------------------- | --------------------------------------------------------- |
+| Owner authorization     | Anyone other than the registry's owner publishing to it   |
+| Proof verification      | A record whose figures the proof does not support         |
+| Reserves at least owed  | A record that shows reserves below what is owed           |
+| Previous reserves match | A fake starting figure that would loosen the growth bound |
+
+**The growth bound.** The proof shows that reserves grew by at most 10 percent since the previous record. The registry checks that the previous figure in the proof is the reserves total of its last record, so the bound measures from real history. The first record must state no growth at all.
+
+The inclusion check also runs on Stellar. The registry rebuilds the commitment from the holder's balance and path and compares it with the record.
+
+## Who can publish
+
+Each institution has its own registry. Only the registry's owner can publish to it, so one institution can never write to another's registry.
+
+**The passkey smart wallet.** An institution's registry can be owned by a [passkey smart wallet](/docs/build/passkey-wallet). The passkey's private part never leaves the device that holds it, so there is no secret to copy or leak.
+
+**The scoped publishing key.** Cycles run on a schedule, so the orchestrator publishes without a person present. Its key is a signer on the wallet limited to that one registry, and it can authorize nothing else. The passkey stays in control and can remove that signer.
+
+## Access to the orchestrator
+
+- **The cycle trigger.** Starting a cycle with `POST /v1/cycles` requires the API token, sent as `Authorization: Bearer <token>`.
+- **Institution setup.** The routes that create an institution and link its registry and wallet require a separate admin token.
+- **The prover.** The orchestrator reaches the prover over a private connection that can require its own token.
+
+## Reserve signatures
+
+Every reserve balance from an attested source carries the custodian's signature, ECDSA on the P-256 curve with SHA-256. The orchestrator checks each one against the custodian's public key. One bad signature stops the cycle, and it is never retried. See [Where reserve figures come from](/docs/overview/reserve-sources).
+
+## Report a problem
+
+Write to [security@joinsolva.xyz](mailto:security@joinsolva.xyz).
+
+## Next
+
+<Cards>
+  <Card title="Passkey wallet" href="/docs/build/passkey-wallet">
+    How the wallet owns the registry and scopes the publishing key.
+  </Card>
+  <Card title="Privacy" href="/docs/overview/privacy">
+    What a record reveals and what it keeps private.
+  </Card>
+</Cards>

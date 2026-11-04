@@ -1,0 +1,119 @@
+---
+title: Set up your institution
+description: Sign in with a passkey, submit KYB, create your institution and provision the registry contract that holds your records.
+---
+
+Setup gives your institution a [passkey smart wallet](/docs/build/passkey-wallet), an institution entry in Solva called a **tenant**, and its own [registry](/docs/overview/what-is-solva) on Stellar Testnet. Follow these steps once per institution.
+
+## What gets created
+
+| Item                  | What it is                                                                                                       | Who controls it                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Passkey               | A credential kept on your device. The private key never leaves it.                                               | You                                 |
+| Passkey smart wallet  | A contract account (`C...`) on Stellar whose first signer is your passkey.                                       | You, through the passkey            |
+| Tenant                | Your institution's entry in the orchestrator, the service that runs cycles. It has a UUID, a name and a plan.    | Solva's control plane               |
+| Registry              | A registry contract deployed for your institution alone, owned by your wallet. Only the owner can publish to it. | Your wallet                         |
+| Scoped publishing key | A signer on your wallet that lets the orchestrator publish to your registry, and nothing else.                   | Added and removable by your passkey |
+
+No two institutions share a registry, so one institution cannot publish into another's records.
+
+## Set up
+
+<Steps>
+  <Step>
+    ### Sign in with a passkey
+
+    Open the console at [app.joinsolva.xyz](https://app.joinsolva.xyz) and select **Sign in with passkey**. Your device asks you to create a passkey with Face ID, Touch ID, Windows Hello or a similar authenticator.
+
+    On first sign-in the console then deploys your passkey smart wallet. The wallet's address is derived from the passkey, and the passkey's P-256 key becomes its first signer. The console shows **Provisioning your wallet** while this runs. No seed phrase is created, and nothing is stored on a server.
+
+    The console remembers your wallet in this browser, so sign in from the same browser each time.
+
+  </Step>
+  <Step>
+    ### Submit your business details (KYB)
+
+    After sign-in the console asks you to verify your institution. Enter:
+
+    - the registered legal name,
+    - the institution type: anchor, custodial app, exchange or custodian,
+    - the jurisdiction,
+    - the company registration number,
+    - a compliance contact name and work email.
+
+    Select **Submit for review**. Your application moves to **under review**, and the contact receives a confirmation email.
+
+    Self-serve onboarding <ComingSoon /> includes a reviewed KYB: a Solva reviewer checks the details, then approves the institution or asks for changes. An approval email follows, and the console opens. If the reviewer asks for changes, the form returns with a notice, and you resubmit.
+
+    <Callout type="warn">
+      The review is a stand-in. The console shows **Simulate reviewer approval**, which approves the institution in your browser only. Use it to continue on Testnet.
+    </Callout>
+
+  </Step>
+  <Step>
+    ### Create your institution
+
+    In the console, go to **Settings**, then **Registry**. Select **Create institution**. The console creates your tenant under your legal name and records your wallet as its owner. It shows the tenant id and a deploy command.
+
+  </Step>
+  <Step>
+    ### Deploy your registry
+
+    An engineer runs the deploy command the console shows. It needs a copy of the Solva repository, `just`, the Stellar CLI, and access to the orchestrator's database:
+
+    ```bash
+    just provision-tenant <tenant-id> <wallet-address> testnet signor
+    ```
+
+    The command builds the registry contract, deploys it with your wallet as owner and the circuit's verifying key, and records the contract id on your tenant. The last argument is the funded Stellar account that signs and pays for the deploy, about 0.021 XLM on Testnet. It prints the new contract id:
+
+    ```bash
+    deployed registry for tenant <tenant-id> owned by <wallet-address>: C...
+    recorded contract_id on tenant <tenant-id>
+    ```
+
+    Self-serve onboarding also deploys the registry from the console, with no command to run.
+
+  </Step>
+  <Step>
+    ### Record the registry
+
+    The deploy command has already recorded the contract on your tenant. To finish the console's flow, paste the contract id into **Record your deployed registry** and select **Record registry**. The console confirms: "Provisioned. Your registry is recorded."
+
+  </Step>
+  <Step>
+    ### Add the publishing key
+
+    Go to **Settings**, then **Publishing**. Enter the orchestrator's Stellar address (`G...`) and your registry's contract id (`C...`), then select **Add publishing signer** and approve with your passkey.
+
+    This adds the orchestrator's Ed25519 key to your wallet as a signer limited to your registry. The orchestrator can then publish proofs for you. It has no signer rights on any other contract. The console shows the transaction with a link to the explorer.
+
+  </Step>
+</Steps>
+
+## Provision through the API
+
+An engineer can do steps 3 to 5 against the orchestrator directly. These routes need the admin token as a bearer token. The example uses Kestrel Anchor, a fictional example institution.
+
+```bash
+curl -X POST "$SOLVA_API/v1/tenants" \
+  -H "Authorization: Bearer $SOLVA_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Kestrel Anchor","plan":"free"}'
+```
+
+The response carries the tenant id:
+
+```json
+{ "id": "11111111-1111-1111-1111-111111111111", "name": "Kestrel Anchor", "plan": "free" }
+```
+
+Record the wallet with `PUT /v1/tenants/{id}/wallet` and the body `{"wallet_address":"C..."}`. The address must be a 56-character contract address. Run `just provision-tenant`, or deploy the contract another way and record it with `PUT /v1/tenants/{id}/contract` and the body `{"contract_id":"C...","network":"testnet"}`. The network must be `testnet`, `mainnet` or `local`.
+
+The `plan` sets how often scheduled cycles run. See [Run cycles](/docs/operate/run-cycles).
+
+## Result
+
+Your institution has a passkey smart wallet, a tenant id and its own registry on Testnet, and the orchestrator can publish to that registry. Keep the tenant id and your registry's contract id. You need the tenant id to run cycles, and partners need the contract id to read your record.
+
+**Next:** [Connect a reserve source](/docs/operate/connect-a-reserve-source).

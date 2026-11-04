@@ -1,0 +1,59 @@
+---
+title: Where reserve figures come from
+description: The two kinds of reserve source, attested and read on chain, and where the trust sits for each.
+---
+
+The proof checks the arithmetic. It does not check that the reserve figure it is given is true. That figure comes from a **reserve source**, and each kind of source puts the trust in a different place. Knowing which kind a record uses tells you how much weight its reserves total can carry.
+
+## The two kinds
+
+| Reserve source | Status         | Where the figure comes from                               | Where the trust sits                                                        |
+| -------------- | -------------- | --------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Attested       | Available      | A balance signed by the custodian that holds the reserves | The custodian's signature and the custodian's honesty                       |
+| Read on chain  | <ComingSoon /> | The balance of Stellar accounts, read from the ledger     | The Stellar ledger and the proof that the institution controls the accounts |
+
+## Attested
+
+An **attested** reserve source is a custodian that reports each reserve balance and signs it.
+
+How it works today:
+
+1. The orchestrator asks the custodian for the balance of each reserve account.
+2. The custodian answers with the balance, the currency, the account, the time, and a signature over those four values. The signature uses ECDSA on the P-256 curve with SHA-256.
+3. The orchestrator checks the signature against the custodian's public key. If any signature fails, the cycle stops and nothing is published. A failed signature is never retried.
+4. The checked balances become the reserve figures in the proof. A proof takes up to four reserve figures today.
+
+A signature shows that the custodian stated this balance at this time and that nobody changed it on the way. It does not show that the money exists or that the custodian is honest.
+
+<Callout type="warn">
+  **Risk: the figure is reported by the custodian.** Solva verifies the signature, not the balance.
+  If the custodian signs a wrong figure, the record is wrong. Assess the custodian yourself before
+  you rely on a record that uses an attested source.
+</Callout>
+
+Today, Solva connects a custodian through configuration for each institution. Self-serve custodian connections <ComingSoon /> let an institution connect its own custodian from the console. The public demo uses a sandbox that stands in for a custodian. Its signatures are real and its balances are synthetic.
+
+## Read on chain
+
+A **read on chain** reserve source <ComingSoon /> takes the reserve figure straight from the Stellar ledger, for reserves held in Stellar accounts. No custodian reports the balance, because the ledger already shows it.
+
+What remains is evidence that those accounts back the token. SEP-1, the standard for an issuer's `stellar.toml` file, has collateral fields for this: `collateral_addresses` lists the reserve accounts, and `collateral_address_signatures` holds a signature from each account over a statement that its funds back the token. The signatures prove the institution controls those accounts. See [Stellar standards](/docs/overview/stellar-standards).
+
+<Callout type="info">
+  **Risk: the figure is read from the ledger.** Nobody can misreport the balance. You still rely on
+  the collateral statement that these accounts are reserved for the token, and on the institution
+  not pledging the same funds elsewhere.
+</Callout>
+
+This source fits reserves held on Stellar. Reserves held off Stellar, as most fiat reserves are, stay attested.
+
+## Next
+
+<Cards>
+  <Card title="Coverage and audits" href="/docs/overview/coverage-and-audits">
+    What an audit still checks that a record cannot.
+  </Card>
+  <Card title="Connect a reserve source" href="/docs/operate/connect-a-reserve-source">
+    How an operator connects a custodian today.
+  </Card>
+</Cards>

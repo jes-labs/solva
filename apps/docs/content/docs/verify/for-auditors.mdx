@@ -1,0 +1,92 @@
+---
+title: For auditors
+description: What a series of coverage records gives an auditor, what it does not, and how to pull every record from a registry on Stellar.
+---
+
+An auditor reviewing an anchor or a custodial app that publishes coverage can add its records to the evidence file and pull the full history from Stellar without access to the institution.
+
+## What a record gives you
+
+Each record is a dated result, checked on Stellar, that reserves were at least what the institution owed its customers at one ledger. Records arrive daily by default, so between two audits you have a series.
+
+| What you get                  | Why it helps                                                                                                                                               |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One result per cycle          | Evidence for the days between your reports, not only the day you test.                                                                                     |
+| A time from the network       | Each record carries the close time of the ledger that wrote it. The institution cannot backdate it.                                                        |
+| A check you can repeat        | The registry checked the proof before writing the record. You can read every record yourself, with no access to the institution.                           |
+| Visible gaps                  | A day with no record shows as a gap. It is never filled in later.                                                                                          |
+| A commitment to the full list | The commitment root stands for the exact customer list and its total. Holders can check their own balance against it.                                      |
+| A limit on window dressing    | Each record's reserves can be at most 10 percent above the record before, so funds moved in shortly before a cycle cannot lift reserves by more than that. |
+
+## What a record does not give you
+
+A record is evidence for your file, not an audit.
+
+| A record does not                           | What still needs your procedures                                                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Test the institution's controls             | How the customer list is produced, who can change it, and how reserve accounts are run.                                         |
+| Confirm custody                             | Who controls the reserve accounts, and whether the custodian holds what it signs for.                                           |
+| Prove the reserve figure is honest          | The proof takes the custodian's signed balance as given. See [Where reserve figures come from](/docs/overview/reserve-sources). |
+| Prove the customer list is complete         | The institution supplies the list. A left-out customer shows only when that customer checks.                                    |
+| Show that reserves are free of other claims | A balance does not show if the same funds back something else.                                                                  |
+| Say anything about a day with no record     | A missing day is stale, nothing more.                                                                                           |
+
+For how records sit beside audits and attestations, see [Coverage and audits](/docs/overview/coverage-and-audits).
+
+## Pull the history of records
+
+A registry numbers its records from 1, adding one each time, and `get_proof` returns the record with a given number. No call returns the count, so read from 1 upward until the registry answers error 5, `ProofNotFound`.
+
+You need the Stellar CLI and a funded Testnet key named `reader` (see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar#before-you-start)).
+
+<Steps>
+  <Step>
+    ### Read every record
+
+    This loop reads the Solstice Exchange example registry and stops at the first id with no record:
+
+    ```bash
+    REGISTRY=CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW
+    id=1
+    while stellar contract invoke --id "$REGISTRY" --network testnet --source-account reader -- get_proof --id "$id" 2>/dev/null; do
+      id=$((id + 1))
+    done
+    ```
+
+  </Step>
+  <Step>
+    ### Read the output
+
+    Each line is one record, oldest first:
+
+    ```json
+    {"l":"9000000","r":"16000000","root_h":"0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e","timestamp":1783031356}
+    {"l":"9000000","r":"16000000","root_h":"0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e","timestamp":1793742470}
+    {"l":"9000000","r":"16000000","root_h":"0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e","timestamp":1793742635}
+    {"l":"9000000","r":"16000000","root_h":"0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e","timestamp":1793803080}
+    ```
+
+    `r` is reserves and `l` is what is owed, both in the asset's smallest unit. `timestamp` is the ledger close time in Unix seconds, UTC. For every field, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar#what-each-field-means).
+
+  </Step>
+  <Step>
+    ### Line the records up with the calendar
+
+    Convert each `timestamp` to a date and mark the days with no record. The demo registry above publishes on demand, not daily, so its records bunch together. A registry on a schedule publishes daily by default, and the gaps in its series are the stale days.
+
+  </Step>
+</Steps>
+
+You now hold every record in the registry, read from Stellar. To see the transaction behind each record, look the contract up on a Stellar explorer, such as `https://stellar.expert/explorer/testnet/contract/<contract-id>`.
+
+<Callout type="warn">
+  The loop stops at the first read that fails. A record nobody has read for more than 30 days can be
+  archived by the network, and its read fails until the entry is restored. If the loop stops earlier
+  than you expect, try the next ids before you conclude the history ends there.
+</Callout>
+
+## Selective disclosure
+
+The public sees totals and the commitment root, never a customer balance. Selective disclosure <ComingSoon /> gives a named supervisor or auditor scoped viewing access to more than that, for one institution, without making it public.
+
+**Next:** [What a record shows](/docs/overview/records).

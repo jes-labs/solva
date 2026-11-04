@@ -1,13 +1,12 @@
 import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from "fumadocs-mdx/config";
+import { z } from "zod";
 
-// One docs collection. The blog moved to the marketing site (#49), so it is no
-// longer here. includeProcessedMarkdown exposes the stringified MDX through
-// page.data.getText("processed"), which the .md export routes and the
-// "Copy as Markdown" action read for LLM-friendly docs.
 export const docs = defineDocs({
   dir: "content/docs",
   docs: {
-    schema: frontmatterSchema,
+    schema: frontmatterSchema.extend({
+      status: z.literal("soon").optional(),
+    }),
     postprocess: { includeProcessedMarkdown: true },
   },
   meta: {
@@ -15,4 +14,13 @@ export const docs = defineDocs({
   },
 });
 
-export default defineConfig();
+export default defineConfig({
+  mdxOptions: {
+    rehypeCodeOptions: {
+      themes: {
+        light: "github-light",
+        dark: "github-dark-default",
+      },
+    },
+  },
+});

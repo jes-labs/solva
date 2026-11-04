@@ -1,13 +1,14 @@
 {
-  "title": "Documentation",
+  "title": "Solva",
   "pages": [
     "index",
-    "end-to-end-flow",
-    "architecture",
-    "passkey-wallet",
-    "quickstart",
-    "sdk-reference",
-    "sandbox",
-    "contract-address"
+    "---Overview---",
+    "...overview",
+    "---Operate---",
+    "...operate",
+    "---Verify---",
+    "...verify",
+    "---Build---",
+    "...build"
   ]
 }

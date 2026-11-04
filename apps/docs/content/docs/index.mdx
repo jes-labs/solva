@@ -1,90 +1,47 @@
 ---
-title: Protocol overview
-description: What Solva proves, and how a proof cycle works.
+title: Solva docs
+description: How anchors and custodial apps on Stellar prove their reserves cover what they owe, and how anyone can check it.
 ---
 
-Solva is a zero-knowledge proof of solvency protocol on Stellar. A custodial
-institution proves that its reserves are greater than or equal to its
-liabilities. It proves this without revealing any individual customer balance,
-and without revealing its raw reserve accounts.
+<DocsHero />
 
-A proof is published on-chain. Anyone can read it and check that reserves cover
-liabilities. Each customer can check that their own balance was counted.
+Solva is an open reserve-coverage registry on Stellar. An anchor or a custodial app proves, with a zero-knowledge proof, that its reserves cover what it owes its customers. A contract on Stellar checks the proof and keeps the record. Anyone can read it, and every holder can check that their own balance was counted.
 
-## Why both sides of the balance sheet
+If you are new to Solva, start with [What is Solva](/docs/overview/what-is-solva).
 
-Proving that you hold assets is not the same as proving you are solvent. Most
-published proof of reserves systems attest only the asset side. An institution
-can show a large reserve figure and still owe its customers more than it holds.
+## Choose where to start
 
-Solva binds both sides in one proof.
+<Cards>
+  <Card title="I run an anchor or a custodial app" href="/docs/operate/before-you-start">
+    Set up your institution, connect a reserve source, and publish your first record.
+  </Card>
+  <Card title="I build on Solva" href="/docs/build/quickstart">
+    Run the full pipeline locally, then read the contract, REST API and SDK references.
+  </Card>
+  <Card title="I rely on a record" href="/docs/verify/find-a-record">
+    Find an institution's record and check it on Stellar yourself.
+  </Card>
+</Cards>
 
-```
-Proof of Solvency = Proof of Reserves + Proof of Liabilities
-```
+If you hold a token or keep money in a custodial app, you can [check that your balance was counted](/docs/verify/check-a-balance-was-counted).
 
-Because both totals live in the same proof, a healthy reserve figure cannot hide
-a larger liability. The contract checks that reserves are greater than or equal
-to liabilities before it stores anything.
+## Learn how Solva works
 
-## How a proof cycle works
+<Cards>
+  <Card title="How Solva works" href="/docs/overview/how-solva-works">
+    From a signed reserve balance to a record on Stellar, in plain steps.
+  </Card>
+  <Card title="What a record shows" href="/docs/overview/records">
+    The fields of a record, and what a record proves and does not prove.
+  </Card>
+  <Card title="Where reserve figures come from" href="/docs/overview/reserve-sources">
+    How reserve balances are attested, and what you trust when you read one.
+  </Card>
+  <Card title="Security" href="/docs/overview/security">
+    What is verified on Stellar, who can publish, and how keys are held.
+  </Card>
+</Cards>
 
-1. The orchestrator fetches signed reserve balances from each source and verifies
-   the ECDSA signatures.
-2. It loads the customer liabilities for the institution.
-3. It sends the reserves, the liabilities, and the previous reserve total to the
-   prover.
-4. The prover builds the Poseidon2 Merkle Sum Tree over the liabilities and
-   generates the Noir and UltraHonk proof. It returns the proof, the public
-   values, and the tree.
-5. The orchestrator publishes the proof to the institution's proof-registry
-   contract. The contract verifies the proof on-chain and stores the root and the
-   totals.
-6. The proof and the tree are saved to an append-only audit log.
+## See it work
 
-The public sees only the totals and the commitment root. The individual balances
-never leave the institution.
-
-## The pieces
-
-- **Orchestrator.** A Go service. It runs cycles, verifies signed reserves, calls
-  the prover, and publishes proofs. It holds the key that signs a publish.
-- **Prover.** A Rust service. It builds the tree and generates the zero-knowledge
-  proof with Noir and Barretenberg.
-- **Proof-registry contract.** A Soroban contract. It stores the verifying key,
-  checks each proof on-chain, and holds the published roots and totals. Each
-  institution has its own contract.
-- **Sandbox.** A mock reserve source for demos. See the sandbox guide.
-- **SDK.** A TypeScript client for running cycles and reading proofs.
-
-## The proof
-
-The circuit proves four statements about hidden inputs:
-
-- The reserves add up to a total R.
-- The liabilities add up to a total L, and L matches the Merkle Sum Tree root.
-- R is greater than or equal to L.
-- R is within the growth bound of the previous proof. The exact rule is
-  `10 * R <= 11 * R_prev`, which caps growth at about ten percent per cycle.
-
-The tree gives the proof two shapes at once. The root hash commits to the exact
-set of customer balances. The root sum is the total liability L. So a customer
-can later prove their balance is part of that committed set.
-
-## What is trusted and what is proven
-
-The chain proves that reserves cover liabilities and that the totals match the
-committed data. It also proves that the reserve total did not jump by more than
-the growth bound since the last proof.
-
-Two things are still trusted. The reserve balances come from the institution's
-sources, signed with their keys, so Solva trusts those sources to report real
-balances. The liability list comes from the institution's own records. The growth
-bound limits how fast a reserve figure can move, which makes a sudden fake jump
-visible.
-
-## Networks
-
-Solva runs on Stellar Testnet today. Each institution has its own proof-registry
-contract, resolved from the institution id. See the contract address page for the
-current deployment.
+The demo at [joinsolva.xyz/demo](https://joinsolva.xyz/demo) runs the real pipeline on Stellar Testnet. It uses two example institutions, Kestrel Anchor and Solstice Exchange, and publishes a proof you can open on a Stellar explorer.
