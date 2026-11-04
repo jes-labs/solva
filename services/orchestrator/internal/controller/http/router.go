@@ -13,7 +13,7 @@ import (
 )
 
 // Router builds the chi mux with all routes mounted.
-func Router(h *Handler, log zerolog.Logger) http.Handler {
+func Router(h *Handler, apiToken string, log zerolog.Logger) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -21,7 +21,7 @@ func Router(h *Handler, log zerolog.Logger) http.Handler {
 	r.Use(middleware.Recoverer)
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Post("/cycles", h.TriggerCycle)
+		r.With(requireToken(apiToken)).Post("/cycles", h.TriggerCycle)
 		r.Get("/proofs/latest", h.GetLatestProof)
 		r.Get("/proofs/{id}", h.GetProof)
 		r.Get("/proofs/inclusion/{ref}", h.GetInclusion)
