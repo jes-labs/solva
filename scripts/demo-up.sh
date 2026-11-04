@@ -194,7 +194,7 @@ cat <<'NOTE'
       SANDBOX_URL=http://localhost:8090 \
         pnpm --filter @solva/website dev
 
-    Then open http://localhost:3000/sandbox
+    Then open http://localhost:3000/demo
 
     Logs: /tmp/solva-demo-{sandbox,prover,orch}.log
     Press Ctrl-C here to stop the services.
