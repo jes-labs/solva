@@ -16,7 +16,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "knip": "knip",
-    "build:cloudflare": "opennextjs-cloudflare build",
+    "build:cloudflare": "pnpm --filter \"@solva/website^...\" build && opennextjs-cloudflare build",
     "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "smoke:worker": "../../scripts/worker-smoke.sh website"
@@ -24,6 +24,8 @@
   "dependencies": {
     "@gsap/react": "2.1.2",
     "@phosphor-icons/react": "2.1.10",
+    "@solva/sdk-ts": "workspace:*",
+    "@stellar/stellar-sdk": "16.0.1",
     "class-variance-authority": "0.7.1",
     "cn": "0.5.2",
     "gray-matter": "4.0.3",

@@ -7,10 +7,10 @@ The proof checks the arithmetic. It does not check that the reserve figure it is
 
 ## The two kinds
 
-| Reserve source | Status         | Where the figure comes from                               | Where the trust sits                                                        |
-| -------------- | -------------- | --------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Attested       | Available      | A balance signed by the custodian that holds the reserves | The custodian's signature and the custodian's honesty                       |
-| Read on chain  | <ComingSoon /> | The balance of Stellar accounts, read from the ledger     | The Stellar ledger and the proof that the institution controls the accounts |
+| Reserve source | Status    | Where the figure comes from                               | Where the trust sits                                                        |
+| -------------- | --------- | --------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Attested       | Available | A balance signed by the custodian that holds the reserves | The custodian's signature and the custodian's honesty                       |
+| Read on chain  | Available | The balance of Stellar accounts, read from the ledger     | The Stellar ledger and the proof that the institution controls the accounts |
 
 ## Attested
 
@@ -31,13 +31,13 @@ A signature shows that the custodian stated this balance at this time and that n
   you rely on a record that uses an attested source.
 </Callout>
 
-Today a cycle reads one attested source, set in the orchestrator's configuration. The public demo uses a sandbox that stands in for a custodian. Its signatures are real and its balances are synthetic. Connections to real custodians, one per institution, are <ComingSoon />, with self-serve connections from the console.
+Each institution's source is set in the orchestrator's configuration. The public demo uses a sandbox that stands in for a custodian for two of its example institutions. Its signatures are real and its balances are synthetic. Connections to real custodians, one per institution, are <ComingSoon />, with self-serve connections from the console.
 
 ## Read on chain
 
-A **read on chain** reserve source <ComingSoon /> takes the reserve figure straight from the Stellar ledger, for reserves held in Stellar accounts. No custodian reports the balance, because the ledger already shows it.
+A **read on chain** reserve source takes the reserve figure straight from the Stellar ledger, for reserves held in Stellar accounts. On every cycle the orchestrator reads each account's balance of the configured asset from Horizon. No custodian reports the balance, because the ledger already shows it. The demo's Harbor Wallet uses this source with Circle's Testnet USDC.
 
-What remains is evidence that those accounts back the token. SEP-1, the standard for an issuer's `stellar.toml` file, has collateral fields for this: `collateral_addresses` lists the reserve accounts, and `collateral_address_signatures` holds a signature from each account over a statement that its funds back the token. The signatures prove the institution controls those accounts. See [Stellar standards](/docs/overview/stellar-standards).
+What remains is evidence that those accounts back the token. SEP-1, the standard for an issuer's `stellar.toml` file, has collateral fields for this: `collateral_addresses` lists the reserve accounts, and `collateral_address_signatures` holds a signature from each account over a statement that its funds back the token. The signatures prove the institution controls those accounts. Solva checks those signatures as part of each cycle <ComingSoon />. Today the accounts are named in the orchestrator's configuration. See [Stellar standards](/docs/overview/stellar-standards).
 
 <Callout type="info">
   **Risk: the figure is read from the ledger.** Nobody can misreport the balance. You still rely on

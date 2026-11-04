@@ -5,6 +5,7 @@ import {
   orchestratorHeaders,
   unreachable,
 } from "@/lib/sandbox-backend";
+import { demoInstitution } from "@/lib/demo-institutions";
 
 export const dynamic = "force-dynamic";
 
@@ -35,23 +36,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid request body" }, { status: 400 });
   }
   const { tenantId, scenario } = body;
-  if (!tenantId || !scenario) {
-    return NextResponse.json({ error: "tenantId and scenario are required" }, { status: 400 });
+  const institution = tenantId ? demoInstitution(tenantId) : undefined;
+  if (!tenantId || !institution) {
+    return NextResponse.json({ error: "a known tenantId is required" }, { status: 400 });
+  }
+  const attested = institution.reserves.kind === "attested";
+  if (attested && !scenario) {
+    return NextResponse.json({ error: "scenario is required" }, { status: 400 });
   }
 
   try {
-    const seeded = await fetch(`${SANDBOX_URL}/admin/scenarios/${encodeURIComponent(scenario)}`, {
-      method: "POST",
-    });
-    if (!seeded.ok) {
-      return NextResponse.json({ error: `sandbox rejected scenario ${scenario}` }, { status: 502 });
+    if (attested && scenario) {
+      const seeded = await fetch(`${SANDBOX_URL}/admin/scenarios/${encodeURIComponent(scenario)}`, {
+        method: "POST",
+      });
+      if (!seeded.ok) {
+        return NextResponse.json(
+          { error: `sandbox rejected scenario ${scenario}` },
+          { status: 502 },
+        );
+      }
     }
 
     const cycle = await fetch(`${ORCHESTRATOR_URL}/v1/cycles`, {
       method: "POST",
       headers: orchestratorHeaders({
         "content-type": "application/json",
-        "Idempotency-Key": `website-${scenario}-${Date.now()}`,
+        "Idempotency-Key": `website-${scenario ?? "onchain"}-${Date.now()}`,
       }),
       body: JSON.stringify({ tenant_id: tenantId }),
     });

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { demoInstitution } from "@/lib/demo-institutions";
+import { checkInclusionOnChain } from "@/lib/onchain-record";
 import { ORCHESTRATOR_URL, orchestratorHeaders, unreachable } from "@/lib/sandbox-backend";
 
 export const dynamic = "force-dynamic";
@@ -7,8 +9,8 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const tenant = params.get("tenant");
   const idHash = params.get("id_hash");
-  if (!tenant || !idHash) {
-    return NextResponse.json({ error: "tenant and id_hash are required" }, { status: 400 });
+  if (!tenant || !idHash || !demoInstitution(tenant)) {
+    return NextResponse.json({ error: "a known tenant and id_hash are required" }, { status: 400 });
   }
 
   try {
@@ -42,8 +44,10 @@ export async function GET(request: Request) {
       root_hash?: string;
       path?: unknown[];
     };
+    const onChain = await checkInclusionOnChain(tenant, ref);
     return NextResponse.json({
       included: true,
+      onChain,
       chainProofId: data.proof_id,
       customerIdHash: data.customer_id_hash,
       balance: data.balance,
