@@ -5,6 +5,8 @@ import {
   reserveSourceToken,
   unreachable,
 } from "@/lib/sandbox-backend";
+import { demoInstitution } from "@/lib/demo-institutions";
+import { readHolding } from "@/lib/horizon-reserves";
 import { reserveBalanceUrl } from "@/lib/sandbox-paths";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +19,24 @@ interface SignedBalance {
   signature: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const tenant = new URL(request.url).searchParams.get("tenant") ?? "";
+  const institution = demoInstitution(tenant);
+  if (!institution) {
+    return NextResponse.json({ error: "unknown institution" }, { status: 400 });
+  }
+  if (institution.reserves.kind === "onchain") {
+    try {
+      const balance = await readHolding(institution.reserves);
+      return NextResponse.json({ onchain: true, total: balance });
+    } catch (error) {
+      return NextResponse.json(
+        { error: `could not read the reserve account: ${String(error)}` },
+        { status: 502 },
+      );
+    }
+  }
+
   try {
     const token = await reserveSourceToken();
     if (!token) {

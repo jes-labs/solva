@@ -35,7 +35,7 @@ Selective disclosure <ComingSoon /> lets an institution give one named party, su
 
 ## Try it
 
-The public demo at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) runs a full cycle on Stellar Testnet. A sandbox stands in for the custodian, so the reserve figures are synthetic. The proof, its verification on Stellar and the record are real. The demo reads the published totals back from the orchestrator and shows an example holder's inclusion path, which anyone can check on Stellar with `verify_inclusion`.
+The public demo at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) runs a full cycle on Stellar Testnet. Two example institutions use a sandbox that stands in for the custodian, so their reserve figures are synthetic. The third, Harbor Wallet, holds real Testnet USDC whose balance is read from Stellar on every run. The proof, its verification on Stellar and the record are real. The demo reads the record back from the contract with `get_latest_proof` and checks an example holder on the contract with `verify_inclusion`.
 
 ## Next
 

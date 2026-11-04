@@ -10,11 +10,14 @@ import {
   emptyLogs,
   inclusionLines,
   initialStatus,
+  onchainConnectLines,
+  onchainReservesLines,
   publishedLines,
   registryLines,
   rejectedLines,
   reservesLines,
   verifyLines,
+  type ChainRecord,
   type ContractDTO,
   type Institution,
   type LogLine,
@@ -142,6 +145,9 @@ export function useSandbox() {
   const runners: Record<StepId, () => Promise<RunResult>> = {
     registry: async () => ({ ok: true, lines: [] }),
     connect: async () => {
+      if (institution.reserves.kind === "onchain") {
+        return { ok: true, lines: onchainConnectLines(institution) };
+      }
       const data = await request<{
         error?: string;
         clientId?: string;
@@ -160,7 +166,11 @@ export function useSandbox() {
         error?: string;
         total?: string;
         balances?: { source_id: string; balance: string; currency: string; signature: string }[];
-      }>("/api/sandbox/reserves");
+        onchain?: boolean;
+      }>(`/api/sandbox/reserves?tenant=${institution.tenantId}`);
+      if (data.onchain && data.total) {
+        return { ok: true, lines: onchainReservesLines(institution, data.total) };
+      }
       if (data.error || !data.balances) {
         return {
           ok: false,
@@ -176,7 +186,13 @@ export function useSandbox() {
         rejected?: boolean;
         busy?: boolean;
         proof?: ProofDTO;
-      }>("/api/sandbox/run", post({ tenantId: institution.tenantId, scenario: scenario.id }));
+      }>(
+        "/api/sandbox/run",
+        post({
+          tenantId: institution.tenantId,
+          scenario: institution.reserves.kind === "attested" ? scenario.id : undefined,
+        }),
+      );
       if (data.busy) {
         return {
           ok: false,
@@ -197,17 +213,19 @@ export function useSandbox() {
         };
       }
       setProof(data.proof);
-      return { ok: true, lines: publishedLines(data.proof) };
+      return { ok: true, lines: publishedLines(data.proof, institution) };
     },
     verify: async () => {
-      const data = await request<{ proof?: ProofDTO | null }>(
-        `/api/sandbox/status?tenant=${institution.tenantId}`,
+      const data = await request<{ record?: ChainRecord; error?: string }>(
+        `/api/sandbox/record?tenant=${institution.tenantId}`,
       );
-      const latest = data.proof ?? null;
-      if (!latest?.reserves_total) {
-        return { ok: false, lines: [{ kind: "warn", text: "no published proof to check" }] };
+      if (!data.record) {
+        return {
+          ok: false,
+          lines: [{ kind: "warn", text: data.error ?? "no published record to check" }],
+        };
       }
-      const result = verifyLines(latest);
+      const result = verifyLines(data.record, institution);
       return { ok: result.covers, lines: result.lines };
     },
     inclusion: async () => {
@@ -217,6 +235,7 @@ export function useSandbox() {
         balance?: string;
         pathLength?: number;
         chainProofId?: string;
+        onChain?: boolean;
       }>(`/api/sandbox/inclusion?tenant=${institution.tenantId}&id_hash=${DEMO_ID_HASH}`);
       if (data.error || !data.included) {
         return {
@@ -224,7 +243,11 @@ export function useSandbox() {
           lines: [{ kind: "warn", text: data.error ?? "holder not found in this proof" }],
         };
       }
-      return { ok: true, lines: inclusionLines(data) };
+      const onChain = data.onChain === true;
+      return {
+        ok: onChain,
+        lines: inclusionLines({ ...data, onChain }, institution),
+      };
     },
   };
 

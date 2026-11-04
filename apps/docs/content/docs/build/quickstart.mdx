@@ -176,7 +176,7 @@ ORCHESTRATOR_URL=http://localhost:8080 SANDBOX_URL=http://localhost:8090 \
 
 ### Run a cycle
 
-Open `http://localhost:3000/demo`. Pick an institution, connect the mock custodian and run a scenario. `solvent` and `near-breach` publish a proof. `insolvent` is refused. After a publish, the demo reads the published totals back from the orchestrator and shows the inclusion path for holder `cust-001`. Reading the record and running the inclusion check directly on the contract from the demo is in development. Open the registry on the explorer to see the publishing transaction.
+Open `http://localhost:3000/demo`. Pick an institution, connect the mock custodian and run a scenario. `solvent` and `near-breach` publish a proof. `insolvent` is refused. After a publish, the demo reads the record back from the contract with `get_latest_proof` and checks holder `cust-001` on the contract with `verify_inclusion`. Open the registry on the explorer to see the publishing transaction.
 
 </Step>
 </Steps>
@@ -201,7 +201,7 @@ When `just demo` is ready it prints:
     Press Ctrl-C here to stop the services.
 ```
 
-A run on the demo page ends with a proof verified and published on Testnet, the published totals read back, the holder's inclusion path, and a link to the registry on the Testnet explorer.
+A run on the demo page ends with a proof verified and published on Testnet, the record read back from the contract, an inclusion check on the contract that returns true, and a link to the registry on the Testnet explorer.
 
 <Callout type="info">
   Switching from `near-breach` or `insolvent` back to `solvent` raises reserves from 9,500,000 to

@@ -60,7 +60,7 @@ export function Sandbox() {
             id="run-title"
             label="Run it"
             title="Six steps, all of them real."
-            lead="Pick an institution and a scenario, then run the steps one at a time. Every line below comes back from the pipeline, and every published proof lands on Stellar Testnet, where you can open it."
+            lead="Pick an institution, then run the steps one at a time. Kestrel and Solstice use a mock custodian with three scenarios. Harbor Wallet's reserves are real Testnet USDC, read from Stellar on every run. Every published proof lands on Stellar Testnet, where you can open it."
           />
           <SealInstrument
             mode="progress"
@@ -123,45 +123,64 @@ export function Sandbox() {
               </div>
             </fieldset>
 
-            <fieldset>
-              <legend className="text-small font-medium text-sec">Scenario</legend>
-              <div className="mt-3 border-t border-line">
-                {SCENARIOS.map((item) => {
-                  const selected = item.id === sandbox.scenario.id;
-                  return (
-                    <label
-                      key={item.id}
-                      className={cn(
-                        "relative flex cursor-pointer flex-col gap-1 border-b border-line py-4 pl-5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus",
-                        selected ? "text-text" : "text-sec hover:text-text",
-                        sandbox.busy && "opacity-60",
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="scenario"
-                        className="sr-only"
-                        checked={selected}
-                        disabled={sandbox.busy}
-                        onChange={() => sandbox.setScenario(item)}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "absolute top-4 bottom-4 left-0 w-0.5",
-                          selected ? "bg-signal" : "bg-transparent",
-                        )}
-                      />
-                      <span className="flex items-baseline justify-between gap-3">
-                        <span className="font-display text-h3">{item.label}</span>
-                        <span className="font-mono text-small num">R = {item.reserves}</span>
-                      </span>
-                      <span className="text-small">{item.note}</span>
-                    </label>
-                  );
-                })}
+            {sandbox.institution.reserves.kind === "onchain" ? (
+              <div className="border-t border-line pt-4">
+                <p className="text-small font-medium text-sec">Reserves</p>
+                <p className="mt-3 text-body text-text">
+                  Read from Stellar Testnet on every run: the {sandbox.institution.reserves.code}{" "}
+                  balance of account{" "}
+                  <a
+                    href={explorer.account(sandbox.institution.reserves.account)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-small break-all underline decoration-link-line underline-offset-4 hover:decoration-text"
+                  >
+                    {sandbox.institution.reserves.account}
+                  </a>
+                  . No scenario applies: the proof uses whatever the account holds.
+                </p>
               </div>
-            </fieldset>
+            ) : (
+              <fieldset>
+                <legend className="text-small font-medium text-sec">Scenario</legend>
+                <div className="mt-3 border-t border-line">
+                  {SCENARIOS.map((item) => {
+                    const selected = item.id === sandbox.scenario.id;
+                    return (
+                      <label
+                        key={item.id}
+                        className={cn(
+                          "relative flex cursor-pointer flex-col gap-1 border-b border-line py-4 pl-5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus",
+                          selected ? "text-text" : "text-sec hover:text-text",
+                          sandbox.busy && "opacity-60",
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="scenario"
+                          className="sr-only"
+                          checked={selected}
+                          disabled={sandbox.busy}
+                          onChange={() => sandbox.setScenario(item)}
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "absolute top-4 bottom-4 left-0 w-0.5",
+                            selected ? "bg-signal" : "bg-transparent",
+                          )}
+                        />
+                        <span className="flex items-baseline justify-between gap-3">
+                          <span className="font-display text-h3">{item.label}</span>
+                          <span className="font-mono text-small num">R = {item.reserves}</span>
+                        </span>
+                        <span className="text-small">{item.note}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            )}
 
             <button
               type="button"
@@ -241,7 +260,9 @@ export function Sandbox() {
         <Provenance
           parts={[
             "Stellar Testnet",
-            "Reserve source: Solva's sandbox, signed balances",
+            sandbox.institution.reserves.kind === "onchain"
+              ? "Reserve source: Testnet USDC read from Stellar"
+              : "Reserve source: Solva's sandbox, signed balances",
             "A small fixed list of balances",
           ]}
           className="mt-8"

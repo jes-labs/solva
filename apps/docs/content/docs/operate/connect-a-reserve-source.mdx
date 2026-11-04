@@ -7,12 +7,12 @@ Each cycle, the orchestrator reads your reserve figures from your [reserve sourc
 
 ## Source types
 
-| Source                           | How the figure arrives                                        |
-| -------------------------------- | ------------------------------------------------------------- |
-| Attested (custodian-signed)      | The custodian's service signs each balance it reports.        |
-| On-chain reserves <ComingSoon /> | Solva reads the balance of a Stellar account from the ledger. |
+| Source                      | How the figure arrives                                        |
+| --------------------------- | ------------------------------------------------------------- |
+| Attested (custodian-signed) | The custodian's service signs each balance it reports.        |
+| On-chain reserves           | Solva reads the balance of a Stellar account from the ledger. |
 
-The public demo and the sandbox use a mock custodian run by Solva. Its figures are not real reserves.
+The public demo uses a mock custodian run by Solva for two example institutions; their figures are not real reserves. Its third institution, Harbor Wallet, holds real Testnet USDC read on chain.
 
 ## What the custodian signs
 
@@ -108,6 +108,19 @@ A reserve source is set in the orchestrator's configuration, not in the console.
   the same accounts with the same key. In the console connection below, each institution has its own
   sources.
 </Callout>
+
+## Connect on-chain reserves
+
+An institution whose reserves sit in Stellar accounts uses the on-chain source. Two orchestrator settings route it:
+
+```bash
+ORCH_RESERVE_SOURCES="33333333-3333-3333-3333-333333333333=onchain"
+ORCH_ONCHAIN_HOLDINGS="33333333-3333-3333-3333-333333333333=GCPBHMM7KSE74LO757SPKBE3PHWYRTKKKVBCVZURBFM6B2GSOPAJAR4R|USDC|GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+```
+
+`ORCH_RESERVE_SOURCES` maps a tenant id to `attested` or `onchain`; a tenant not listed uses `attested`. `ORCH_ONCHAIN_HOLDINGS` lists each tenant's accounts as `TENANT_ID=ADDRESS` for XLM or `TENANT_ID=ADDRESS|CODE|ISSUER` for an issued asset. Each balance becomes one reserve figure in stroops. The orchestrator refuses to start if a tenant routed to `onchain` has no holdings.
+
+Reserves read on chain move with the ledger. A proof is refused when reserves grow by more than 10% since the last record, so add funds in smaller steps.
 
 ## Connect a source in the console
 

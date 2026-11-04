@@ -7,23 +7,23 @@ const NOTES = [
   },
   {
     title: "Connect the reserve source",
-    body: "Solva holds no credentials for your reserve source. It runs a standard authorisation handshake against the source, then reads balances on the institution's behalf with a short-lived token.",
+    body: "Solva holds no credentials for your reserve source. For a custodian, it runs a standard authorisation handshake, then reads balances with a short-lived token. For reserves held on Stellar, nothing needs authorising: account balances are public.",
   },
   {
-    title: "Read the signed balance",
-    body: "Each reserve account returns its balance with a signature from the source that holds it. The signature is checked before the balance goes anywhere near the proof.",
+    title: "Read the reserve balance",
+    body: "A custodian returns each balance with its signature, and the signature is checked before the balance goes anywhere near the proof. Reserves held on Stellar are read straight from the account on the ledger, which anyone can check on an explorer.",
   },
   {
     title: "Prove coverage and publish",
-    body: "What is owed is committed as one value. The proof shows that the total behind it is at most the signed reserve balance, and the contract on Stellar checks the proof before it stores the result.",
+    body: "What is owed is committed as one value. The proof shows that the total behind it is at most the reserve balance, and the contract on Stellar checks the proof before it stores the result.",
   },
   {
-    title: "Check it on Stellar",
-    body: "Anyone can read the latest proof from the contract with get_latest_proof. This page reads the same published totals from Solva's index of the registry. The record carries the reserve total, the committed total and the proof number, and nothing about any single balance.",
+    title: "Check the published record",
+    body: "This page reads the latest proof straight from the institution's contract with get_latest_proof, as anyone can. The record carries the reserve total, the committed total and the time, and nothing about any single balance.",
   },
   {
     title: "A holder checks they were counted",
-    body: "A holder presents their account reference, and this page looks up their inclusion path for the published proof. Checking that path against the contract with verify_inclusion from this page is coming soon. No other customer is named; the path shows unnamed subtotals, including one neighbouring balance.",
+    body: "A holder presents their account reference, this page looks up their inclusion path for the published proof, and the contract checks that path with verify_inclusion. No other customer is named; the path shows unnamed subtotals, including one neighbouring balance.",
   },
 ] as const;
 

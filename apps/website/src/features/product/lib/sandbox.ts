@@ -1,17 +1,6 @@
-export const INSTITUTIONS = [
-  {
-    name: "Solstice",
-    kind: "Custodial app",
-    owes: "Customer balances, committed as one value",
-    tenantId: "22222222-2222-2222-2222-222222222222",
-  },
-  {
-    name: "Kestrel",
-    kind: "Anchor",
-    owes: "Holder balances, which add up to the token supply",
-    tenantId: "11111111-1111-1111-1111-111111111111",
-  },
-] as const;
+import { formatUsdc, type DemoInstitution } from "@/lib/demo-institutions";
+
+export { DEMO_INSTITUTIONS as INSTITUTIONS } from "@/lib/demo-institutions";
 
 export const SCENARIOS = [
   {
@@ -43,12 +32,12 @@ export const STEPS = [
   {
     id: "connect",
     title: "Connect the reserve source",
-    summary: "Authorise Solva to read the accounts that hold the reserves.",
+    summary: "Open access to the accounts that hold the reserves.",
   },
   {
     id: "reserves",
-    title: "Read the signed balance",
-    summary: "One signed balance per reserve account.",
+    title: "Read the reserve balance",
+    summary: "One balance per reserve account, signed by the custodian or read from Stellar.",
   },
   {
     id: "prove",
@@ -58,16 +47,17 @@ export const STEPS = [
   {
     id: "verify",
     title: "Check the published record",
-    summary: "Read the published totals back and check that reserves cover what is owed.",
+    summary:
+      "Read the record from the contract on Stellar and check that reserves cover what is owed.",
   },
   {
     id: "inclusion",
     title: "A holder checks they were counted",
-    summary: "One holder confirms their balance was counted.",
+    summary: "The contract confirms one holder's balance was counted.",
   },
 ] as const;
 
-export type Institution = (typeof INSTITUTIONS)[number];
+export type Institution = DemoInstitution;
 export type Scenario = (typeof SCENARIOS)[number];
 export type StepId = (typeof STEPS)[number]["id"];
 export type StepStatus = "locked" | "ready" | "running" | "done" | "failed";
@@ -104,6 +94,11 @@ export interface ContractDTO {
 export function commas(value?: string | null): string {
   if (!value) return "0";
   return value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function amount(value: string | undefined, institution: Institution): string {
+  if (institution.reserves.kind === "onchain") return formatUsdc(value ?? "0");
+  return commas(value);
 }
 
 export function truncate(value: string, length: number): string {
@@ -157,6 +152,34 @@ export function connectLines(response: {
   ];
 }
 
+export function onchainConnectLines(institution: Institution): LogLine[] {
+  if (institution.reserves.kind !== "onchain") return [];
+  return [
+    { kind: "info", text: `Reserves are held on Stellar Testnet in account` },
+    { kind: "data", text: `  ${institution.reserves.account}` },
+    { kind: "data", text: `  asset ${institution.reserves.code} (Circle)` },
+    {
+      kind: "ok",
+      text: "No authorisation is needed: balances on Stellar are public.",
+    },
+  ];
+}
+
+export function onchainReservesLines(institution: Institution, balance: string): LogLine[] {
+  if (institution.reserves.kind !== "onchain") return [];
+  return [
+    {
+      kind: "info",
+      text: `GET  horizon-testnet.stellar.org/accounts/${truncate(institution.reserves.account, 12)}`,
+    },
+    {
+      kind: "data",
+      text: `${institution.reserves.code} balance  ${formatUsdc(balance)}  (read from Stellar Testnet)`,
+    },
+    { kind: "ok", text: `Reserves R = ${formatUsdc(balance)} (read from the account on Stellar).` },
+  ];
+}
+
 export function reservesLines(
   balances: readonly {
     source_id: string;
@@ -189,52 +212,70 @@ export function rejectedLines(): LogLine[] {
   ];
 }
 
-export function publishedLines(proof: ProofDTO): LogLine[] {
+export function publishedLines(proof: ProofDTO, institution: Institution): LogLine[] {
   return [
     { kind: "info", text: "Committing what is owed…" },
     { kind: "data", text: `commitment  0x${(proof.root_hash ?? "").replace(/^0x/, "")}` },
     { kind: "info", text: "Generating the zero-knowledge proof…" },
     {
       kind: "data",
-      text: `proven totals  R=${commas(proof.reserves_total)}  L=${commas(proof.liabilities_total)}`,
+      text: `proven totals  R=${amount(proof.reserves_total, institution)}  L=${amount(proof.liabilities_total, institution)}`,
     },
     { kind: "info", text: "publish_proof  →  signed by the registry owner" },
     { kind: "ok", text: `Published on Stellar as proof #${proof.chain_proof_id ?? "?"}.` },
   ];
 }
 
-export function verifyLines(proof: ProofDTO): { covers: boolean; lines: LogLine[] } {
-  const covers = BigInt(proof.reserves_total ?? "0") >= BigInt(proof.liabilities_total ?? "0");
+export interface ChainRecord {
+  reserves: string;
+  liabilities: string;
+}
+
+export function verifyLines(
+  record: ChainRecord,
+  institution: Institution,
+): { covers: boolean; lines: LogLine[] } {
+  const covers = BigInt(record.reserves) >= BigInt(record.liabilities);
   return {
     covers,
     lines: [
-      { kind: "info", text: "latest proof  →  read from the orchestrator's copy of the record" },
+      { kind: "info", text: "get_latest_proof  →  read from the registry on Stellar" },
       {
         kind: "data",
-        text: `R=${commas(proof.reserves_total)}  L=${commas(proof.liabilities_total)}`,
+        text: `R=${amount(record.reserves, institution)}  L=${amount(record.liabilities, institution)}`,
       },
       covers
-        ? { kind: "ok", text: "R ≥ L. The published record covers what is owed." }
-        : { kind: "warn", text: "R < L. Reserves do not cover what is owed." },
+        ? { kind: "ok", text: "R ≥ L on Stellar. The published record covers what is owed." }
+        : { kind: "warn", text: "R < L on Stellar. Reserves do not cover what is owed." },
     ],
   };
 }
 
-export function inclusionLines(response: {
-  balance?: string;
-  pathLength?: number;
-  chainProofId?: string;
-}): LogLine[] {
-  return [
+export function inclusionLines(
+  response: { balance?: string; pathLength?: number; chainProofId?: string; onChain: boolean },
+  institution: Institution,
+): LogLine[] {
+  const lines: LogLine[] = [
     { kind: "info", text: `Holder cust-001  (id hash 0x${DEMO_ID_HASH.slice(0, 8)}…)` },
-    { kind: "data", text: `committed balance  ${commas(response.balance)}` },
+    { kind: "data", text: `committed balance  ${amount(response.balance, institution)}` },
     {
       kind: "data",
-      text: `inclusion check    ${response.pathLength ?? 0} steps to the commitment`,
-    },
-    {
-      kind: "ok",
-      text: `Counted in proof #${response.chainProofId ?? "?"}. Anyone can check this path on Stellar with verify_inclusion. No customer is named.`,
+      text: `inclusion path     ${response.pathLength ?? 0} steps to the commitment`,
     },
   ];
+  if (!response.onChain) {
+    lines.push({
+      kind: "warn",
+      text: "verify_inclusion  →  false. The contract did not confirm this holder.",
+    });
+    return lines;
+  }
+  lines.push(
+    { kind: "info", text: "verify_inclusion  →  true, on the registry on Stellar" },
+    {
+      kind: "ok",
+      text: `Counted in proof #${response.chainProofId ?? "?"}, confirmed by the contract. No customer is named.`,
+    },
+  );
+  return lines;
 }

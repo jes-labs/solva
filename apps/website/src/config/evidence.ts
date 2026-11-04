@@ -14,6 +14,7 @@ export const verifierEvidence = {
 export const explorer = {
   contract: (id: string) => `${EXPLORER}/contract/${id}`,
   tx: (hash: string) => `${EXPLORER}/tx/${hash}`,
+  account: (id: string) => `${EXPLORER}/account/${id}`,
 } as const;
 
 export function shortHash(value: string, head = 8, tail = 4): string {
