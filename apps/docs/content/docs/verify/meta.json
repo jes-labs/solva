@@ -1,0 +1,11 @@
+{
+  "title": "Verify",
+  "pages": [
+    "find-a-record",
+    "check-a-record-on-stellar",
+    "check-a-balance-was-counted",
+    "for-exchanges-and-wallets",
+    "for-lenders-and-risk-teams",
+    "for-auditors"
+  ]
+}

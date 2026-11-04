@@ -1,11 +1,24 @@
+import { Accordion, Accordions } from "fumadocs-ui/components/accordion";
+import { Step, Steps } from "fumadocs-ui/components/steps";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { TypeTable } from "fumadocs-ui/components/type-table";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
+import { ComingSoon } from "@/components/mdx/coming-soon";
+import { DocsHero } from "@/components/mdx/docs-hero";
 
-// The MDX component map for the docs corpus. Every MDX file picks these up
-// without an explicit import.
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
+    Accordion,
+    Accordions,
+    ComingSoon,
+    DocsHero,
+    Step,
+    Steps,
+    Tab,
+    Tabs,
+    TypeTable,
     ...components,
   };
 }

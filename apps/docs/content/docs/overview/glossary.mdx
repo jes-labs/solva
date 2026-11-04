@@ -1,0 +1,100 @@
+---
+title: Glossary
+description: Every term used across the Solva docs, in alphabetical order, with a short definition.
+---
+
+Each entry uses the same word as the rest of the docs.
+
+**Anchor.** An institution that issues a fiat-backed token on Stellar, such as USDC, EURC or ARST, and redeems it for the underlying money.
+
+**API token.** The secret a caller sends as `Authorization: Bearer <token>` to start a cycle through the orchestrator's REST API.
+
+**Attestation.** A report by an independent accountant on an institution's reserves at a date. A coverage record adds daily evidence between attestations and does not replace them.
+
+**Attested reserve source.** A reserve source where the custodian signs each reserve balance. Solva checks the signature, and the trust in the figure sits with the custodian.
+
+**`attestation_of_reserve`.** A SEP-1 field in an issuer's `stellar.toml` that holds a link to evidence of its reserves. An anchor points it at its public record page.
+
+**Audit.** An independent examination of an institution's accounts and controls. A record is evidence an auditor can use. It is not an audit.
+
+**Commitment root.** One value that stands for the whole customer list and its total. Changing or removing any balance changes it, and no balance can be read from it.
+
+**Coverage.** The state in which reserves are at least what is owed, written `R >= L`. As a percentage, it is reserves divided by what is owed, cut off at two decimals and never rounded up.
+
+**Covered.** The status of an asset whose latest record shows reserves at or above what is owed and is recent.
+
+**Custodial app.** A wallet, exchange or other app that holds customer money and moves it over Stellar.
+
+**Custodian.** The firm that holds an institution's reserves and, for an attested source, signs the reserve balances.
+
+**Cycle.** One full run that reads the reserves, takes the customer list, builds a proof and publishes it to the registry. Cycles run on a schedule, daily by default, or on request.
+
+**Growth bound.** The rule that reserves may grow by at most 10 percent from one record to the next. The first record must state no growth.
+
+**Holder.** Anyone who holds an anchor's token or keeps a balance with a custodial app.
+
+**Inclusion check.** The check a holder runs to confirm that their own balance was counted in a record. The registry on Stellar answers `true` or `false`.
+
+**Inclusion path.** The values a holder needs to rebuild the commitment root from their own balance. For each level of the tree, it holds the neighbouring branch's value and total.
+
+**Institution.** An anchor or a custodial app that publishes records to its own registry.
+
+**`is_covered`** <ComingSoon />. A contract call that answers in one read whether an asset is covered.
+
+**Ledger.** One block of the Stellar network. Each record is tied to the ledger that included it, which serves as its timestamp.
+
+**Liabilities.** What an institution owes its customers, the total of every customer balance. Plain pages call this "what is owed".
+
+**Merkle sum tree.** The structure behind the commitment root. Each entry holds a hashed customer reference and a balance, and each branch carries the total of the balances below it.
+
+**Orchestrator.** The Solva service that runs each cycle. It reads and checks the reserve balances, sends the inputs to the prover and publishes the proof.
+
+**Passkey.** A sign-in key held on a person's device or security key. Its private part never leaves the device.
+
+**Passkey smart wallet.** A smart wallet on Stellar controlled by a passkey. It can own an institution's registry, so only that institution can publish to it.
+
+**Previous reserves.** The reserves total of the record before the current one. The proof uses it for the growth bound, and the registry checks it matches.
+
+**Proof.** See zero-knowledge proof.
+
+**Proof id.** A record's number in its registry. The first record is 1.
+
+**Prover.** The Solva service that builds the zero-knowledge proof from the reserve figures and the customer list.
+
+**Public record page** <ComingSoon />. A web page for each institution and asset that shows its status and history, with a stable address an anchor can link from `stellar.toml`.
+
+**Read on chain reserve source** <ComingSoon />. A reserve source that reads balances of Stellar accounts from the ledger.
+
+**Record.** One entry in a registry, holding the reserves total, the liabilities total, the commitment root, the time and the proof id. It is written after the proof passes every check.
+
+**Registry.** The contract on Stellar that belongs to one institution. It checks each proof and keeps that institution's records.
+
+**Reserve source.** Where a cycle gets the reserve figures, from an attested custodian or, for a read on chain source, the Stellar ledger.
+
+**Reserves.** The money an institution holds to back what it owes.
+
+**Sandbox.** A stand-in custodian used by the public demo. Its signatures are real and its balances are synthetic.
+
+**Scoped publishing key.** The orchestrator's key, added to the passkey smart wallet as a signer limited to one registry, so cycles can publish without a person present.
+
+**Selective disclosure** <ComingSoon />. Scoped access for one named party, such as a supervisor or an auditor, to more detail than the public record.
+
+**SEP.** A Stellar Ecosystem Proposal, the name for a Stellar standard.
+
+**Short.** The status of an asset whose latest cycle found reserves below what is owed. The registry refuses such a proof, so no new record is written.
+
+**Soroban.** The smart contract platform on Stellar. The registry is a Soroban contract.
+
+**Stale.** The status of an asset with no new record inside the expected window, daily by default. Coverage is unknown until the next record.
+
+**`stellar.toml`.** The file an issuer publishes on its domain to describe itself and its tokens, defined by SEP-1.
+
+**Tenant.** An institution's entry in the orchestrator, with an id, a name and a plan.
+
+**Testnet.** Stellar's public test network. Solva runs there today.
+
+**Verifier.** The code in the registry that checks a proof on Stellar.
+
+**What is owed.** See liabilities.
+
+**Zero-knowledge proof.** A short piece of data that shows a statement is true without revealing the inputs behind it. In Solva, it shows reserves cover what is owed without revealing any balance.

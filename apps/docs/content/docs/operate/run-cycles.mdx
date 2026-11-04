@@ -1,0 +1,106 @@
+---
+title: Run cycles
+description: What a cycle does, how to trigger one with the API, how scheduled cycles run by plan, and what a refused cycle means.
+---
+
+A [cycle](/docs/overview/how-solva-works) proves that your reserves cover what is owed and publishes the result to your registry. You run one by hand through the API, or let the orchestrator run them on a schedule.
+
+## What a cycle does
+
+1. Reads every configured reserve account and verifies each signature.
+2. Loads the customer balances for your institution.
+3. Takes the reserves total of your last record as the previous total. On your first cycle there is none, so the previous total equals the current one.
+4. Sends the reserves, the balances and the previous total to the prover. The prover builds the Merkle sum tree and the proof.
+5. Publishes the proof to your registry. The contract verifies it and stores the new record.
+6. Saves the proof and the tree, and writes an entry to the audit log.
+
+The record on Stellar holds the reserves total, the total owed, the tree's root and the ledger time. It never holds a customer balance.
+
+## Run a cycle
+
+<Steps>
+  <Step>
+    Choose an idempotency key for this run, such as a UUID. The key makes a retry safe, because the same key never runs twice.
+  </Step>
+  <Step>
+    Send `POST /v1/cycles` with your API token and your tenant id.
+
+    ```bash
+    curl -X POST "$SOLVA_API/v1/cycles" \
+      -H "Authorization: Bearer $SOLVA_API_TOKEN" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: 8f14e45f-ea9e-4c8b-9a3d-2f1c5e6b7a90" \
+      -d '{"tenant_id":"11111111-1111-1111-1111-111111111111"}'
+    ```
+
+  </Step>
+  <Step>
+    Wait for the response. The call returns when the cycle ends, after the record is published or the cycle is refused.
+
+    ```json
+    { "status": "accepted" }
+    ```
+
+  </Step>
+</Steps>
+
+A `202` with `{"status":"accepted"}` means the proof was verified on chain and your registry holds a new record.
+
+### Responses
+
+| Status | Body                                                             | Meaning                                                          |
+| ------ | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `202`  | `{"status":"accepted"}`                                          | The cycle ran and published a new record.                        |
+| `200`  | `{"status":"already processed"}`                                 | This idempotency key ran before. Nothing ran this time.          |
+| `400`  | `{"error":"tenant_id is required"}`                              | The body is not valid JSON, or `tenant_id` is missing.           |
+| `401`  | `{"error":"unauthorized"}`                                       | The API token is missing or wrong.                               |
+| `409`  | `{"error":"cycle already in progress"}`                          | A cycle for your institution is running. Try again when it ends. |
+| `422`  | `{"error":"reserves are below liabilities; no proof generated"}` | Reserves are below what is owed. No proof was made.              |
+| `500`  | `{"error":"the proof cycle could not complete"}`                 | The cycle failed. The reason is in the orchestrator's logs.      |
+
+### Idempotency
+
+Send an `Idempotency-Key` header with every trigger. Without one, each call gets a fresh key and runs on its own.
+
+Two guards stop a cycle running twice. A lock per institution blocks a second cycle while one runs, and answers `409`. The lock expires after 15 minutes if a cycle stops without releasing it. A record of every used key answers `200` to a replay, even after a restart.
+
+A used key is never run again, even if its cycle failed. To retry a failed cycle, send a new key.
+
+## Schedule cycles
+
+The orchestrator can run cycles on a schedule. The schedule depends on your institution's plan:
+
+| Plan      | Schedule                                                  |
+| --------- | --------------------------------------------------------- |
+| `free`    | Once a day, on the scheduler's first run after 00:00 UTC. |
+| `pro`     | Every hour.                                               |
+| Any other | Every hour.                                               |
+
+The scheduler wakes every hour and runs each institution that is due. A failed scheduled cycle is retried up to 3 times, with a delay of 1, 2 and 4 seconds. If all attempts fail, the next due run tries again.
+
+The scheduler is off unless the orchestrator starts with `ORCH_SCHEDULER_ENABLED=true`. An engineer turns it on. The plan is set when the institution is created.
+
+## Refused cycles
+
+A refused cycle publishes nothing. Your registry keeps its last record, and that record's time does not move.
+
+| Reason                      | What happened                                                                                                                                                                           | Response | What to do                                                                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Reserves below what is owed | The reserves total is less than the total of customer balances. The prover refuses before any proof is made, and the contract would refuse such a proof with error 4, `InsolventBound`. | `422`    | Follow [When coverage drops](/docs/operate/when-coverage-drops).                                                                |
+| Growth bound                | Reserves rose more than 10 percent since the last record. The proof requires `10 × R <= 11 × R_prev`.                                                                                   | `500`    | Check the reserve figures. A real jump of more than 10 percent cannot be published in one cycle.                                |
+| Previous reserves mismatch  | The previous total sent with the proof is not the reserves total of the last record on chain. The contract refuses with error 6, `PrevReservesMismatch`.                                | `500`    | The orchestrator's history and your registry disagree, for example after a publish from elsewhere. An engineer reconciles them. |
+| Bad signature               | A reserve figure's signature did not verify against the configured key.                                                                                                                 | `500`    | Check that `ORCH_RESERVE_PUBLIC_KEY_PEM` matches the custodian's current key.                                                   |
+| Too many balances           | More than 8 customer balances or more than 4 reserve figures.                                                                                                                           | `500`    | Reduce the list to the limits in [Load what is owed](/docs/operate/load-what-is-owed).                                          |
+| Registry not recorded       | The institution has no registry on record.                                                                                                                                              | `500`    | Finish [Set up your institution](/docs/operate/set-up-your-institution).                                                        |
+
+Reserves can fall by any amount from one cycle to the next. Only a rise is bounded. The bound stops a sudden, unexplained inflow from covering a gap for one day.
+
+## Run cycles from the console
+
+Console cycle controls <ComingSoon /> run and schedule cycles for you. The console's **Overview** page has a run button and a schedule setting (manual, hourly or daily), and the **Activity** page lists past cycles. Both show example data and do not call the orchestrator.
+
+## Result
+
+Your registry holds a new record for each accepted cycle, on demand or on schedule.
+
+**Next:** [When coverage drops](/docs/operate/when-coverage-drops).

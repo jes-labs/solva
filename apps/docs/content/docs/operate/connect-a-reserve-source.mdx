@@ -1,0 +1,125 @@
+---
+title: Connect a reserve source
+description: How a custodian signs reserve balances, how Solva verifies them, and how a reserve source is connected today.
+---
+
+Each cycle, the orchestrator reads your reserve figures from your [reserve source](/docs/overview/reserve-sources). With an attested source, the custodian signs each balance and the orchestrator checks the signature before it uses the figure. For how much each source type asks you to trust, see [Where reserve figures come from](/docs/overview/reserve-sources).
+
+## Source types
+
+| Source                           | How the figure arrives                                        |
+| -------------------------------- | ------------------------------------------------------------- |
+| Attested (custodian-signed)      | The custodian's service signs each balance it reports.        |
+| On-chain reserves <ComingSoon /> | Solva reads the balance of a Stellar account from the ledger. |
+
+The public demo and the sandbox use a mock custodian run by Solva. Its figures are not real reserves.
+
+## What the custodian signs
+
+For each reserve account, the custodian's service answers `GET {base}/v1/accounts/{account}/balance` with a JSON body:
+
+```json title="balance response"
+{
+  "source_id": "acct-anchor",
+  "balance": "8000000",
+  "currency": "USD",
+  "as_of": "2026-11-04T09:00:00Z",
+  "signature": "MEUCIQ..."
+}
+```
+
+| Field       | Meaning                                                                |
+| ----------- | ---------------------------------------------------------------------- |
+| `source_id` | The reserve account the figure belongs to.                             |
+| `balance`   | The balance as a decimal string of integer minor units, such as cents. |
+| `currency`  | The currency code of the balance.                                      |
+| `as_of`     | The time of the balance, in RFC 3339 format.                           |
+| `signature` | The custodian's signature over the other four fields, base64 encoded.  |
+
+The signature covers a **canonical payload**: the four fields as compact JSON, keys in alphabetical order, with no `signature` field:
+
+```json title="canonical payload"
+{
+  "as_of": "2026-11-04T09:00:00Z",
+  "balance": "8000000",
+  "currency": "USD",
+  "source_id": "acct-anchor"
+}
+```
+
+### The signature scheme
+
+| Part      | Value                                            |
+| --------- | ------------------------------------------------ |
+| Curve     | P-256 (secp256r1)                                |
+| Digest    | SHA-256 over the canonical payload bytes         |
+| Signature | ECDSA, ASN.1 DER encoding of (r, s), then base64 |
+| Key file  | The custodian's public key as a PEM (PKIX) file  |
+
+## How the orchestrator checks a balance
+
+On every cycle the orchestrator:
+
+1. Authenticates to the source with an OAuth authorization code, when a client id is set, and gets a bearer token.
+2. Reads every configured reserve account in parallel.
+3. Rebuilds the canonical payload from each response and verifies the signature with the configured public key.
+4. Uses the figure only if the signature verifies.
+
+A bad signature fails the whole cycle at once, and the orchestrator does not retry it. A network error or a 5xx answer from the source is retried up to three times with a growing delay. If any one account fails, no partial set of reserves is used.
+
+The orchestrator checks the signature only. It does not check the age of `as_of` or the currency. Make sure every reserve figure and every customer balance use the same asset and the same minor unit, because the proof adds them up as plain numbers.
+
+## Connect a source today
+
+A reserve source is set in the orchestrator's configuration, not in the console. The engineer who runs the orchestrator sets these values and restarts it:
+
+| Setting                       | Value                                                                                        |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `ORCH_RESERVE_BASE_URL`       | The base URL of the custodian's balance service.                                             |
+| `ORCH_RESERVE_ACCOUNTS`       | The reserve account ids, comma separated. Up to 4 figures fit in one proof.                  |
+| `ORCH_RESERVE_PUBLIC_KEY_PEM` | The custodian's P-256 public key, PEM encoded. The orchestrator refuses to start without it. |
+| `ORCH_RESERVE_CLIENT_ID`      | The OAuth client id the orchestrator presents. Leave it empty to send no token.              |
+
+<Steps>
+  <Step>
+    Get the custodian's public key as a PEM file and the ids of the accounts that hold your reserves.
+  </Step>
+  <Step>
+    Set the four settings above on the orchestrator.
+
+    ```bash
+    export ORCH_RESERVE_BASE_URL="https://custody.example.com"
+    export ORCH_RESERVE_ACCOUNTS="acct-anchor,acct-beacon,acct-cedar"
+    export ORCH_RESERVE_PUBLIC_KEY_PEM="$(cat custodian-public-key.pem)"
+    export ORCH_RESERVE_CLIENT_ID="solva-orchestrator"
+    ```
+
+  </Step>
+  <Step>
+    Restart the orchestrator. It reads the settings at start.
+  </Step>
+  <Step>
+    Run a cycle, as in [Run cycles](/docs/operate/run-cycles), and check that it returns `202`.
+  </Step>
+</Steps>
+
+<Callout type="warn">
+  One orchestrator holds one set of reserve settings. Every institution on that orchestrator reads
+  the same accounts with the same key. In the console connection below, each institution has its own
+  sources.
+</Callout>
+
+## Connect a source in the console
+
+Console source connections <ComingSoon /> let each institution connect its own reserve sources. The console's **Sources** page has a **Connect a source** dialog with two choices:
+
+- **Custodian account.** Choose your custodian from a list, then authorize read-only access to account balances. Solva never moves funds and never sees transactions. You can revoke access at any time.
+- **On-chain wallet.** Give the source a display name and enter the Stellar address (`G...`) that holds the reserves.
+
+Each connected source appears on the **Sources** page. The dialog runs with example custodians, and no cycle reads what it connects.
+
+## Result
+
+The orchestrator reads your reserve accounts each cycle and uses only figures whose signatures verify.
+
+**Next:** [Load what is owed](/docs/operate/load-what-is-owed).

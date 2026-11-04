@@ -1,0 +1,83 @@
+---
+title: Publish your record
+description: Link your coverage record from stellar.toml with SEP-1 attestation_of_reserve, from your site, and to your partners.
+---
+
+Your record already lives in your registry on Stellar. Point holders and partners at it from your `stellar.toml`, from your own site and in what you send partners.
+
+## Link it from stellar.toml
+
+SEP-1 defines `stellar.toml`, the file an institution serves at `https://<your-domain>/.well-known/stellar.toml` to describe its tokens. Your Stellar account's home domain ties the file to your account. For each token, the `[[CURRENCIES]]` table has an `attestation_of_reserve` field: a URL to "attestation or other proof, evidence, or verification of reserves". Point it at your record.
+
+Use the address of your registry on a Stellar explorer. Public record pages <ComingSoon /> give each token a page at a stable address on joinsolva.xyz, with the latest result and its history. Once your page exists, point the URL there.
+
+<Steps>
+  <Step>
+    Find your registry's contract id. The deploy command in [Set up your institution](/docs/operate/set-up-your-institution) printed it.
+  </Step>
+  <Step>
+    Add `attestation_of_reserve` to the `[[CURRENCIES]]` entry of each token the record covers.
+
+    ```toml title="stellar.toml"
+    [[CURRENCIES]]
+    code = "ARSK"
+    issuer = "<your issuing account>"
+    status = "test"
+    is_asset_anchored = true
+    anchor_asset_type = "fiat"
+    anchor_asset = "ARS"
+    attestation_of_reserve = "https://stellar.expert/explorer/testnet/contract/CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN"
+    ```
+
+    This example uses the Testnet registry of Kestrel Anchor, a fictional example institution. Use your own contract id. Use `status = "test"` while you are on Testnet.
+
+  </Step>
+  <Step>
+    Publish the file. SEP-1 requires the header `Access-Control-Allow-Origin: *` and a file under 100 KB.
+  </Step>
+  <Step>
+    Open `https://<your-domain>/.well-known/stellar.toml` and follow the link to check that it reaches your registry.
+  </Step>
+</Steps>
+
+<Callout type="info">
+  SEP-1 also has `collateral_addresses` with signed messages. Those prove that you control an
+  address. They say nothing about its balance, so they are not a substitute for a coverage record.
+</Callout>
+
+## Link it from your site
+
+Put the same link where holders look for backing: your token page, your transparency or reserves page, and your exchange listings. Say what the record is in one line, for example: "A daily proof on Stellar that our reserves cover what we owe customers. No customer balance is shown."
+
+Tell holders they can [check that their own balance was counted](/docs/verify/check-a-balance-was-counted). The check needs the record's id, the holder's id hash and balance, and their path through the tree. The orchestrator returns these for one customer at `GET /v1/proofs/inclusion/{proof-uuid}:{id-hash}`, and the registry's `verify_inclusion` confirms them on chain.
+
+## Tell your partners
+
+Send each partner, such as a wallet, an exchange, a lender or your auditor:
+
+| Item               | Example                                                    |
+| ------------------ | ---------------------------------------------------------- |
+| Registry contract  | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
+| Network            | Stellar Testnet                                            |
+| Tokens covered     | ARSK                                                       |
+| Cycle schedule     | Once a day, after 00:00 UTC                                |
+| Unit of the totals | Minor units of ARS, two decimals                           |
+
+A partner reads the latest record from the registry, with no account at Solva:
+
+```bash
+stellar contract invoke \
+  --id CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN \
+  --source-account <any-account> \
+  --network testnet \
+  --send=no \
+  -- get_latest_proof
+```
+
+The result holds the reserves total `r`, the total owed `l`, the tree's root `root_h` and the ledger `timestamp`. For what each field means, see [What a record shows](/docs/overview/records).
+
+## Result
+
+Holders find your record from your `stellar.toml` and your site, and partners read it from Stellar themselves.
+
+**Next:** [What a record shows](/docs/overview/records).

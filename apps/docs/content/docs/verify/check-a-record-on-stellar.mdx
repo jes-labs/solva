@@ -1,0 +1,165 @@
+---
+title: Check a record on Stellar
+description: Read an institution's latest coverage record straight from its registry with the Stellar CLI or the SDK, and tell covered from stale.
+---
+
+Any institution's record can be read straight from Stellar, with no Solva account and no request to the institution. A read is a simulated contract call. It costs nothing and writes nothing to the ledger.
+
+## Before you start
+
+You need:
+
+- the registry contract id (see [Find a record](/docs/verify/find-a-record)),
+- the [Stellar CLI](https://developers.stellar.org/docs/tools/cli), or Node.js for the SDK,
+- for the CLI, any funded Testnet key. The CLI needs an account to simulate a call, even a read.
+
+To create and fund a key on Testnet:
+
+```bash
+stellar keys generate reader --network testnet --fund
+```
+
+## Read the latest record with the Stellar CLI
+
+<Steps>
+  <Step>
+    ### Call get_latest_proof
+
+    This reads the latest record from the Solstice Exchange example registry:
+
+    ```bash
+    stellar contract invoke \
+      --id CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW \
+      --network testnet \
+      --source-account reader \
+      -- get_latest_proof
+    ```
+
+  </Step>
+  <Step>
+    ### Read the result
+
+    The CLI notes that the call was simulated as read-only, then prints the record on one line. Formatted, it reads:
+
+    ```json
+    {
+      "l": "9000000",
+      "r": "16000000",
+      "root_h": "0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e",
+      "timestamp": 1793803080
+    }
+    ```
+
+  </Step>
+</Steps>
+
+The values above are the real output on 4 November 2026. Your output shows whatever the registry holds when you run the call.
+
+## What each field means
+
+| Field       | Meaning                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `r`         | Reserves, the total of the signed reserve figures, in the asset's smallest unit.                                                        |
+| `l`         | What is owed, the total of every customer balance in the committed list, in the same unit.                                              |
+| `root_h`    | The [commitment root](/docs/overview/how-solva-works), which a holder checks their balance against.                                     |
+| `timestamp` | The close time of the ledger that wrote the record, in Unix seconds (UTC). It comes from the Stellar network, not from the institution. |
+
+Amounts are whole numbers in the asset's smallest unit, never fractions. The example registries count US dollars in cents, so `16000000` is 160,000.00 and `9000000` is 90,000.00. The timestamp `1793803080` is 14:38:00 UTC on 4 November 2026.
+
+[Coverage](/docs/overview/what-is-solva) here is 16,000,000 divided by 9,000,000, or 177.77 percent, cut off at two decimal places.
+
+The registry writes a record only after the proof behind it passes every check on chain, including that reserves are at least what is owed, so every value you read has already been checked. For what a record proves and does not prove, see [What a record shows](/docs/overview/records).
+
+## Tell covered, short and stale
+
+Solva gives an asset one of three [statuses](/docs/overview/records). From the registry alone, you work them out as follows.
+
+| Status  | What you see in the registry                                                                             |
+| ------- | -------------------------------------------------------------------------------------------------------- |
+| Covered | A record whose `timestamp` falls inside the expected window. Its `r` is always at least its `l`.         |
+| Short   | No new record. The contract refuses a proof where reserves are below what is owed, so it writes nothing. |
+| Stale   | No new record inside the expected window. The latest `timestamp` keeps getting older.                    |
+
+The expected window is daily by default. Subtract the record's `timestamp` from the current time. If the gap is longer than the window you accept, treat coverage as unknown.
+
+From the contract alone, a short day and a missed day look the same, because in both the latest record gets older. Treat both as not covered for that day. Public record pages <ComingSoon /> show short with the size of the gap, taken from the refused cycle.
+
+## Read the latest record with the SDK
+
+The TypeScript SDK reads the same contract. `getOnChainLatestProof` calls `get_latest_proof` on the registry and returns the record with amounts as decimal strings.
+
+The SDK lives in the Solva repository as `@solva/sdk-ts`, with `@stellar/stellar-sdk` version 16 as a peer dependency. The published npm package <ComingSoon /> carries the same calls.
+
+```ts title="read-record.ts"
+import { Solva } from "@solva/sdk-ts";
+
+const solva = new Solva({
+  network: "testnet",
+  tenant: "22222222-2222-2222-2222-222222222222",
+  endpoints: { contractId: "CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW" },
+});
+
+const record = await solva.getOnChainLatestProof();
+console.log(record);
+```
+
+`tenant` is the institution's id in Solva. When you set `contractId`, the SDK reads the contract directly and makes no call to Solva's API. On `testnet`, the SDK reads through `https://soroban-testnet.stellar.org`.
+
+The result:
+
+```json
+{
+  "rootHash": "0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e",
+  "reservesTotal": "16000000",
+  "liabilitiesTotal": "9000000",
+  "timestamp": 1793803080
+}
+```
+
+These are the contract's fields under clearer names. Read the amounts with `BigInt`, never as floating-point numbers, so large balances stay exact. If the read fails, the SDK throws a `ChainError`.
+
+## Check a past record
+
+Each record has a [proof id](/docs/overview/records), starting at 1 and rising by one with each record. `get_proof` returns the record with that id:
+
+```bash
+stellar contract invoke \
+  --id CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW \
+  --network testnet \
+  --source-account reader \
+  -- get_proof --id 1
+```
+
+```json
+{
+  "l": "9000000",
+  "r": "16000000",
+  "root_h": "0c5c65b8b72f420da5a035470aa35ce6bce46a8309bd605cb10b9392d82c922e",
+  "timestamp": 1783031356
+}
+```
+
+`get_latest_proof` does not return the proof id. The latest id is the highest id that `get_proof` answers. To pull every record in order, see [For auditors](/docs/verify/for-auditors).
+
+## When a read fails
+
+A registry answers with a contract error number when it cannot return a record.
+
+| Error | Name             | What it means for a reader                                                      |
+| ----- | ---------------- | ------------------------------------------------------------------------------- |
+| 5     | `ProofNotFound`  | No record has that id. From `get_latest_proof`, the registry has no record yet. |
+| 2     | `NotInitialized` | The contract was never set up as a registry.                                    |
+
+The CLI shows the error in the simulation output:
+
+```text
+error: transaction simulation failed: HostError: Error(Contract, #5)
+```
+
+<Callout type="info">
+  The registry keeps each record readable for up to 30 days ahead, and a read renews that when fewer
+  than 7 days remain. A record that nobody reads for longer can be archived by the network. A read
+  of an archived record fails until someone restores the entry.
+</Callout>
+
+**Next:** [Check a balance was counted](/docs/verify/check-a-balance-was-counted).

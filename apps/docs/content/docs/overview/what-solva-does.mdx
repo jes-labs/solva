@@ -1,0 +1,49 @@
+---
+title: What Solva does
+description: The capabilities of Solva, from the daily coverage record to the reads partners and contracts make.
+---
+
+Solva gives an institution a daily coverage record, and gives the people who rely on it several ways to read and check that record.
+
+## A daily coverage record
+
+An institution runs a [cycle](/docs/overview/how-solva-works) for each asset, by default once a day. Each cycle reads the signed reserve balance, takes the list of what the institution owes its customers, builds a proof that the reserves cover that list, and sends the proof to the institution's [registry](/docs/overview/what-is-solva) on Stellar.
+
+The registry checks the proof and, if the proof is valid, writes a new record. Each record carries the reserves total, the total owed, a commitment to the customer list and the time it was written. Records are never edited. The next cycle adds the next record.
+
+If reserves fall below what is owed, the contract refuses the proof and writes nothing. A day with no new record shows as stale. See [What a record shows](/docs/overview/records).
+
+## A check any holder can make
+
+A holder can check that their own balance was counted in a record. The institution gives the holder an [inclusion path](/docs/overview/privacy), and the registry on Stellar answers `true` or `false`.
+
+The check reveals nothing about any other customer and needs no account with Solva.
+
+## Reads for partners and contracts
+
+Anyone can read the latest record, or any earlier record by its number, from the registry on Stellar. Reading needs no account and costs nothing. A wallet can show coverage beside a balance. An exchange can check coverage before it lists a token. An auditor can collect a dated record for every day.
+
+`is_covered` <ComingSoon /> is a single contract call that answers whether an asset is covered. A lending pool or another contract calls it before it accepts the asset, with no server in between.
+
+## Public record pages
+
+Public record pages <ComingSoon /> give each institution and asset a stable web address that shows its current status and history. An anchor links the page from its `stellar.toml` file through the SEP-1 field `attestation_of_reserve`, so wallets and exchanges find it where they already look. See [Stellar standards](/docs/overview/stellar-standards).
+
+## Selective disclosure
+
+Selective disclosure <ComingSoon /> lets an institution give one named party, such as a supervisor or an auditor, scoped access to see more than the public record shows. Everyone else sees only the totals and the commitment.
+
+## Try it
+
+The public demo at [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) runs a full cycle on Stellar Testnet. A sandbox stands in for the custodian, so the reserve figures are synthetic. The proof, the check on Stellar and the record are real.
+
+## Next
+
+<Cards>
+  <Card title="How Solva works" href="/docs/overview/how-solva-works">
+    The steps behind each record.
+  </Card>
+  <Card title="What a record shows" href="/docs/overview/records">
+    Every field, and the statuses covered, short and stale.
+  </Card>
+</Cards>

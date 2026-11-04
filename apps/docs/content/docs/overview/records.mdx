@@ -1,0 +1,74 @@
+---
+title: What a record shows
+description: The fields of a coverage record, the statuses covered, short and stale, and what a record proves and does not prove.
+---
+
+A **record** is one entry in an institution's registry on Stellar, written only after the proof behind it passes every check. Some of what a record shows is proven, and some still rests on someone's word.
+
+## The fields
+
+| Field             | What it means                                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Proof id          | The record's number in the registry. The first record is 1, and each new record adds one.                                        |
+| Reserves total    | The sum of the signed reserve figures, in the asset's smallest unit.                                                             |
+| Liabilities total | The sum of every customer balance in the committed list, which is what is owed, in the same unit.                                |
+| Commitment root   | One value that stands for the whole customer list and its total. Holders check their balance against it.                         |
+| Previous reserves | The reserves total of the record before this one. The proof uses it for the growth bound, and the registry checks it matches.    |
+| Ledger and time   | The Stellar ledger that included the record, and that ledger's close time. The time comes from the network, not the institution. |
+
+Amounts are whole numbers in the asset's smallest unit, never fractions. For a dollar token with two decimal places, `1000000` means 10,000.00.
+
+The registry stores the proof id, both totals, the commitment root and the time. The previous reserves figure is checked when the record is written and equals the reserves total of the record before it. The ledger is part of the publishing transaction on Stellar.
+
+## The statuses
+
+Solva describes the state of an asset with one of three statuses: covered, short or stale.
+
+| Status  | Meaning                                                                     | What a reader does                                                  |
+| ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Covered | The latest record shows reserves at or above what is owed, and it is recent | Relies on it for that ledger, and checks again after the next cycle |
+| Short   | The latest cycle found reserves below what is owed                          | Treats the asset as not covered until a new record shows it covered |
+| Stale   | No new record arrived inside the expected window, daily by default          | Treats coverage as unknown until the next record lands              |
+
+Coverage as a percentage is reserves divided by what is owed, cut off at two decimal places and never rounded up. Reserves of 99,996.00 against 100,000.00 owed read as 99.99 percent, and the status is short.
+
+The registry itself never stores a short result. When reserves are below what is owed, the contract refuses the proof and writes nothing, so the last record stays as it was. Short is how Solva reports that refused cycle, with the size of the gap.
+
+Stale is applied by rule, with no judgement. A missed day stays stale and is never filled in later. How old a record may be before you stop relying on it is your own decision.
+
+Public record pages <ComingSoon /> show the status, the percentage and the history for each institution and asset.
+
+## What a record proves
+
+A contract on Stellar checked the proof behind every record. That proof established all of the following:
+
+- Every balance in the committed list was counted, and none is negative.
+- The list adds up to the liabilities total.
+- The commitment root stands for exactly that list. A balance cannot be dropped or changed later without the root changing.
+- The reserves total is at least the liabilities total.
+- Reserves grew by no more than 10 percent since the previous record.
+- A holder whose balance is in the list can show it, without seeing anyone else's.
+
+## What a record does not prove
+
+| A record does not prove                          | Why                                                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| That the custodian's signed figure is honest     | The proof takes the signed balance as given. If the custodian signs a wrong figure, the record is wrong.      |
+| Who holds the reserves' private keys             | A signed balance says what an account holds, not who controls it.                                             |
+| That the customer list is complete               | The institution supplies the list. A left-out customer fails the inclusion check, which is how the gap shows. |
+| That reserves are free of other claims           | A balance does not show if the same money also backs something else.                                          |
+| Anything about a day with no record              | A missed day is stale. It says nothing either way.                                                            |
+| That the institution is sound in any other sense | A record shows coverage at one ledger. It is not an audit.                                                    |
+
+The reserve figure rests on the custodian's signature. See [Where reserve figures come from](/docs/overview/reserve-sources).
+
+## See a record on Testnet
+
+Two example registries run on Stellar Testnet. Kestrel Anchor and Solstice Exchange are fictional institutions made up for the demo.
+
+| Example institution | Registry contract                                          |
+| ------------------- | ---------------------------------------------------------- |
+| Kestrel Anchor      | `CAFUK25F56VW442VAOHDKGMPYF2BZ3ERVLVAM4H6JTN2WGZPDUQLRTPN` |
+| Solstice Exchange   | `CDSQ35U2Y3VC44PJC6RRUJVCES2DLBWELDN32AIAEY4J35H4WBEKEUQW` |
+
+To read one yourself, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).

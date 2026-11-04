@@ -1,0 +1,50 @@
+---
+title: Coverage and audits
+description: How a daily coverage record relates to audits and attestations, and what an auditor still does.
+---
+
+A coverage record adds daily evidence between audits and attestations, and the audit stays in place.
+
+## Two kinds of evidence
+
+An **audit** or **attestation** is a report by an independent accountant on an institution's reserves at a date. It arrives a few times a year and describes a day that has already passed.
+
+A **coverage record** is a proof, checked on Stellar, that reserves covered what was owed at one ledger. It comes every day and is public as soon as it is written.
+
+| Question                     | Audit or attestation                     | Coverage record                          |
+| ---------------------------- | ---------------------------------------- | ---------------------------------------- |
+| How often                    | A few times a year                       | Every cycle, daily by default            |
+| Who can read it              | Those it is sent to, or the public later | Anyone, as soon as it is written         |
+| What checks it               | An independent accountant                | A contract on Stellar                    |
+| Reserves are checked against | Records, statements and confirmations    | A balance signed by the custodian        |
+| Customer balances            | Tested by sampling                       | All counted in the proof; none published |
+| Who controls the reserves    | Examined                                 | Not covered                              |
+| Other claims on the reserves | Examined                                 | Not covered                              |
+
+## What a record adds
+
+- **The days between reports.** An auditor sees a dated record for every day of the period, each tied to a Stellar ledger, and a visible gap for every missed day.
+- **Every balance, not a sample.** The proof counts every balance in the committed list.
+- **A check by each holder.** A customer left out of the list fails the inclusion check, so a gap in the list can surface between audits.
+
+## What an auditor still does
+
+A record proves the arithmetic and the commitment. Everything outside the proof stays with the auditor, who:
+
+- Confirms the reserves exist, with the custodian, beyond the signed figure.
+- Confirms who controls the reserve accounts and if the funds carry other claims.
+- Tests that the customer list the institution commits is complete and correct.
+- Reviews the institution's controls, its accounts and everything else an audit covers.
+
+An auditor can use the records as evidence for the days between audits. The audit report stays the institution's statement of record.
+
+## Next
+
+<Cards>
+  <Card title="For auditors" href="/docs/verify/for-auditors">
+    How an auditor reads and files the records.
+  </Card>
+  <Card title="What a record shows" href="/docs/overview/records">
+    What a record proves and what it does not.
+  </Card>
+</Cards>

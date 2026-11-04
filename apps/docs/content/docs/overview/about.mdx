@@ -1,0 +1,36 @@
+---
+title: About Solva
+description: The principles Solva is built on, and where it stands today.
+---
+
+Five principles shape the choices made across Solva and these docs.
+
+## Open source
+
+Every part of Solva is open source under the Apache-2.0 license: the circuit, the prover, the contract, the services and the apps. The code is on [GitHub](https://github.com/jes-labs/solva). Anyone can read how a record is made and run the same code.
+
+## Verifiable by anyone
+
+Solva never checks its own work. A contract on Stellar checks every proof before it writes a record. Anyone can read the record and the contract, and repeat the check, with no account and no permission.
+
+## Private by default
+
+No customer balance is published. The public sees totals and a commitment, and each customer can check only their own balance. See [Privacy](/docs/overview/privacy).
+
+## Neutral
+
+Solva does not hold funds and does not move money. Reserves stay in the institution's own reserve accounts, at its own custodian. Solva reads a signed balance, builds a proof and publishes a record. It makes no judgement about an institution beyond coverage at one ledger.
+
+## Built on Stellar
+
+Records live on Stellar. The registry is a Soroban contract, the smart contract platform on Stellar. It verifies each proof on the network with the BN254 and Poseidon2 host functions that Stellar Protocol 25 added. Solva works with the Stellar standards that anchors already use. See [Stellar standards](/docs/overview/stellar-standards).
+
+## Where it stands
+
+| Item                       | Today                                                |
+| -------------------------- | ---------------------------------------------------- |
+| Network                    | Stellar Testnet                                      |
+| Mainnet                    | <ComingSoon />                                       |
+| Independent security audit | <ComingSoon />                                       |
+| License                    | Apache-2.0                                           |
+| Public demo                | [joinsolva.xyz/demo](https://www.joinsolva.xyz/demo) |

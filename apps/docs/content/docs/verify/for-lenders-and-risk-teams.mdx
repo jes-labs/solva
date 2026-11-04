@@ -1,0 +1,59 @@
+---
+title: For lenders and risk teams
+description: Use coverage as an input to collateral rules, apply haircuts to short or stale records, and plan for is_covered.
+---
+
+A lending pool, credit desk or risk team that accepts tokens as collateral, or carries exposure to an institution, can turn a coverage record into a collateral rule. The rule still needs your own judgement in a few places, set out below.
+
+## Coverage as a collateral input
+
+A record tells you, for one ledger, that reserves were at least what the institution owed its customers. For collateral, it shows the token was backed at that time. It does not price the token or measure the institution's other risks, so use it as one input beside your other checks.
+
+Read three things from each record:
+
+| Input    | Where it comes from                             | Why it matters                                        |
+| -------- | ----------------------------------------------- | ----------------------------------------------------- |
+| Status   | Covered, short or stale                         | If you accept the token at all                        |
+| Coverage | Reserves divided by what is owed                | How much room there is before the next cycle is short |
+| Age      | The current time minus the record's `timestamp` | How far you are relying on an old answer              |
+
+To read them from Stellar, see [Check a record on Stellar](/docs/verify/check-a-record-on-stellar).
+
+## A collateral rule
+
+The website's [partners page](https://joinsolva.xyz/partners) shows a lending pool rule. The pool accepts deposits of an asset while it is covered, and waits while it is short or stale until a new record shows it covered again.
+
+| Status  | New deposits as collateral | New borrowing against existing collateral |
+| ------- | -------------------------- | ----------------------------------------- |
+| Covered | Accept                     | Allow                                     |
+| Short   | Refuse                     | Pause until a record shows it covered     |
+| Stale   | Refuse                     | Pause until the next record lands         |
+
+Record the ledger or the record's time with each decision, so you can show later which record a decision rested on.
+
+## Haircuts on short or stale records
+
+A **haircut** is the discount you apply to collateral's value when you lend against it. Coverage gives you a reason to vary it, and the values are your policy, not Solva's. A rule can:
+
+- apply your normal haircut while the record is covered and recent,
+- raise the haircut as coverage approaches 100 percent, since a small move then turns the next cycle short,
+- raise it further, or stop counting the collateral, once the record is older than your limit,
+- stop counting the collateral while the asset is short.
+
+Set the age limit from the institution's cadence. Records are daily by default. Solva's oracle treats a gap of more than 26 hours between cycles as a sign worth flagging.
+
+A short day leaves no new record on chain, because the registry refuses a proof where reserves are below what is owed. From the contract alone, a short day looks like a stale one, so your rule handles both the same way until a new record arrives.
+
+## What a record does not cover
+
+A record proves the arithmetic of coverage at one ledger. It rests on the custodian's signed reserve figure, and it does not show whether the same reserves also back something else. See [What a record shows](/docs/overview/records) and [Where reserve figures come from](/docs/overview/reserve-sources) before you set how much weight a record carries.
+
+## is_covered for contracts
+
+`is_covered` <ComingSoon /> is a read-only call on the registry that a lending contract makes before accepting collateral. It takes the issuer and the asset and returns covered, short or stale, with the ledger the asset was checked at. A contract can then enforce the rule above on chain, with no back-end job in between.
+
+SEP-40, the Stellar standard for oracles, covers price feeds only. `is_covered` follows its read-only pattern for a coverage answer.
+
+Without `is_covered`, a contract or a back-end job reads `get_latest_proof` and applies its own age limit.
+
+**Next:** [For auditors](/docs/verify/for-auditors).

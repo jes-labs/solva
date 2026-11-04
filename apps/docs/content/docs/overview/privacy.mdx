@@ -1,0 +1,61 @@
+---
+title: Privacy
+description: What a coverage record makes public, what stays private, and how a holder checks their balance without exposing anyone else.
+---
+
+A record makes a few totals public and keeps every customer balance and identity private. The tables below answer the data questions customers and compliance staff ask.
+
+## What the public sees
+
+| Public on Stellar | Notes                                                                        |
+| ----------------- | ---------------------------------------------------------------------------- |
+| Reserves total    | Public by design. The proof hides the list, not this figure.                 |
+| Liabilities total | The total owed to all customers together.                                    |
+| Commitment root   | One value that stands for the customer list. No balance can be read from it. |
+| Time and ledger   | When the record was written.                                                 |
+| Proof id          | The record's number in the registry.                                         |
+
+## What stays private
+
+| Private                 | Notes                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| Every customer balance  | Never written to Stellar and never published.                                                   |
+| Every customer identity | The list holds a hash of each customer reference, never a name. The institution keeps the link. |
+| The customer list       | Held by the services that build the proof, the orchestrator and the prover. Never published.    |
+| Each reserve figure     | Only their total is public.                                                                     |
+
+## How a holder checks their balance
+
+The **inclusion check** lets a holder confirm that their own balance was counted, without seeing anyone else's.
+
+1. The holder gets an **inclusion path** for their balance. It holds, for each level of the tree behind the commitment, the value of the neighbouring branch and that branch's total.
+2. The holder asks the [registry](/docs/overview/what-is-solva) on Stellar to rebuild the commitment from their hashed reference, their balance and the path.
+3. The registry answers `true` if the rebuilt commitment and total match the record, and `false` otherwise.
+
+The check is a read. Nothing about it is written to Stellar, and it needs no account with Solva. The Stellar server that answers the read does see the values sent to it.
+
+A path names no other customer, though it does carry branch totals. Today a proof holds up to eight balances, so the branch next to a holder's own entry is a single other balance, with no identity attached. Larger proofs <ComingSoon /> put many more balances behind each branch total.
+
+<Callout type="info">
+  The check catches a missing balance only when that holder runs it. A customer who is left out of
+  the list fails the check and can raise it with the institution.
+</Callout>
+
+## The zero-knowledge setting
+
+The prover and the verifier on Testnet keep every balance out of the public inputs, so nothing in the record reveals a balance. The hiding setting <ComingSoon /> of the proof system adds a further guarantee, that the proof data itself reveals nothing about the private inputs.
+
+## Selective disclosure
+
+Selective disclosure <ComingSoon /> lets an institution give one named party, such as a supervisor or an auditor, scoped access to more detail than the public record. Nobody else gains access.
+
+## Next
+
+<Cards>
+  <Card title="Check a balance was counted" href="/docs/verify/check-a-balance-was-counted">
+    The inclusion check, step by step.
+  </Card>
+  <Card title="Security" href="/docs/overview/security">
+    Who can publish, and what is checked where.
+  </Card>
+</Cards>
