@@ -1,86 +1,67 @@
 import type { Metadata } from "next";
-import { Reveal } from "@/components/motion";
-import { Eyebrow } from "@/components/ui";
-import { ContactForm } from "@/components/contact/contact-form";
-import { routes } from "@/lib/routes";
+import { PageOpening } from "@/components/layout/page-opening";
+import { LeaderRow, Provenance } from "@/components/ui/ledger";
+import { routes } from "@/config/navigation";
+import { site } from "@/config/site";
+import { exampleRecords } from "@/lib/example-records";
+import {
+  AfterYouWrite,
+  ContactForm,
+  OtherChannels,
+  WriteSection,
+  readPrefill,
+} from "@/features/contact";
 
 export const metadata: Metadata = {
-  title: "Contact",
+  title: "Talk to us",
   description:
-    "Get in touch with the Solva team. Partnerships, press, or a question about proving reserves on Stellar. We reply within one business day.",
-  alternates: { canonical: "/contact" },
-  openGraph: { title: "Contact", url: "/contact" },
+    "Write to the Solva team about a pilot for your anchor or custodial app, about reading coverage as a wallet or lending pool, or about checking it as an auditor.",
+  alternates: { canonical: routes.contact },
 };
 
-const reasons = [
-  {
-    n: "01",
-    title: "Partnerships & pilots",
-    body: "Banks, fintechs, exchanges, and issuers exploring proof of reserves.",
-  },
-  {
-    n: "02",
-    title: "Press & ecosystem",
-    body: "Writing about Solva, Stellar, or zero-knowledge in finance.",
-  },
-  {
-    n: "03",
-    title: "Anything else",
-    body: "A question, a correction, or just curious how it works.",
-  },
-];
+interface ContactPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-export default function ContactPage() {
+function ContactFigure() {
   return (
-    <main className="relative z-[1]">
-      <div className="mx-auto grid max-w-site grid-cols-1 items-start gap-16 px-7 pb-24 pt-40 lg:grid-cols-[1fr_1.05fr]">
-        {/* Left: intro + ways to reach */}
-        <Reveal className="lg:sticky lg:top-[130px]">
-          <Eyebrow className="mb-5 text-acc-text">Contact</Eyebrow>
-          <h1 className="font-display text-[clamp(34px,4.4vw,54px)] font-bold leading-[1.03] tracking-[-0.035em]">
-            Talk to the <span className="font-serif italic text-acc-text">team</span>.
-          </h1>
-          <p className="mt-5 max-w-[420px] text-[17px] leading-relaxed text-sec">
-            Send us a note and a real person will get back to you within one business day. No
-            chatbots, no ticket queue.
-          </p>
-
-          <div className="mt-8 flex flex-col gap-[18px]">
-            {reasons.map((item) => (
-              <div key={item.n} className="flex gap-3.5">
-                <span className="shrink-0 pt-0.5 font-mono text-[13px] text-acc-text">{item.n}</span>
-                <div>
-                  <div className="text-[15px] font-semibold text-fg">{item.title}</div>
-                  <p className="mt-0.5 text-sm leading-snug text-sec">{item.body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 border-t border-hair pt-[22px]">
-            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-sec">
-              Prefer email?
-            </p>
-            <a
-              href="mailto:support@joinsolva.xyz"
-              className="font-mono text-[15px] text-fg transition-colors hover:text-acc-text"
-            >
-              support@joinsolva.xyz
-            </a>
-            <a
-              href={routes.demo}
-              className="mt-3 block text-[15px] font-semibold text-acc-text transition-opacity hover:opacity-80"
-            >
-              Looking for a demo? Request one →
-            </a>
-          </div>
-        </Reveal>
-
-        {/* Right: form */}
-        <Reveal>
-          <ContactForm />
-        </Reveal>
+    <div className="ruled-marks relative border border-line bg-bg p-5 sm:p-6">
+      <p className="text-small text-sec">Talking to Solva</p>
+      <div className="mt-4 flex flex-col gap-2.5">
+        <LeaderRow label="Who reads it" value="A person on the team" />
+        <LeaderRow label="Reply within" value="1 working day" />
+        <LeaderRow label="From" value={site.contactEmail} />
+        <LeaderRow label="Pilots" value="Open" tone="signal" />
       </div>
-    </main>
+      <Provenance parts={["No ticket queue", "No customer data needed"]} className="mt-5" />
+    </div>
+  );
+}
+
+export default async function ContactPage({ searchParams }: ContactPageProps) {
+  const prefill = readPrefill(await searchParams);
+  return (
+    <>
+      <PageOpening
+        label="Contact"
+        title="Talk to us."
+        lead="Tell us which asset you issue or hold, or what you want to read from the record. A person on the team reads every message and replies within one working day."
+        primary={{ label: "Write to the team", href: "#write" }}
+        secondary={{ label: "Join the waitlist", href: routes.waitlist }}
+        figure={<ContactFigure />}
+      />
+      <WriteSection
+        id="write"
+        label="Write to us"
+        title="Write to the team"
+        body="The more we know about the asset, the more useful the first reply. Name the token, say roughly how many holders or customers it has, and tell us where the reserves are held."
+        record={exampleRecords[0]}
+        caption="What a pilot ends with"
+      >
+        <ContactForm prefill={prefill} />
+      </WriteSection>
+      <AfterYouWrite />
+      <OtherChannels />
+    </>
   );
 }

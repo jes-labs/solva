@@ -1,64 +1,54 @@
-import Link from "next/link";
-import { cn } from "@/lib/cn";
-import { isExternalHref } from "@/lib/is-external";
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { Slot } from "radix-ui";
 
-type Variant = "primary" | "secondary" | "tertiary";
-type Size = "sm" | "md" | "lg";
+const buttonVariants = cva(
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-btn font-sans font-medium whitespace-nowrap transition-colors duration-200 outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "border border-signal-border bg-signal text-on-signal hover:bg-signal-hover",
+        secondary: "border border-line-strong bg-transparent text-text hover:bg-raised",
+        dark: "border border-text bg-text text-bg hover:opacity-90",
+        ghost: "text-text hover:bg-raised",
+        link: "h-auto rounded-none px-0 text-ui font-medium text-link underline decoration-link-line decoration-1 underline-offset-4 hover:decoration-text",
+      },
+      size: {
+        default: "h-11 px-5 text-small",
+        sm: "h-9 px-4 text-small",
+        lg: "h-12 px-6 text-ui",
+        icon: "size-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
 
-const base =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-semibold transition disabled:pointer-events-none disabled:opacity-50";
-
-const variants: Record<Variant, string> = {
-  // Chartreuse fill with the lift-and-glow hover. This is the primary signal.
-  primary: "bg-acc text-on-acc hover:-translate-y-px hover:shadow-cta",
-  // Hairline outline that strengthens on hover.
-  secondary: "border border-hair text-fg hover:border-hair-strong",
-  // Plain accent text, for low-emphasis actions.
-  tertiary: "text-acc-text hover:opacity-80",
-};
-
-const sizes: Record<Size, string> = {
-  sm: "rounded-[9px] px-[18px] py-[10px] text-sm",
-  md: "rounded-btn px-6 py-[13px] text-[15px]",
-  lg: "rounded-[11px] px-7 py-[15px] text-base",
-};
-
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
-  size?: Size;
-  // When set, the button renders as a Next link to this route.
-  href?: string;
-}
-
-export function Button({
-  variant = "primary",
-  size = "md",
+function Button({
   className,
-  children,
-  href,
-  ...rest
-}: ButtonProps) {
-  const classes = cn(base, variants[variant], sizes[size], className);
-
-  if (href) {
-    // Cross-origin targets (the app, the docs site) open in a new tab.
-    if (isExternalHref(href)) {
-      return (
-        <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
-          {children}
-        </a>
-      );
-    }
-    return (
-      <Link href={href} className={classes}>
-        {children}
-      </Link>
-    );
-  }
+  variant = "default",
+  size = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  }) {
+  const Comp = asChild ? Slot.Root : "button";
 
   return (
-    <button className={classes} {...rest}>
-      {children}
-    </button>
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
   );
 }
+
+export { Button };

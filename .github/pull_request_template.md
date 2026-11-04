@@ -46,12 +46,6 @@ What this changes and why. Link the issue: Closes #
 
 Code, files, config and packages this PR deletes.
 
-## Lighthouse (mobile, website routes only)
-
-| Route | Performance | Accessibility | Best Practices | SEO |
-| ----- | ----------- | ------------- | -------------- | --- |
-| `/`   |             |               |                |     |
-
 ## How this was verified
 
 What you ran and what you clicked or called. For website changes: light and dark mode, on a phone-sized screen.

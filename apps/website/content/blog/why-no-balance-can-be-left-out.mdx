@@ -1,0 +1,56 @@
+---
+title: "Why no balance can be left out"
+excerpt: "Committing to a list of balances is easy. Committing to its total, so that nothing can be dropped, is what matters. Here is how a coverage record does both."
+category: "Engineering"
+author: "The Solva team"
+date: "2026-06-10"
+cover: "/images/archive/merchant-ledger-1600.webp"
+coverAlt: "A handwritten page from a merchant's ledger, with columns of figures"
+---
+
+The hard part of proving that a custodial app can repay its customers is the customer balances. Leaving one out has to be impossible, and discouraging it is not enough. This note is about the one value Solva publishes in place of the list, and why the obvious way of building that value solves the wrong problem.
+
+## The omission problem
+
+Say you want to prove that your reserves cover what you owe. You commit to the list of customer balances, prove that the reserves are larger, and publish the result. The obvious tool for committing to a list is a fingerprint: fold the entries together until one value stands for the whole list.
+
+The trouble is what an ordinary fingerprint commits to. It can show that a given balance is on the list. It says nothing about the sum of the list, and nothing about whether every balance made it onto the list in the first place. An institution could build a perfectly valid fingerprint from half its obligations, prove that reserves beat that smaller total, and the proof would verify. The fingerprint has no opinion about the number that most needs pinning down.
+
+So a plain fingerprint solves the wrong half of the problem. It confirms membership, when what needs confirming is a total.
+
+## Carry the total with the commitment
+
+The fix is to carry the running total inside the commitment itself. Each entry holds a balance. Each time two entries are folded together, the result records both a fingerprint of the pair and the sum of their balances. The commitment at the top then says two things at once: these balances, in this shape, adding up to exactly this number.
+
+That second part closes the gap. Drop a balance and the total at the top changes, so the published commitment no longer matches. There is no way to shrink the total without producing a different commitment, and a different commitment is something anyone can spot.
+
+The statement the proof makes is short:
+
+```text
+reserves    >=  commitment.total
+commitment  ==  recompute(every balance on the list)
+```
+
+The first line is the coverage claim. The second line is what stops anyone cheating on the first, because it forces the total to be the total of the real, committed list.
+
+## What stays private
+
+The balances go into the prover on the institution's side and never leave it. What is published is the commitment, its total and the reserve figure. A customer who wants to know they were counted can be shown that their own balance sits behind the commitment, without being shown anyone else's.
+
+The current build proves a list of eight balances at a time. Larger lists are on the roadmap. The full construction, with the source, is in the documentation.
+
+## Two details that bite
+
+Two things deserve care in anything built this way, and we would rather say so than leave them for a reader to discover.
+
+The first is the arithmetic. Real balances are large, and the arithmetic inside a proof wraps around at a fixed limit instead of overflowing the way an ordinary computer would. Without care, a list could be crafted so that the sum wraps back down to a small number that reserves "cover". The defence is to bound every balance and every running total inside the proof, so the sum can never get near that limit. Those bounds are proven, never assumed.
+
+The second is cost. The commitment has to be something a contract on Stellar can recompute cheaply, or verification does not fit in a contract call at all. Our note on why Solva settles on Stellar covers that side of it.
+
+## What the proof convinces you of
+
+When this verifies, here is the exact statement you can rely on. At the moment of proving, the prover knew a list of balances whose commitment equals the published one, whose total equals the published total, and reserves were at least that total. Leave a balance out and the commitment moves. Reorder or pad the list and it moves too.
+
+Here is what it does not say. The reserve figure is supplied by the institution. The proof checks the arithmetic and the commitment, not that the money exists. And the proof is not yet in its formally hiding configuration: a customer's own check reveals subtotals of the entries next to theirs. Proving totals without revealing any of those subtotals is planned work, and the trust page will say so when it ships.
+
+It is a narrow statement, and that is the point. The one number everyone used to keep in a spreadsheet can no longer be fudged without getting caught.

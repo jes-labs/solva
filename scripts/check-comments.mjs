@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { changedFiles } from "./lib/changed-files.mjs";
+import { changedFiles, isGenerated } from "./lib/changed-files.mjs";
 
 const MAX_LINES = 3;
 const CODE_EXTENSIONS = /\.(ts|tsx|js|mjs|cjs)$/;
@@ -40,7 +40,8 @@ const AI_PATTERN = new RegExp(`\\b(${AI_PHRASES.join("|")})\\b`, "i");
 
 function filesToCheck() {
   const args = process.argv.slice(2);
-  if (args.length > 0) return args.filter((file) => CHECKED_EXTENSIONS.test(file));
+  if (args.length > 0)
+    return args.filter((file) => CHECKED_EXTENSIONS.test(file) && !isGenerated(file));
   return changedFiles(CHECKED_EXTENSIONS);
 }
 

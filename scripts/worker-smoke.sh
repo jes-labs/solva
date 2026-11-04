@@ -19,8 +19,11 @@ dir="$root/apps/$app"
 case "$app" in
   website)
     routes=(
-      "/ 200" "/about 200" "/blog 200" "/blog/merkle-sum-tree-in-noir 200"
-      "/blog/no-such-post 404" "/pricing 200" "/security 200" "/legal 200"
+      "/ 200" "/anchors 200" "/custodial-apps 200" "/partners 200" "/how-it-works 200"
+      "/coverage-record 200" "/demo 200" "/about 200" "/trust 200"
+      "/blog 200" "/blog/why-no-balance-can-be-left-out 200" "/blog/no-such-post 404"
+      "/contact 200" "/waitlist 200" "/legal 200" "/no-such-page 404"
+      "/solutions 308" "/pricing 308" "/status 308" "/sandbox 308" "/research 308" "/blog/merkle-sum-tree-in-noir 308"
       "/robots.txt 200" "/sitemap.xml 200"
     )
     ;;

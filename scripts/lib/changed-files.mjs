@@ -2,7 +2,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
 const GENERATED =
-  /(^|\/)(node_modules|\.next|\.open-next|\.wrangler|\.turbo|dist|target)\/|^packages\/contract-bindings\/|^pnpm-lock\.yaml$/;
+  /(^|\/)(node_modules|\.next|\.open-next|\.wrangler|\.turbo|dist|target)\/|^packages\/contract-bindings\/|^pnpm-lock\.yaml$|\/cn-tables\.ts$/;
+
+export function isGenerated(file) {
+  return GENERATED.test(file);
+}
 
 function git(args) {
   return execFileSync("git", args, { encoding: "utf8" }).split("\n").filter(Boolean);
@@ -16,6 +20,6 @@ export function changedFiles(pattern) {
     ...git(["ls-files", "--others", "--exclude-standard"]),
   ];
   return [...new Set(files)].filter(
-    (file) => pattern.test(file) && !GENERATED.test(file) && existsSync(file),
+    (file) => pattern.test(file) && !isGenerated(file) && existsSync(file),
   );
 }

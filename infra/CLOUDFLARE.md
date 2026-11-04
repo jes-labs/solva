@@ -33,22 +33,23 @@ apps.
 
 - `website` and `docs` use the read-only static-assets incremental cache:
   prerendered pages are served from Workers Static Assets. There is no ISR or
-  revalidation. Pages that read the filesystem (the blog) only work because they
-  are prerendered; `blog/[slug]` sets `dynamicParams = false` so unknown slugs
-  404 instead of rendering.
+  revalidation. The website's blog posts are bundled at build time with
+  `import.meta.glob`, so no page reads the filesystem; `blog/[slug]` sets
+  `dynamicParams = false` so unknown slugs return 404.
 - `web` has no incremental cache. `unstable_cache`, `revalidate` and `fetch`
   caching would not persist between requests. Adding R2 is a separate decision.
-- `next/image` optimization is off on the website (`images.unoptimized`); the
-  free plan has no Images binding.
+- The free plan has no Images binding, so the website uses a custom `next/image`
+  loader (`src/lib/image-loader.ts`) that picks prepared 400, 800 and 1600 px
+  WebP files from `public/images/archive/`. Add a new picture at all three widths.
 
 ## Limits (Workers Free)
 
-- 3 MiB compressed per Worker. Measured Oct 2026: website 1.45 MiB, web
+- 3 MiB compressed per Worker. Measured Nov 2026: website 1.79 MiB; Oct 2026: web
   1.25 MiB, docs 1.63 MiB (`wrangler deploy --dry-run --outdir <tmp>`).
 - 10 ms CPU per request and 100,000 requests per day across the account.
-- Server-side `fetch` cannot target a bare IP address. `ORCHESTRATOR_URL`,
-  `SANDBOX_URL` and `NEXT_PUBLIC_ORCHESTRATOR_URL` must use a hostname. They
-  use `3.77.49.18.sslip.io` (public DNS that resolves to the Lightsail IP).
+- Server-side `fetch` cannot target a bare IP address. The console's
+  `NEXT_PUBLIC_ORCHESTRATOR_URL` must use a hostname. It
+  uses `3.77.49.18.sslip.io` (public DNS that resolves to the Lightsail IP).
   Custom ports work because the host is not proxied by Cloudflare.
 
 ## Environment variables
