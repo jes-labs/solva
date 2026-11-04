@@ -20,4 +20,4 @@ What a user or teammate will notice, in two or three sentences.
 ## Verification
 
 - Tests added or changed.
-- Lighthouse scores for the routes touched.
+- The website routes touched, reviewed at phone and desktop width in both themes.
