@@ -1,16 +1,9 @@
 import { SolvencyStatus } from "@solva/shared-types";
 
-// Mock orchestrator state for the institution dashboard while the real
-// orchestrator REST and SDK are wired. The action signatures mirror the SDK so
-// the swap is mechanical:
-//
-//   await solvaClient(tenant).connectSource(config);   // -> source id
-//   await solvaClient(tenant).runProofCycle();         // -> proof id
-//   await solvaClient(tenant).getLatestProof();        // -> Proof
-//
-// Here actions return the new entity and the client holds the accumulated state.
+// Mock orchestrator state until the SDK is wired. Action signatures mirror the
+// SDK's connectSource, runProofCycle and getLatestProof, so the swap is mechanical.
 
-export type SourceType = "openbanking" | "onchain";
+export type SourceType = "attested" | "onchain";
 
 export interface Source {
   id: string;
@@ -52,10 +45,10 @@ export function initialDashboard(): DashboardData {
   return {
     sources: [
       {
-        id: "src_fnb",
-        type: "openbanking",
-        label: "First National Bank",
-        detail: "Open banking · client ••4821",
+        id: "src_kestrel",
+        type: "attested",
+        label: "Kestrel Custody",
+        detail: "Signed balance · account ••4821",
         connectedAt: now - 86400 * 9,
       },
       {
@@ -102,8 +95,8 @@ export async function connectSourceMock(config: {
 }): Promise<Source> {
   await delay(550);
   const detail =
-    config.type === "openbanking"
-      ? `Open banking · ${config.settings || "client connected"}`
+    config.type === "attested"
+      ? `Signed balance · ${config.settings || "account connected"}`
       : `On-chain · ${config.settings || "wallet connected"}`;
   return {
     id: newId("src"),

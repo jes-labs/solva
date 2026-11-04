@@ -151,7 +151,7 @@ TRUNCATE tenants CASCADE;
 -- The tenant carries its own contract: the orchestrator publishes to it, not to
 -- a global setting (multi-tenancy, #126/#127).
 INSERT INTO tenants (id, name, plan, contract_id, network)
-VALUES ('${TENANT_ID}', 'Meridian Bank', 'growth', '${CONTRACT_ID}', 'testnet');
+VALUES ('${TENANT_ID}', 'Kestrel Anchor', 'growth', '${CONTRACT_ID}', 'testnet');
 WITH c AS (
   INSERT INTO customers (tenant_id, external_ref, id_hash) VALUES
     ('${TENANT_ID}', 'cust-001', '0000000000000000000000000000000000000000000000000000000000000001'),
@@ -205,7 +205,7 @@ if [ "${E2E_SERVICES_RUNNING:-0}" != "1" ]; then
 
   log "starting orchestrator"
   (
-    export ORCH_BANK_PUBLIC_KEY_PEM="$SANDBOX_PUBKEY_PEM"
+    export ORCH_RESERVE_PUBLIC_KEY_PEM="$SANDBOX_PUBKEY_PEM"
     export ORCH_STELLAR_SIGNER_SECRET="$E2E_STELLAR_SIGNER_SECRET"
     # The contract is per tenant now (seeded on the tenant row), not a global env.
     export ORCH_SCHEDULER_ENABLED=false

@@ -75,7 +75,7 @@ func (x *Liability) GetBalance() string {
 	return ""
 }
 
-// A single reserve figure attested by a bank or on-chain source.
+// A single reserve figure attested by a custodian or read on chain.
 type Reserve struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SourceId      string                 `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`

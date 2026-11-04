@@ -6,7 +6,7 @@ This is the shape of the codebase and the rules that keep it that way. It has tw
 
 ```
  reserve sources          customer balances
- (sandbox bank, chain)    (institution ledger)
+ (custodian, chain)       (institution ledger)
         │                        │
         ▼                        ▼
  ┌───────────────────────────────────────┐
@@ -39,7 +39,7 @@ This is the shape of the codebase and the rules that keep it that way. It has tw
 | Prover                | `services/prover`                                                           | Rust           | circuit-matching hashing, witness, proof                 | expose customer data beyond the proof              |
 | Contract              | `contracts/proof-registry`, `crates/ultrahonk-soroban-verifier`             | Rust (Soroban) | on-chain verification, storage, inclusion check          | depend on off-chain state                          |
 | Orchestrator          | `services/orchestrator`                                                     | Go             | cycles, reserve sources, publishing, audit log, HTTP API | hash for the circuit                               |
-| Sandbox               | `services/sandbox`                                                          | Go             | a mock signed-balance bank for demos and tests           | be presented as a real bank                        |
+| Sandbox               | `services/sandbox`                                                          | Go             | a mock signed-balance custodian for demos and tests      | be presented as a real custodian                   |
 | Contracts API         | `proto/`                                                                    | Protobuf       | the orchestrator to prover contract                      | change without regenerating stubs (`buf generate`) |
 | Oracle, SDK, bindings | `services/oracle`, `packages/sdk-ts`, `packages/contract-bindings`          | TypeScript     | read access for integrators                              | write to the contract on a user's behalf           |
 | Shared packages       | `packages/config`, `packages/shared-types`, `packages/ui`, `packages/brand` | TypeScript     | lint presets, shared types, shared UI, tokens            | import from an app                                 |

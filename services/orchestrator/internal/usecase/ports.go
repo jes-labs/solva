@@ -40,10 +40,10 @@ type StellarPublisher interface {
 	PublishProof(ctx context.Context, target entity.TenantContract, proof []byte, pub entity.PublicInputs) (uint64, error)
 }
 
-// BankAdapter fetches reserve figures from a source and verifies their ECDSA
+// ReserveSource fetches reserve figures from a source and verifies their ECDSA
 // signature before returning them. A failed signature is an error, never a
 // silently dropped reserve.
-type BankAdapter interface {
+type ReserveSource interface {
 	FetchSigned(ctx context.Context, tenantID string) (entity.ReserveSnapshot, error)
 }
 

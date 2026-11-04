@@ -1,4 +1,4 @@
-package bank
+package reserves
 
 import (
 	"errors"
@@ -33,7 +33,7 @@ func totalReserves(t *testing.T, r *Registry) int64 {
 	return total
 }
 
-// Each scenario seeds the exact per-account balances, bank ids, and currency.
+// Each scenario seeds the exact per-account balances, custodian ids, and currency.
 func TestScenarioBalances(t *testing.T) {
 	want := map[string]map[string]string{
 		"solvent":     {"acct-anchor": "8000000", "acct-beacon": "5000000", "acct-cedar": "3000000"},
@@ -53,11 +53,11 @@ func TestScenarioBalances(t *testing.T) {
 			if acct.Balance != balance {
 				t.Errorf("%s/%s balance = %s, want %s", scenario, id, acct.Balance, balance)
 			}
-			if acct.BankID != bankOfAccount[id] {
-				t.Errorf("%s/%s bank = %s, want %s", scenario, id, acct.BankID, bankOfAccount[id])
+			if acct.CustodianID != custodianOfAccount[id] {
+				t.Errorf("%s/%s custodian = %s, want %s", scenario, id, acct.CustodianID, custodianOfAccount[id])
 			}
-			if acct.Currency != "NGN" {
-				t.Errorf("%s/%s currency = %s, want NGN", scenario, id, acct.Currency)
+			if acct.Currency != "USD" {
+				t.Errorf("%s/%s currency = %s, want USD", scenario, id, acct.Currency)
 			}
 		}
 	}
@@ -72,7 +72,9 @@ func TestScenarioOutcomes(t *testing.T) {
 		check     func(total int64) bool
 		desc      string
 	}{
-		{"solvent", 16_000_000, func(r int64) bool { return r > demoLiabilityTotal && (r-demoLiabilityTotal)*100/demoLiabilityTotal >= 25 }, "healthy margin (R > L)"},
+		{"solvent", 16_000_000, func(r int64) bool {
+			return r > demoLiabilityTotal && (r-demoLiabilityTotal)*100/demoLiabilityTotal >= 25
+		}, "healthy margin (R > L)"},
 		{"near-breach", 9_500_000, func(r int64) bool {
 			margin := (r - demoLiabilityTotal) * 100 / demoLiabilityTotal
 			return r > demoLiabilityTotal && margin > 0 && margin < 10

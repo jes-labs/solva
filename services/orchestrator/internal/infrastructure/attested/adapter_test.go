@@ -1,4 +1,4 @@
-package banks
+package attested
 
 import (
 	"context"
@@ -69,7 +69,7 @@ func writeSignedBalance(t *testing.T, w http.ResponseWriter, s *testSigner, sour
 	body := balanceResponse{
 		SourceID: sourceID,
 		Balance:  balance,
-		Currency: "NGN",
+		Currency: "USD",
 		AsOf:     time.Now().UTC().Format(time.RFC3339),
 	}
 	body.Signature = s.sign(t, body)
@@ -96,7 +96,7 @@ func TestVerifySignatureRoundTripAndTamper(t *testing.T) {
 		t.Fatalf("parse public key: %v", err)
 	}
 
-	body := balanceResponse{SourceID: "acct-anchor", Balance: "8000000", Currency: "NGN", AsOf: "2026-06-24T00:00:00Z"}
+	body := balanceResponse{SourceID: "acct-anchor", Balance: "8000000", Currency: "USD", AsOf: "2026-06-24T00:00:00Z"}
 	canonical, err := canonicalPayload(body)
 	if err != nil {
 		t.Fatalf("canonical: %v", err)
@@ -112,7 +112,7 @@ func TestVerifySignatureRoundTripAndTamper(t *testing.T) {
 	}
 
 	// Flip the balance: the same signature must no longer verify.
-	tampered, err := canonicalPayload(balanceResponse{SourceID: "acct-anchor", Balance: "99999999", Currency: "NGN", AsOf: "2026-06-24T00:00:00Z"})
+	tampered, err := canonicalPayload(balanceResponse{SourceID: "acct-anchor", Balance: "99999999", Currency: "USD", AsOf: "2026-06-24T00:00:00Z"})
 	if err != nil {
 		t.Fatalf("canonical: %v", err)
 	}

@@ -45,7 +45,7 @@ func TestProofRoundTrip(t *testing.T) {
 	store := newTestStore(t)
 	q := New(store.pool)
 
-	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Meridian Bank", Plan: "growth"})
+	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Kestrel Anchor", Plan: "growth"})
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestLoadLiabilities(t *testing.T) {
 	store := newTestStore(t)
 	q := New(store.pool)
 
-	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Meridian Bank", Plan: "growth"})
+	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Kestrel Anchor", Plan: "growth"})
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestClaimCycle(t *testing.T) {
 	store := newTestStore(t)
 	q := New(store.pool)
 
-	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Meridian Bank", Plan: "growth"})
+	tenantID, err := q.CreateTenant(ctx, CreateTenantParams{Name: "Kestrel Anchor", Plan: "growth"})
 	if err != nil {
 		t.Fatalf("create tenant: %v", err)
 	}

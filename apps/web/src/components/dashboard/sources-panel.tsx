@@ -18,14 +18,16 @@ export function SourcesPanel({
       <div className="flex items-center justify-between gap-3 border-b border-hair px-6 py-4">
         <div>
           <h2 className="font-display text-[17px] font-semibold tracking-tight">Reserve sources</h2>
-          <p className="mt-0.5 text-[13px] text-sec">Banks and wallets that back your reserves.</p>
+          <p className="mt-0.5 text-[13px] text-sec">
+            Custodians and wallets that back your reserves.
+          </p>
         </div>
         {canConnect && <ConnectSourceDialog onConnect={onConnect} />}
       </div>
 
       {sources.length === 0 ? (
         <p className="px-6 py-8 text-center text-sm text-sec">
-          No sources connected yet. Connect a bank or wallet to begin.
+          No sources connected yet. Connect a custodian or wallet to begin.
         </p>
       ) : (
         <ul>
@@ -55,14 +57,30 @@ export function SourcesPanel({
 function SourceIcon({ type }: { type: SourceType }) {
   if (type === "onchain") {
     return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        aria-hidden="true"
+      >
         <rect x="3" y="6" width="18" height="13" rx="2" />
         <path d="M3 10h18M16 14h2" strokeLinecap="round" />
       </svg>
     );
   }
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
       <path d="M4 10 12 4l8 6M5 10v9h14v-9M3 19h18" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

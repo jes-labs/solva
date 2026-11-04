@@ -1,9 +1,7 @@
-import type { Institution } from "./types";
+import { isInstitutionType, type Institution } from "./types";
 
-// Persistence for the session layer. The active wallet marks who is signed in
-// (cleared on sign-out); the institution record is keyed by wallet and survives
-// sign-out, so a returning operator resumes where they left off (skips KYB once
-// approved). Mock storage now; the orchestrator owns this server-side later.
+// The active wallet clears on sign-out; the institution record is keyed by
+// wallet and survives it, so a returning operator skips KYB once approved.
 
 const ACTIVE_WALLET_KEY = "solva.active-wallet";
 const INSTITUTION_PREFIX = "solva.institution.";
@@ -35,7 +33,9 @@ export function clearActiveWallet(): void {
 export function loadInstitution(wallet: string): Institution | null {
   try {
     const raw = localStorage.getItem(INSTITUTION_PREFIX + wallet);
-    return raw ? (JSON.parse(raw) as Institution) : null;
+    if (!raw) return null;
+    const institution = JSON.parse(raw) as Institution;
+    return isInstitutionType(institution.type) ? institution : null;
   } catch {
     return null;
   }

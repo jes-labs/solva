@@ -27,12 +27,12 @@ sudo apt-get update && sudo apt-get install -y git
 git clone https://github.com/jes-labs/solva
 cd solva
 export SIGNER_SECRET=S...     # from `stellar keys show signor`
-export CONTRACT_A=C...        # Meridian registry
+export CONTRACT_A=C...        # Kestrel registry
 export CONTRACT_B=C...        # Solstice registry
 bash deploy/vm/setup.sh
 ```
 
-The script installs Docker, generates the bank signing key and API tokens, brings
+The script installs Docker, generates the reserve-source signing key and API tokens, brings
 up the stack, applies migrations, and seeds the two demo institutions. The first
 prover build takes several minutes. It prints the exact Vercel variables at the end.
 

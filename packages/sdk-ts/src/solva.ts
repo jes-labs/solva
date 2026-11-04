@@ -4,7 +4,7 @@
 import type { ProofMeta } from "@solva/contract-bindings";
 import type { Proof, InclusionRef, InclusionResult } from "@solva/shared-types";
 import { resolveConfig, type NetworkConfig, type SolvaConfig } from "./config.js";
-import { OrchestratorClient, type BankSourceConfig } from "./orchestrator-client.js";
+import { OrchestratorClient, type ReserveSourceConfig } from "./orchestrator-client.js";
 import { ChainClient } from "./chain-client.js";
 
 export class Solva {
@@ -42,7 +42,7 @@ export class Solva {
   }
 
   /** Connect a reserve source. Returns the new source id. */
-  connectSource(config: BankSourceConfig): Promise<string> {
+  connectSource(config: ReserveSourceConfig): Promise<string> {
     return this.orchestrator.connectSource(config);
   }
 
@@ -61,10 +61,7 @@ export class Solva {
     return this.orchestrator.getProof(id);
   }
 
-  /**
-   * Read the latest proof directly from the tenant's on-chain contract. Use this
-   * for a ledger-backed solvency check, not the orchestrator's cached view.
-   */
+  /** Read the latest proof straight from the tenant's contract on the ledger. */
   async getOnChainLatestProof(): Promise<ProofMeta> {
     const chain = await this.resolveChain();
     return chain.getLatestProof();
@@ -75,8 +72,7 @@ export class Solva {
    * or a reference string, which is resolved through the orchestrator first.
    */
   async verifyInclusion(ref: InclusionRef | string): Promise<InclusionResult> {
-    const resolved =
-      typeof ref === "string" ? await this.orchestrator.getInclusionRef(ref) : ref;
+    const resolved = typeof ref === "string" ? await this.orchestrator.getInclusionRef(ref) : ref;
     const chain = await this.resolveChain();
     return chain.verifyInclusion(resolved);
   }

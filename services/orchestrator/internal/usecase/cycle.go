@@ -50,7 +50,7 @@ var ErrInsolvent = errors.New("usecase: reserves are below liabilities")
 // prove, publish on Stellar, then persist and cache. It coordinates the ports
 // and owns none of the crypto.
 type Cycle struct {
-	banks    BankAdapter
+	sources  ReserveSource
 	prover   ProverClient
 	stellar  StellarPublisher
 	proofs   ProofRepo
@@ -61,7 +61,7 @@ type Cycle struct {
 
 // NewCycle wires the use case to its dependencies.
 func NewCycle(
-	banks BankAdapter,
+	sources ReserveSource,
 	prover ProverClient,
 	stellar StellarPublisher,
 	proofs ProofRepo,
@@ -70,7 +70,7 @@ func NewCycle(
 	log zerolog.Logger,
 ) *Cycle {
 	return &Cycle{
-		banks:    banks,
+		sources:  sources,
 		prover:   prover,
 		stellar:  stellar,
 		proofs:   proofs,
@@ -110,7 +110,7 @@ func (uc *Cycle) Run(ctx context.Context, tenantID, requestKey string) error {
 		return ErrDuplicateCycle
 	}
 
-	snap, err := uc.banks.FetchSigned(ctx, tenantID)
+	snap, err := uc.sources.FetchSigned(ctx, tenantID)
 	if err != nil {
 		return fmt.Errorf("fetch signed reserves: %w", err)
 	}

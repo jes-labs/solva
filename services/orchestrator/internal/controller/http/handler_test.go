@@ -139,7 +139,7 @@ func TestCreateTenant(t *testing.T) {
 	defer srv.Close()
 
 	res, err := http.Post(srv.URL+"/v1/tenants", "application/json",
-		strings.NewReader(`{"name":"Meridian Bank","plan":"growth"}`))
+		strings.NewReader(`{"name":"Kestrel Anchor","plan":"growth"}`))
 	if err != nil {
 		t.Fatalf("POST: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestCreateTenant(t *testing.T) {
 	if res.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", res.StatusCode)
 	}
-	if p.gotName != "Meridian Bank" || p.gotPlan != "growth" {
+	if p.gotName != "Kestrel Anchor" || p.gotPlan != "growth" {
 		t.Fatalf("provision got name=%q plan=%q", p.gotName, p.gotPlan)
 	}
 }

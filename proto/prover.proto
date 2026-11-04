@@ -18,7 +18,7 @@ message Liability {
   string balance = 2;          // Integer minor units, decimal string.
 }
 
-// A single reserve figure attested by a bank or on-chain source.
+// A single reserve figure attested by a custodian or read on chain.
 message Reserve {
   string source_id = 1;
   string balance = 2; // Integer minor units, decimal string.

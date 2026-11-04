@@ -1,9 +1,4 @@
 // REST client for the orchestrator. Paths follow PRD section 13.1.
-//
-//   POST /v1/cycles                  trigger a proof cycle
-//   GET  /v1/proofs/latest           latest published proof
-//   GET  /v1/proofs/:id              proof by id
-//   GET  /v1/proofs/inclusion/:ref   inclusion ref for a customer
 
 import type { Proof, InclusionRef } from "@solva/shared-types";
 import { OrchestratorError } from "./errors.js";
@@ -18,9 +13,9 @@ interface InclusionRefDTO {
 }
 
 /** Source configuration the dashboard passes to connect a reserve source. */
-export interface BankSourceConfig {
-  /** "openbanking" for a signed bank balance, "onchain" for a wallet holding. */
-  type: "openbanking" | "onchain";
+export interface ReserveSourceConfig {
+  /** "attested" for a custodian-signed balance, "onchain" for a wallet holding. */
+  type: "attested" | "onchain";
   /** Display name shown in the dashboard. */
   label: string;
   /** Source-specific settings, for example OAuth client or wallet address. */
@@ -35,7 +30,7 @@ export class OrchestratorClient {
   ) {}
 
   /** Register a reserve source for the tenant. Returns the new source id. */
-  async connectSource(config: BankSourceConfig): Promise<string> {
+  async connectSource(config: ReserveSourceConfig): Promise<string> {
     const body = await this.request<{ id: string }>("POST", "/v1/sources", config);
     return body.id;
   }

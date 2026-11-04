@@ -1,11 +1,9 @@
-// The institution session model. Auth (the passkey wallet) is one layer; on top
-// sit the institution identity, the operator's role, and the KYB status that
-// gates access. All mock-backed now, but the shape is what the SDK/orchestrator
-// will fill, so nothing here changes when the backend lands.
+// The institution session: passkey auth, then identity, role and the KYB status
+// that gates access. Mock-backed now, in the shape the orchestrator will fill.
 
 export type Role = "owner" | "compliance" | "operator" | "viewer";
 
-export type InstitutionType = "bank" | "fintech" | "exchange" | "stablecoin" | "custodian";
+export type InstitutionType = "anchor" | "custodial-app" | "exchange" | "custodian";
 
 // KYB is operator-reviewed, never self-serve: an institution submits, a Solva
 // system operator approves out-of-band. "in_review" is the waiting state.
@@ -41,9 +39,12 @@ export interface Session {
 export type SessionStatus = "loading" | "unauthenticated" | "onboarding" | "active";
 
 export const INSTITUTION_TYPE_LABELS: Record<InstitutionType, string> = {
-  bank: "Bank",
-  fintech: "Fintech",
+  anchor: "Anchor",
+  "custodial-app": "Custodial app",
   exchange: "Exchange",
-  stablecoin: "Stablecoin issuer",
   custodian: "Custodian",
 };
+
+export function isInstitutionType(value: unknown): value is InstitutionType {
+  return typeof value === "string" && Object.hasOwn(INSTITUTION_TYPE_LABELS, value);
+}

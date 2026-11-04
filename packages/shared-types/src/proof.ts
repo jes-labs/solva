@@ -9,7 +9,7 @@ export interface Liability {
   balance: string;
 }
 
-/** A single reserve figure attested by a bank or on-chain source. */
+/** A single reserve figure attested by a custodian or read on chain. */
 export interface Reserve {
   sourceId: string;
   /** Balance in integer minor units, decimal string. */

@@ -1,4 +1,4 @@
-// Command app is the sandbox entrypoint. It builds the signer, the mock bank
+// Command app is the sandbox entrypoint. It builds the signer, the mock custodian
 // registry, the OAuth server, and serves the HTTP API.
 package main
 
@@ -13,9 +13,9 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/jes-labs/solva/services/sandbox/internal/bank"
 	"github.com/jes-labs/solva/services/sandbox/internal/config"
 	"github.com/jes-labs/solva/services/sandbox/internal/oauth"
+	"github.com/jes-labs/solva/services/sandbox/internal/reserves"
 	"github.com/jes-labs/solva/services/sandbox/internal/server"
 	"github.com/jes-labs/solva/services/sandbox/internal/signer"
 )
@@ -38,7 +38,7 @@ func run(cfg config.Config, log zerolog.Logger) error {
 		return err
 	}
 
-	registry := bank.NewRegistry()
+	registry := reserves.NewRegistry()
 	oauthSrv := oauth.NewServer()
 	srv := server.New(registry, oauthSrv, sgn, log)
 

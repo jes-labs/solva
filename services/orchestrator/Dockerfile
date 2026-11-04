@@ -1,5 +1,5 @@
 # Orchestrator service image. A static Go binary on distroless (CA certs
-# included for the HTTPS calls to Soroban RPC and the bank). Build from the
+# included for the HTTPS calls to Soroban RPC and the reserve source). Build from the
 # module directory:
 #
 #   docker build -f services/orchestrator/Dockerfile -t solva-orchestrator services/orchestrator

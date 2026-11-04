@@ -1,4 +1,4 @@
-package banks
+package attested
 
 import (
 	"context"
@@ -60,7 +60,7 @@ type Config struct {
 	HTTPTimeout time.Duration
 }
 
-// Adapter fetches signed balances from the sandbox Open Banking API and verifies
+// Adapter fetches signed balances from the sandbox reserve API and verifies
 // each ECDSA signature before the figure is trusted. Resolving a tenant's
 // sources from reserve_sources in Postgres is a later step; for now the source
 // set is configured directly.
@@ -105,7 +105,7 @@ func NewAdapter(c Config) *Adapter {
 // a partial, unverified snapshot is never returned.
 func (a *Adapter) FetchSigned(ctx context.Context, tenantID string) (entity.ReserveSnapshot, error) {
 	if len(a.accounts) == 0 {
-		return entity.ReserveSnapshot{}, errors.New("banks: no reserve sources configured")
+		return entity.ReserveSnapshot{}, errors.New("attested: no reserve sources configured")
 	}
 
 	// Authenticate once for the whole batch when OAuth is configured. A failed
@@ -249,7 +249,7 @@ func (a *Adapter) fetchToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("decode authorize: %w", err)
 	}
 	if auth.Code == "" {
-		return "", errors.New("banks: empty authorization code")
+		return "", errors.New("attested: empty authorization code")
 	}
 
 	form := url.Values{"code": {auth.Code}}
@@ -273,7 +273,7 @@ func (a *Adapter) fetchToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("decode token: %w", err)
 	}
 	if tok.AccessToken == "" {
-		return "", errors.New("banks: empty access token")
+		return "", errors.New("attested: empty access token")
 	}
 	return tok.AccessToken, nil
 }
@@ -301,4 +301,4 @@ func canonicalPayload(b balanceResponse) ([]byte, error) {
 }
 
 // Ensure Adapter satisfies the usecase port.
-var _ usecase.BankAdapter = (*Adapter)(nil)
+var _ usecase.ReserveSource = (*Adapter)(nil)

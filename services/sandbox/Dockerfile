@@ -1,9 +1,9 @@
-# Mock open-banking sandbox image. A static Go binary on distroless. Build from
+# Mock reserve-source sandbox image. A static Go binary on distroless. Build from
 # the module directory:
 #
 #   docker build -f services/sandbox/Dockerfile -t solva-sandbox services/sandbox
 #
-# In production set SANDBOX_SIGNING_KEY_PEM to a fixed P-256 key so the bank's
+# In production set SANDBOX_SIGNING_KEY_PEM to a fixed P-256 key so the custodian's
 # public key stays stable across restarts (the orchestrator is configured with
 # the matching public key).
 

@@ -42,7 +42,7 @@ That key is what lets the contract check proofs later.
 ### 3. Connect reserve sources
 
 The institution links the accounts that hold its reserves. Solva reads each
-balance over an open banking connection. Every balance a source returns is signed
+balance from the custodian that holds it. Every balance a source returns is signed
 with an ECDSA key. The orchestrator checks that signature on each read. If the
 signature does not match, the balance is rejected. This stops a tampered or
 made-up reserve figure from entering a proof.
@@ -150,9 +150,9 @@ The SDK exposes this as `verifyInclusion`.
 
 ## What is public and what stays private
 
-| Public | Private |
-|---|---|
-| Total reserves (R) | Individual reserve account balances |
-| Total liabilities (L) | Individual customer balances |
-| Commitment root and timestamp | The list of customers |
-| That R is greater than or equal to L | The proof witness |
+| Public                               | Private                             |
+| ------------------------------------ | ----------------------------------- |
+| Total reserves (R)                   | Individual reserve account balances |
+| Total liabilities (L)                | Individual customer balances        |
+| Commitment root and timestamp        | The list of customers               |
+| That R is greater than or equal to L | The proof witness                   |

@@ -1,11 +1,11 @@
-// Package banks adapts the orchestrator to Open Banking sources. It fetches
-// reserve balances and verifies the ECDSA signature on each response before
+// Package attested adapts the orchestrator to attested reserve sources: a
+// custodian that signs each balance it reports. It fetches reserve balances and verifies the ECDSA signature on each response before
 // trusting it.
 //
 // This ECDSA verification is standard signature checking, not circuit hashing.
 // It is the one place the Go tier does real cryptography. All Poseidon2 hashing
 // that must match the circuit stays in the Rust prover and the Soroban contract.
-package banks
+package attested
 
 import (
 	"crypto/ecdsa"
@@ -18,14 +18,14 @@ import (
 
 // ErrBadSignature means the response signature did not verify against the
 // configured public key. The reserve must be rejected, never used.
-var ErrBadSignature = errors.New("banks: ECDSA signature verification failed")
+var ErrBadSignature = errors.New("attested: ECDSA signature verification failed")
 
 // ParsePublicKey reads a PEM-encoded P-256 public key. The sandbox signs with
 // the matching private key, so the two halves must agree.
 func ParsePublicKey(pemBytes []byte) (*ecdsa.PublicKey, error) {
 	block, _ := pem.Decode(pemBytes)
 	if block == nil {
-		return nil, errors.New("banks: no PEM block in public key")
+		return nil, errors.New("attested: no PEM block in public key")
 	}
 	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
@@ -33,7 +33,7 @@ func ParsePublicKey(pemBytes []byte) (*ecdsa.PublicKey, error) {
 	}
 	pub, ok := parsed.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, errors.New("banks: public key is not ECDSA")
+		return nil, errors.New("attested: public key is not ECDSA")
 	}
 	return pub, nil
 }
@@ -44,7 +44,7 @@ func ParsePublicKey(pemBytes []byte) (*ecdsa.PublicKey, error) {
 // a mismatch so callers handle one clear failure.
 func VerifySignature(pub *ecdsa.PublicKey, payload, sig []byte) error {
 	if pub == nil {
-		return errors.New("banks: nil public key")
+		return errors.New("attested: nil public key")
 	}
 	digest := sha256.Sum256(payload)
 	if !ecdsa.VerifyASN1(pub, digest[:], sig) {

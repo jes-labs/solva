@@ -1,26 +1,26 @@
-// Package bank holds the sandbox's mock Open Banking accounts and the scenarios
+// Package reserves holds the sandbox's mock custodian accounts and the scenarios
 // an operator can seed for deterministic demos. Balances are integer minor
 // units as decimal strings, never floats.
-package bank
+package reserves
 
 import (
 	"errors"
 	"sync"
 )
 
-// ErrUnknownAccount means the account id is not registered in any mock bank.
-var ErrUnknownAccount = errors.New("bank: unknown account")
+// ErrUnknownAccount means the account id is not registered at any mock custodian.
+var ErrUnknownAccount = errors.New("reserves: unknown account")
 
 // ErrUnknownScenario means the named scenario is not one the sandbox seeds.
-var ErrUnknownScenario = errors.New("bank: unknown scenario")
+var ErrUnknownScenario = errors.New("reserves: unknown scenario")
 
-// Account is one mock account at one bank. Balance is a decimal string of
+// Account is one mock account at one custodian. Balance is a decimal string of
 // integer minor units.
 type Account struct {
-	AccountID string
-	BankID    string
-	Balance   string
-	Currency  string
+	AccountID   string
+	CustodianID string
+	Balance     string
+	Currency    string
 }
 
 // Registry holds accounts keyed by account id. It is safe for concurrent use so
@@ -52,11 +52,11 @@ var scenarios = map[string]map[string]string{
 	},
 }
 
-// bankOfAccount maps each demo account to its mock bank.
-var bankOfAccount = map[string]string{
-	"acct-anchor": "bank-anchor",
-	"acct-beacon": "bank-beacon",
-	"acct-cedar":  "bank-cedar",
+// custodianOfAccount maps each demo account to its mock custodian.
+var custodianOfAccount = map[string]string{
+	"acct-anchor": "custodian-anchor",
+	"acct-beacon": "custodian-beacon",
+	"acct-cedar":  "custodian-cedar",
 }
 
 // NewRegistry builds a registry seeded with the solvent scenario so the sandbox
@@ -92,10 +92,10 @@ func (r *Registry) Seed(scenario string) error {
 	r.accounts = make(map[string]Account, len(balances))
 	for accountID, balance := range balances {
 		r.accounts[accountID] = Account{
-			AccountID: accountID,
-			BankID:    bankOfAccount[accountID],
-			Balance:   balance,
-			Currency:  "NGN",
+			AccountID:   accountID,
+			CustodianID: custodianOfAccount[accountID],
+			Balance:     balance,
+			Currency:    "USD",
 		}
 	}
 	return nil
