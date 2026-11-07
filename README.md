@@ -45,6 +45,8 @@ Reserve coverage = Proof of Reserves + Proof of Liabilities
 
 Most published proof of reserves systems only attest the asset side. Solva binds both sides in one proof, so the reserve total cannot hide a larger liability total.
 
+On Stellar, the evidence today is usually a link. SEP-1 gives an issuer one `stellar.toml` field, `attestation_of_reserve`, that holds any URL. In November 2026 the [Stellar Anchor Directory](https://anchors.stellar.org) listed 74 anchors and marked 6 as publishing reserve evidence; 2 of those links opened a reserve report. None of the 30 exchanges it listed was marked, because the field covers the reserves behind a token, not what an exchange owes its customers.
+
 ## Architecture
 
 Each tier uses the language that fits it. The system holds together through crypto isolation: every hash that must match the circuit lives only in the Rust prover and the Soroban contract, and the Go orchestrator never hashes for the circuit. The Merkle Sum Tree is built once, in the Rust stack that generates the proof, and recomputed on-chain by the native Poseidon2 host function. This rules out a parameter mismatch between languages.
