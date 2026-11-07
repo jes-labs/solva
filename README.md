@@ -280,7 +280,7 @@ The contributor workflow is in [CONTRIBUTING.md](./CONTRIBUTING.md), the enginee
 
 ## Documentation
 
-Protocol overview, quickstart, SDK reference, and the sandbox guide live in [Docs](https://docs.joinsolva.xyz/). The cryptographic construction and the formal algorithm are in the [whitepaper](https://drive.google.com/file/d/1Dw3cdqTik4GZSMxB1Wckv230VRGUq538/view).
+Protocol overview, quickstart, SDK reference, and the sandbox guide live in [Docs](https://docs.joinsolva.xyz/). The cryptographic construction and the formal algorithm are in the [whitepaper](https://drive.google.com/file/d/1hVAJWy_cHFY2a7iF04OXKpE25HMNtMfV/view?usp=sharing).
 
 ## Project status
 
