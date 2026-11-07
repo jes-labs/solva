@@ -28,6 +28,8 @@ Two parts of it touch reserves:
 - **`attestation_of_reserve`** is a URL field for each token, defined as a link to an attestation or other evidence of reserves. It takes any URL and has no fixed format. An anchor sets it to the token's public record page <ComingSoon />, so wallets and exchanges find the record where they already look.
 - **The collateral fields** `collateral_addresses`, `collateral_address_messages` and `collateral_address_signatures` list the accounts that hold the reserves for an anchored crypto token, with a signed statement from each. They prove control of those accounts and carry no balances. The read on chain reserve source reads the balance of Stellar reserve accounts today. Verification of these signatures <ComingSoon /> ties those accounts to the token on each cycle. See [Where reserve figures come from](/docs/overview/reserve-sources).
 
+The [Stellar Anchor Directory](https://anchors.stellar.org) shows how the field is used. In November 2026 it listed 74 anchors and marked 6 as publishing reserve evidence. Two of those six links opened a reserve report. All 30 exchanges it listed were marked not applicable, because the field describes the reserves behind a token, and an exchange issues no token. A custodial app links its record [from its own site](/docs/operate/publish-your-record#link-it-from-your-site) instead.
+
 ## SEP-41: Soroban token interface
 
 [SEP-41](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md) is the standard interface for tokens on Soroban, which the Stellar Asset Contract also implements. It has a `balance` call for an account. It has no call for a token's total supply.
